@@ -1,0 +1,22 @@
+# Entry point for the Hyprland session's systemd units.
+#
+# graphical-session.target sets RefuseManualStart=yes -- it is designed to be
+# pulled in by a dependency, never started by name. Before this file existed,
+# hyprland.lua worked around that by starting hyprsunset.service, which has
+# Requires=graphical-session.target and therefore dragged the target up as a
+# side effect. That made the polkit agent, the xdg portals and the notification
+# daemon all depend on a blue-light filter starting successfully.
+#
+# This target is startable by name and pulls graphical-session.target in the
+# legitimate way, so hyprland.lua has exactly one thing to start and everything
+# else hangs off the target's .wants directory. Same pattern as the
+# sway-session.target that the sway package ships.
+#
+# BindsTo (rather than Requires) also means stopping this target tears the
+# graphical session down cleanly.
+
+[Unit]
+Description=Hyprland session
+BindsTo=graphical-session.target
+Wants=graphical-session-pre.target
+After=graphical-session-pre.target

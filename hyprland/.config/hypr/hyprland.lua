@@ -54,17 +54,31 @@ local menu        = "wofi --show drun"
 -------------------
 
 hl.on("hyprland.start", function()
-    hl.exec_cmd("waybar & swaync & hypridle & hyprpaper")
+    -- swaync is deliberately NOT here. It ships a systemd unit with
+    -- Restart=on-failure and a D-Bus name (org.freedesktop.Notifications).
+    -- Starting it as a bare process here meant the unit and the process raced
+    -- for that name every login: the loser exited 1, systemd retried it five
+    -- times and gave up with start-limit-hit, leaving a permanently failed
+    -- unit next to a working daemon. It is enabled into
+    -- graphical-session.target.wants now and systemd owns it alone.
+    hl.exec_cmd("waybar & hypridle & hyprpaper")
 
-    -- Polkit auth agent. Without it, GUI apps that need root (partition tools,
-    -- some NetworkManager edits) get no password prompt and silently fail.
-    -- The package enables itself into graphical-session.target.wants, but that
-    -- target never activates under this launcher, so start the unit directly.
-    hl.exec_cmd("systemctl --user start hyprpolkitagent.service")
-
-    -- Blue-light filter. Same graphical-session.target problem as the polkit
-    -- agent, so start the unit directly. Schedule lives in hyprsunset.conf.
-    hl.exec_cmd("systemctl --user start hyprsunset.service")
+    -- Bring up the session's systemd units.
+    --
+    -- This used to read "that target never activates under this launcher, so
+    -- start the unit directly", and started hyprpolkitagent.service and
+    -- hyprsunset.service by name. That was never quite the real story:
+    -- hyprsunset.service has Requires=graphical-session.target, so starting
+    -- hyprsunset is what dragged the target up, and the target in turn started
+    -- the polkit agent, the xdg portals and everything else in its .wants
+    -- directory. The whole session hung off a side effect of one
+    -- blue-light-filter unit.
+    --
+    -- graphical-session.target cannot be started by name -- it sets
+    -- RefuseManualStart=yes and only comes up as someone's dependency. So
+    -- hyprland-session.target exists to be that someone. See
+    -- ~/.config/systemd/user/hyprland-session.target.
+    hl.exec_cmd("systemctl --user start hyprland-session.target")
 
     hl.exec_cmd("wl-paste --type text --watch cliphist store")   -- text only
     hl.exec_cmd("wl-paste --type image --watch cliphist store")  -- images only
