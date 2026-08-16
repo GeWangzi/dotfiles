@@ -1,10 +1,10 @@
 {
   "position": "top",
-  "modules-left": ["hyprland/workspaces"],
-  "modules-center": ["hyprland/window"],
-  "modules-right": ["network", "pulseaudio", "battery", "clock"],
+  "modules-left": ["clock"],
+  "modules-center": ["hyprland/workspaces"],
+  "modules-right": ["network", "bluetooth", "wireplumber", "battery"],
   "clock": {
-    "format": "<span foreground='#f5c2e7'>   </span>{:%a %d %H:%M}",
+    "format": "{:%a %d %H:%M}",
     "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
   },
   "battery": {
@@ -12,29 +12,52 @@
       "warning": 30,
       "critical": 15
     },
-    "format": "<span size='13000' foreground='#a6e3a1'>{icon} </span> {capacity}%",
-    "format-warning": "<span size='13000' foreground='#B1E3AD'>{icon} </span> {capacity}%",
-    "format-critical": "<span size='13000' foreground='#E38C8F'>{icon} </span> {capacity}%",
-    "format-charging": "<span size='13000' foreground='#B1E3AD'> </span>{capacity}%",
-    "format-plugged": "<span size='13000' foreground='#B1E3AD'> </span>{capacity}%",
-    "format-alt": "<span size='13000' foreground='#B1E3AD'>{icon} </span> {time}",
-    "format-full": "<span size='13000' foreground='#B1E3AD'> </span>{capacity}%",
-    "format-icons": ["", "", "", "", ""],
-    "tooltip-format": "{time}"
+    "format": "{icon} {capacity}%",
+    "format-icons": {
+      "default": ["󰂎","󱊡","󱊢","󱊣"],
+      //"charging": ["󰢟 ", "󰢜 ", "󰂆 ", "󰂇 ", "󰂈 ", "󰢝 ", "󰂉 ", "󰢞 ", "󰂊 ", "󰂋 ", "󰂅 "],
+      "plugged": ["󰂄"]
+    },
+    "tooltip-format": "{time}",
   },
   "network": {
-    "format-wifi": "<span size='13000' foreground='#f5e0dc'>  </span>{essid}",
-    "format-ethernet": "<span size='13000' foreground='#f5e0dc'>󰤭  </span> Disconnected",
-    "format-linked": "{ifname} (No IP) ",
-    "format-disconnected": "<span size='13000' foreground='#f5e0dc'>  </span>Disconnected",
-    "tooltip-format-wifi": "Signal Strenght: {signalStrength}%"
+    "interval": 5,
+    "format-wifi": "{icon} {essid}",
+    "format-ethernet": "<span size='13000' foreground='#f5e0dc'>󰤭</span> Connected",
+    "format-disconnected": "  Disconnected",
+    "format-icons": ["󰤟", "󰤢", "󰤥", "󰤨"],
+    "tooltip-format-wifi": "Signal: {signalStrength}% ",
+    "on-click": "nm-connection-editor"
   },
-  "pulseaudio": {
-      "format": "{icon}  {volume}%",
-      "format-muted": "",
-      "format-icons": {
-          "default": ["", "", " "]
-      },
-      "on-click": "pavucontrol"
+
+  // blueman-manager used to hang off the audio module's on-click, which meant
+  // clicking the volume readout opened a Bluetooth window. It belongs here.
+  "bluetooth": {
+    "format": "󰂯",
+    "format-disabled": "󰂲",
+    "format-connected": "󰂱 {num_connections}",
+    "tooltip-format": "{controller_alias}\t{controller_address}",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+    "on-click": "blueman-manager"
+  },
+
+  // Was the "pulseaudio" module. This machine runs PipeWire with WirePlumber
+  // as its session manager, so the wireplumber module talks to the actual
+  // sink manager instead of going through the PulseAudio compatibility layer.
+  // Same wpctl that the volume keybinds in hyprland.lua use.
+  "wireplumber": {
+    "format": "{icon} {volume}%",
+    "format-muted": "",
+    "format-icons": ["", "", " "],
+    // Cap at 100 so a stray scroll cannot push the sink into software boost.
+    "max-volume": 100,
+    "scroll-step": 5,
+    "on-click": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "tooltip-format": "{node_name}"
   }
+
+  // custom/power removed: it was a single unconfirmed click bound to
+  // `shutdown now`, with no prompt and nothing to cancel it. Lock is
+  // SUPER+L; shut down from a terminal.
 }

@@ -1,7 +1,11 @@
 @import "mocha.css"; 
 
 * {
-    font-family: "MesloLGS Nerd Font Mono Bold";
+    /* Must be a font that is actually installed. "MesloLGS Nerd Font Mono"
+       is not, so fontconfig was silently falling back to Noto Sans Mono CJK
+       and the bar rendered in the wrong face. CaskaydiaCove is the Nerd Font
+       on this system and is what kitty uses, so the two now match. */
+    font-family: "CaskaydiaCove Nerd Font Mono";
     font-size: 16px;
     min-height: 0;
     font-weight: bold;
@@ -13,13 +17,12 @@ window#waybar {
     color: @overlay0;
     transition-property: background-color;
     transition-duration: 0.1s;
-    border-bottom: 1px solid @overlay1;
 }
 
 #window {
     margin: 8px;
-    padding-left: 8;
-    padding-right: 8;
+    padding-left: 8px;
+    padding-right: 8px;
 }
 
 button {
@@ -30,8 +33,8 @@ button {
 
 button:hover {
     background: inherit;
-    color: @mauve;
-    border-top: 2px solid @mauve;
+    color: @chill;
+    border-top: 2px solid @chill;
 }
 
 #workspaces button {
@@ -40,23 +43,23 @@ button:hover {
 
 #workspaces button.focused {
     background-color: rgba(0, 0, 0, 0.3);
-    color: @rosewater;
-    border-top: 2px solid @rosewater;
+    color: @chill;
+    border-top: 2px solid @chill;
 }
 
 #workspaces button.active {
     background-color: rgba(0, 0, 0, 0.3);
-    color: @mauve;
-    border-top: 2px solid @mauve;
+    color: @chill;
+    border-top: 2px solid @chill;
 }
 
 #workspaces button.urgent {
-    background-color: #eb4d4b;
+    background-color: rgb(221, 193, 255)
 }
 
-#pulseaudio,
 #clock,
 #battery,
+#bluetooth,
 #cpu,
 #memory,
 #disk,
@@ -67,32 +70,35 @@ button:hover {
 #network,
 #mode,
 #scratchpad {
-  margin-top: 2px;
-  margin-bottom: 2px;
-  margin-left: 4px;
-  margin-right: 4px;
+  margin: 1px;
   padding-left: 4px;
   padding-right: 4px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  border: 1px solid @chill;
+  border-radius: 4px;
+  color:@chill;
 }
 
 #clock {
-    color: @maroon;
-    border-bottom: 2px solid @maroon;
+    color: @chill;
 }
 
-#clock.date {
-    color: @mauve;
-    border-bottom: 2px solid @mauve;
+#wireplumber {
+    color: @chill;
 }
 
-#pulseaudio {
-    color: @blue;
-    border-bottom: 2px solid @blue;
+#wireplumber.muted {
+    color: @overlay1;
+}
+
+#bluetooth.disabled,
+#bluetooth.off {
+    color: @overlay1;
 }
 
 #network {
-    color: @yellow;
-    border-bottom: 2px solid @yellow;
+    color: @chill;
 }
 
 #idle_inhibitor {
@@ -101,12 +107,11 @@ button:hover {
 }
 
 #idle_inhibitor.activated {
-    color: @red;
+    color: @chill;
 }
 
 #battery {
-    color: @green;
-    border-bottom: 2px solid @green;
+    color: @chill;
 }
 
 /* If workspaces is the leftmost module, omit left margin */
