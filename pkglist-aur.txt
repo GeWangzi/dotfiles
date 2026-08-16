@@ -1,0 +1,14 @@
+catppuccin-gtk-theme-mocha
+google-chrome
+hyprevents-git
+hyprprop-git
+lib32-gst-plugins-base-libs
+lib32-gstreamer
+lib32-unixodbc
+minecraft-launcher
+paru
+python312
+sing-box-bin
+visual-studio-code-bin
+wechat-bin
+zoom

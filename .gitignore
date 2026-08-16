@@ -3,3 +3,13 @@
 secrets.env
 *.secrets
 .env
+
+# The same rule applies to the system config in system/. These files carry
+# credentials -- a VLESS server UUID, wifi PSKs in plaintext, an RDP host --
+# and BOOTSTRAP.md explains how to carry each one across by hand instead.
+system/etc/sing-box/
+system/etc/NetworkManager/system-connections/
+local-bin/.local/bin/connectvm
+
+# Backups written by system/install.sh, in case anyone runs it from a checkout.
+*.bak-*

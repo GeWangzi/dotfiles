@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# Clipboard history picker with image thumbnails.
+#
+# cliphist stores images as opaque blobs, so a plain `cliphist list` shows them
+# as "[[ binary data 148 KiB png 1916x1045 ]]" and you have to guess which
+# screenshot is which. This decodes every image entry to a temporary file and
+# hands wofi an "img:" row so the picture itself renders in the menu.
+#
+# Bound to SUPER+V in hyprland.lua.
+set -euo pipefail
+
+thumb_dir="${XDG_CACHE_HOME:-$HOME/.cache}/cliphist/thumbs"
+rm -rf "$thumb_dir"
+mkdir -p "$thumb_dir"
+
+# Turn `cliphist list` into wofi rows. Image entries become
+# "img:<file>:text:<original line>"; text entries pass through untouched.
+# The original line is kept as the label because it starts with the cliphist
+# id, which is what `cliphist decode` needs back.
+to_rows() {
+    local line id preview thumb
+    while IFS= read -r line; do
+        preview=${line#*$'\t'}
+        if [[ $preview == *"binary data"* ]]; then
+            id=${line%%$'\t'*}
+            thumb="$thumb_dir/$id.png"
+            if cliphist decode "$id" >"$thumb" 2>/dev/null; then
+                printf 'img:%s:text:%s\n' "$thumb" "$line"
+                continue
+            fi
+        fi
+        printf '%s\n' "$line"
+    done
+}
+
+# --parse-search keeps the "img:...:text:" wrapper out of the search text.
+# image_size is set inline rather than in ~/.config/wofi/config so that other
+# wofi callers keep their own sizing.
+chosen=$(cliphist list | to_rows |
+    wofi --dmenu --allow-images --parse-search -D image_size=90) || exit 0
+[ -n "$chosen" ] || exit 0
+
+# Depending on version, wofi may hand back the whole "img:<file>:text:<label>"
+# row or just the label. Strip the wrapper if it survived, so that what reaches
+# cliphist always starts with the entry id.
+chosen=${chosen#img:*:text:}
+
+printf '%s' "$chosen" | cliphist decode | wl-copy

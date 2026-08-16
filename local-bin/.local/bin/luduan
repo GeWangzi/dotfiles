@@ -1,0 +1,2 @@
+cd "$HOME/work/luduan/Luduan" || exit
+code .

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Recover a stuck hyprlock screen (lock screen visible, keyboard does nothing).
+#
+# Cause: suspending tears down every input device and re-adds them on resume,
+# but hyprlock's ext-session-lock surface never regains keyboard focus. It keeps
+# holding the lock while ignoring everything typed at it. A fresh hyprlock binds
+# the new devices and works.
+#
+# Run this from a TTY: press Ctrl+Alt+F2, log in, type `fixlock`, then press
+# Ctrl+Alt+F1 to go back to the desktop and unlock normally.
+#
+# Requires misc:allow_session_lock_restore = true in the Hyprland config,
+# otherwise the compositor refuses to hand the lock to a fresh hyprlock and the
+# screen stays stuck until a reboot.
+
+set -u
+
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    sig=$(ls -t "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)
+    if [[ -z "$sig" ]]; then
+        echo "No running Hyprland instance found under $XDG_RUNTIME_DIR/hypr" >&2
+        exit 1
+    fi
+    export HYPRLAND_INSTANCE_SIGNATURE="$sig"
+fi
+
+if pkill -x hyprlock; then
+    echo "Killed the stale hyprlock."
+else
+    echo "No hyprlock process was running (the compositor was locked with no client)."
+fi
+
+sleep 1
+
+# The Lua config changes hyprctl's dispatch syntax; fall back to the classic
+# keyword form if the plain .conf config is in use.
+hyprctl dispatch 'hl.dsp.exec_cmd("hyprlock")' >/dev/null 2>&1 || hyprctl dispatch exec hyprlock
+
+echo "Fresh hyprlock started. Switch back with Ctrl+Alt+F1 and type your password."

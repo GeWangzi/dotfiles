@@ -1,0 +1,11 @@
+[Unit]
+Description=Disable ASUS panel overdrive
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo 0 > /sys/devices/platform/asus-nb-wmi/panel_od'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

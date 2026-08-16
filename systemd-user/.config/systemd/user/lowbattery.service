@@ -1,0 +1,5 @@
+[Unit]
+Description=Low Battery Check
+
+[Service]
+ExecStart=/home/naidoq/.local/bin/lowbattery.sh
