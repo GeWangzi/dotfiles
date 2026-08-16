@@ -10,6 +10,12 @@ export EDITOR="nvim"
 export SUDO_EDITOR="$EDITOR"
 export PGHOST="/var/run/postgresql"
 
+# Keep $path (and the $PATH it mirrors) free of duplicates. A login shell
+# runs .zprofile and then this file, and both add ~/.local/bin, so without
+# this every nested shell grows the variable further. zsh-only; bash has no
+# equivalent, which is why ~/.bash_profile guards with a case statement.
+typeset -U path PATH
+
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/bin:$PATH"
 export PATH="$PATH:/usr/local/go/bin"
