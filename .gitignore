@@ -1,0 +1,5 @@
+# Never commit credentials. ~/.config/secrets.env lives at mode 600 outside
+# this repo; this entry is a backstop in case it is ever copied in here.
+secrets.env
+*.secrets
+.env
