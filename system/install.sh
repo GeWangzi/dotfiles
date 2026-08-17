@@ -216,10 +216,14 @@ Still to do by hand, in rough order:
    public git repository. Copy it from the old machine over ssh or a USB stick,
    as root, mode 0640 root:sing-box.
 
-   While copying it, consider adding the top-level experimental.cache_file
-   block it is missing -- without it the geoip-cn and geosite-cn rule sets are
-   re-downloaded at every start, and when that download fails all China-bound
-   traffic silently goes through the proxy instead of direct.
+   After copying it, confirm the experimental.cache_file block came across:
+
+     sudo jq -r 'paths | select(.[-1] == "cache_file") | join(".")' \
+       /etc/sing-box/config.json          # expect: experimental.cache_file
+
+   Without it the geoip-cn and geosite-cn rule sets are re-downloaded at every
+   start, and when that download fails all China-bound traffic silently goes
+   through the proxy instead of direct.
 
 3. Wifi profiles are not here either -- /etc/NetworkManager/system-connections
    stores PSKs in plaintext. The most recent backup of the old machine's copy

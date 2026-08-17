@@ -166,9 +166,17 @@ is at `/root/nm-backup-2026-08-16.tar.gz`; restoring it as root is faster than
 re-entering networks by hand, but re-entering the three or four that actually matter
 is also fine.
 
-While copying the sing-box config, consider adding the top-level
-`experimental.cache_file` block it is missing — see `MACHINE.md` for why its absence
-silently routes China-bound traffic through the proxy.
+After copying the sing-box config, check that its `experimental.cache_file` block
+survived the trip:
+
+```bash
+sudo jq -r 'paths | select(.[-1] == "cache_file") | join(".")' /etc/sing-box/config.json
+# expect: experimental.cache_file
+```
+
+Without it the `geoip-cn` and `geosite-cn` rule sets are re-downloaded at every
+start, and a failed download silently routes China-bound traffic through the proxy
+instead of direct. See `MACHINE.md`.
 
 ## 8. Tune the microphone
 

@@ -57,6 +57,32 @@ NVIDIA HDMI audio, card 1 is AMD HDMI/DP audio; neither carries the speakers or 
 internal mic array. The mic gain staging is tuned by ear and is not portable — see
 `INSTALL.md` step 8 and the warning in it about `wpctl set-volume`.
 
+The WirePlumber soft-mixer drop-in that protects that tuning is confirmed working as
+of 2026-08-17 — `wpctl inspect` on the capture node reports
+`api.alsa.soft-mixer = "true"` for `alsa_input.pci-0000_04_00.6.analog-stereo`, so
+WirePlumber is doing volume in software and is not driving the hardware controls.
+
+That matters for diagnosis, because the gain can still be wrong for a different
+reason. On a fresh boot on 2026-08-17 the values read `Internal Mic Boost 0` and
+`Capture 63`, not the tuned `1` and `50`, even though `alsa-restore.service` had
+completed successfully. With soft-mixer confirmed on, nothing was clobbering the
+controls live — the bad values are stored in `/var/lib/alsa/asound.state` itself,
+written there by the `ExecStop=alsactl store` that `alsa-restore` runs at shutdown,
+at some point when the values were already wrong.
+
+So there are two distinct failures with the same symptom, and they are told apart by
+whether soft-mixer is on:
+
+```bash
+wpctl inspect <capture-node-id> | grep soft-mixer   # "true" -> stored state is stale
+amixer -c 2 sget 'Internal Mic Boost'               # what is actually loaded
+```
+
+If soft-mixer is on and the values are wrong, the fix is to set them once and run
+`sudo alsactl store` — they will stick, because nothing is fighting them. Building a
+service to re-apply after WirePlumber starts is the fix for the *other* failure and
+would be treating the wrong cause here.
+
 **Wifi** — MediaTek MT7921 (`02:00.0`, `mt7921e`), driven through NetworkManager
 with the **iwd** backend rather than wpa_supplicant, set in
 `/etc/NetworkManager/conf.d/wifi-backend.conf`. That file overrides a stale
@@ -182,8 +208,26 @@ sudo smartctl -a /dev/nvme0n1 | grep -i "power cycles"
 Baseline was 214,757 on 2026-08-14. After hours on battery it should climb by single
 digits. If it still races upward, something other than TLP is driving D3cold.
 
+**Measured 2026-08-17 09:12 — the fix works.** The count reads 214,762, so five
+cycles in roughly 62 hours: down from about 21 an hour to about 0.08, a factor of
+260. Five is also close to the number of times the machine was actually booted or
+suspended over that window, which is what a healthy drive looks like — it powers
+down when told to and not otherwise.
+
+**What the fix does not cover is suspend.** Six boots since it was applied: five
+ended with a clean `Journal stopped`, and one did not. On 2026-08-16 the last
+journal entry of that boot is `PM: suspend entry (s2idle)` at 18:11:09, with no
+shutdown record, and the following boot needed ext4 journal recovery on both
+partitions. Runtime power management and APST are two paths to a controller
+power-down; suspend is a third, and it powers the drive down regardless of either
+setting. Treat a hang at suspend as a separate open bug rather than evidence that
+the TLP change failed — the power cycle count is the evidence, and it is good.
+
 Still outstanding: check whether WD has released SN350 firmware newer than
 `33006000`, since several controller hang bugs on this drive were fixed in firmware.
+This is the most promising untouched lead on the suspend hang. SMART reports
+`Firmware Updates (0x14): 2 Slots, no Reset required`, so a flash would not need a
+cold reset, which makes it a low-risk thing to try.
 
 ## Other quirks that come with this machine
 
@@ -218,7 +262,8 @@ link, then pings the gateway and 1.1.1.1 with `-I wlan0` to bypass `tun0`, then
 makes a real HTTPS request through the tunnel. Layers 0-2 passing with layer 3
 failing means `sudo systemctl restart sing-box`, not a reboot.
 
-**sing-box loses a race with the uplink on every boot.** Journal signature:
+**sing-box loses a race with the uplink on every boot.** Journal signature, unchanged
+across every boot checked between 2026-08-15 and 2026-08-17:
 
 ```
 Finished Network Manager Wait Online.        <- returns in the same second
@@ -228,9 +273,19 @@ sing-box: ERROR network: missing default interface
 ```
 
 sing-box builds its `auto_route` / `auto_detect_interface` tun0 state against a
-nonexistent uplink and never rebuilds it, so every dial fails with `no route to
-internet`, and because DNS uses a `detour: proxy` server, name resolution dies with
-it. Only a service restart recovers it.
+nonexistent uplink. When it does not rebuild that state, every dial fails with `no
+route to internet`, and because DNS uses a `detour: proxy` server, name resolution
+dies with it, and only a service restart recovers it.
+
+**It does not always end that way.** The 2026-08-17 09:01 boot produced the error on
+schedule — wait-online started and finished in the same second at 09:01:49, sing-box
+started and logged `missing default interface` in that same second, and the DHCP
+lease arrived 12 seconds later at 09:02:01 — and yet the tunnel came up fine, with
+`netcheck.sh` passing all four layers minutes afterwards. So the accurate statement
+is that the error fires on every boot and the tunnel sometimes recovers on its own.
+That matches the history of intermittent stalls rather than constant failure. It is
+a reliability problem, not a guaranteed daily outage, and `netcheck.sh` rather than
+the presence of the log line is what says whether it matters on a given day.
 
 `After=network-online.target` buys nothing here, because wait-online waits for
 NetworkManager *startup-complete*, and under the iwd backend NM declares startup
@@ -240,10 +295,20 @@ for the same reason does not fix it. **Treat this as still open.** A working fix
 needs wait-online overridden to `nm-online -q --timeout=60` and an `ExecStartPre`
 that polls `ip route show default`.
 
-Separately, `/etc/sing-box/config.json` has no top-level `experimental.cache_file`
-block, so the remote `geoip-cn` / `geosite-cn` rule sets are re-downloaded at every
-start. When that download fails the rule sets are absent, and all China-destined
-traffic silently goes through the proxy instead of direct.
+**Rule-set caching is on, contrary to what an earlier version of this document
+said.** `/etc/sing-box/config.json` does have an `experimental.cache_file` block,
+verified 2026-08-17:
+
+```
+experimental.cache_file = { "path": "cache.db", "store_rdrc": true }
+```
+
+The concern it removes is worth recording anyway, because it is the failure to look
+for if the block is ever lost: without caching, the remote `geoip-cn` and
+`geosite-cn` rule sets are re-downloaded at every start, and those downloads run
+straight into the boot race above. When they fail the rule sets are simply absent,
+and all China-destined traffic silently routes through the proxy instead of direct —
+slow, and it presents as a proxy problem rather than a config one.
 
 **Harmless iwd log lines, not worth chasing:** `IWD device named wlan0 is not a Wifi
 device` (a NetworkManager/iwd startup race that self-corrects) and `error setting
