@@ -312,11 +312,16 @@ hl.bind(mainMod .. " + F",      hl.dsp.window.fullscreen())
 -- out in the layout config below, so the dispatcher had nothing to toggle.
 -- The key now belongs to hyprpicker, further down.
 
--- Plain SUPER+M (exit) stays unbound: too easy to hit by accident, and it
--- kills every window with no confirmation. SHIFT-guarded version instead.
--- Hyprland also falls back to a hardcoded SUPER+M exit if the config fails to
--- load, which is the real escape hatch.
-hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exit())
+-- Log out. Bound to L so it reads as the counterpart of SUPER+L (lock, below):
+-- same key, SHIFT for the version you cannot undo. Lock keeps the session,
+-- SHIFT ends it and every window in it, with no confirmation -- hence the
+-- guard. Was SUPER+SHIFT+M until 2026-08-17.
+--
+-- Plain SUPER+M stays unbound for the reason it always was: too easy to hit by
+-- accident. Hyprland still falls back to a hardcoded SUPER+M exit if the config
+-- fails to load, which remains the real escape hatch, and the rescue
+-- hyprland.conf keeps the classic unguarded SUPER+M on purpose.
+hl.bind(mainMod .. " + SHIFT + L", hl.dsp.exit())
 
 hl.bind("PRINT",         hl.dsp.exec_cmd("hyprshot -m window"))
 hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd("hyprshot -m region"))
@@ -331,6 +336,7 @@ hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/cli
 -- for the rare case that needs it.
 
 hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("killall waybar && waybar"))
+-- Lock. SUPER+SHIFT+L above is the log-out counterpart.
 hl.bind(mainMod .. " + L",         hl.dsp.exec_cmd("hyprlock"))
 
 -- Color picker. -a copies to clipboard, -n notifies via swaync, -l gives
