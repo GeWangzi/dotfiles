@@ -4,8 +4,9 @@ Configuration for one Arch Linux laptop, laid out as GNU stow packages. Enough o
 it is here to rebuild the machine from a fresh install.
 
 **[MACHINE.md](MACHINE.md)** — what the hardware is, how the session is put
-together, and the bugs this configuration works around. Read it before installing
-anywhere that is not the same laptop.
+together, which 19 GiB of a 293 GiB home directory would actually hurt to lose, how
+to shut the machine down when it stops responding, and the bugs this configuration
+works around. Read it before installing anywhere that is not the same laptop.
 
 **[INSTALL.md](INSTALL.md)** — the procedure, in order, from `iwctl` to a working
 desktop.

@@ -233,6 +233,37 @@ The power cycle count is the number to write down. It should climb by single dig
 over hours on battery. If it races upward, the NVMe workaround is not taking effect
 — check that the grub step actually ran.
 
+Also worth testing now rather than during an emergency: `Alt+SysRq+H`, then
+`dmesg | tail`. If a help line appears, the SysRq escape from a hung system works
+(see `MACHINE.md`). If not, the F-row is in media mode and `Fn` is needed too.
+
+## 10. Set up backups
+
+Do not skip this because the machine feels finished. The old machine ran without any
+backup at all on a drive with a known controller hang, which is the single largest
+risk documented in `MACHINE.md` — read the disk breakdown there first, because the
+set worth backing up is about 19 GiB, not the 293 GiB the home directory reports.
+
+`borg`, `borgmatic` and `restic` are all in the repos. For a local external drive:
+
+```bash
+sudo pacman -S --needed borg borgmatic
+borg init --encryption=repokey-blake2 /mnt/backup/borg
+sudo systemctl enable --now borgmatic.timer
+```
+
+Two things people get wrong here. Write the repository passphrase down somewhere off
+the machine — a repokey backup you cannot decrypt is not a backup, and the key lives
+in the repo you are trying to protect. And test a restore before trusting it:
+
+```bash
+borgmatic extract --archive latest --path home/naidoq/Documents --destination /tmp/rt
+diff -r /tmp/rt/home/naidoq/Documents ~/Documents
+```
+
+Include `/etc` in the source directories. `system/` in this repo only covers the
+files that were copied into it by hand.
+
 ---
 
 ## Keeping this repo honest

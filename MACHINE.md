@@ -115,6 +115,47 @@ because hibernate is in use.
 **Battery** — ASUS Battery, 76.0 Wh design capacity, 59.0 Wh full charge as
 measured, so roughly 78% health.
 
+## What is actually on the disk, and what would hurt to lose
+
+`/home` reads as 293 GiB, which makes backing it up sound like a project. It is not
+— almost all of that is reconstructible:
+
+```
+188G  .local/share/Steam        redownloadable
+ 31G  .local/share/Trash        deleted files nobody emptied
+ 29G  .cache                    disposable by definition
+ ~8G  .npm .gradle .m2 .rustup go     dependency caches, rebuildable
+```
+
+The set that cannot be recreated, measured together, comes to **19 GiB**:
+
+```
+7.7G  sandbox          1.7G  .thunderbird     592M  Pictures
+4.4G  work             1.5G  Videos           181M  .claude
+1.2G  .minecraft       923M  .mozilla          53M  dotfiles
+641M  Documents        176K  .gnupg            36K  .ssh
+```
+
+Plus `~/.config/secrets.env` and `~/.aws`, which are tiny and matter most.
+
+**There is no backup of any of this.** No borg, restic, timeshift, snapper or
+rsnapshot is installed, `lsblk` shows nothing but the internal NVMe, `fstab` has no
+external mount, and no USB storage appears anywhere in the journal. On a machine
+whose defining bug is a storage controller that occasionally does not come back,
+that is the largest single risk here — larger than any of the bugs documented below,
+because every one of those is recoverable and this is not.
+
+19 GiB fits on any external drive, and borg deduplicates and compresses it well
+below that. `borg`, `borgmatic` and `restic` are all packaged. The partial mitigation
+that needs no hardware is pushing the ~20 git repositories under `work/` and
+`sandbox/` to remotes:
+
+```bash
+find ~/work ~/sandbox -maxdepth 3 -name .git -type d | while read -r g; do
+  d=$(dirname "$g"); git -C "$d" remote -v | grep -q . || echo "NO REMOTE: $d"
+done
+```
+
 ## How the session starts
 
 There is no display manager. Login is a plain `getty` on tty1, and `~/.zprofile`
@@ -127,9 +168,60 @@ path ever breaks.
 
 **Hyprland's active config is `hyprland.lua`, not `hyprland.conf`.** Binds show
 `dispatcher: __lua`, and `hyprctl dispatch` calls take the `hl.dsp.foo(...)` form
-there rather than the classic keywords. `hyprland.conf` is kept alongside it and is
-still readable as documentation of the pre-Lua state, but editing it changes
-nothing.
+there rather than the classic keywords.
+
+`hyprland.conf` is not dead weight and not a historical copy — it is the **rescue
+config**, and Hyprland reads it whenever `hyprland.lua` is absent, which is what
+`restore-lua.sh --conf` arranges from a TTY. Its own header says to keep it minimal
+and not to mirror the Lua config into it, so the two are expected to differ. The
+clearest example: the Lua config binds log out to SUPER+SHIFT+L, while the rescue
+config deliberately keeps the classic unguarded SUPER+M, because its entire job is
+to be a usable way out when the real config will not load.
+
+```
+~/.config/hypr/restore-lua.sh           restore the pristine Lua config
+~/.config/hypr/restore-lua.sh --conf    disable Lua, fall back to hyprland.conf
+```
+
+`hyprland.lua.original` alongside them is the pristine snapshot that first script
+restores from. It is a snapshot by design and drifts from the live config on purpose.
+
+## Shutting down without holding the power button
+
+Every hard power-off costs an ext4 journal recovery and whatever was in flight, so
+it is worth knowing the three levels.
+
+**Machine responds** — `systemctl poweroff`, or just tap the power button.
+`/etc/systemd/logind.conf` is empty, so systemd defaults apply, and the relevant one
+is `HandlePowerKey=poweroff`: a short press is already a clean shutdown. The long
+press is a firmware force-off that bypasses the OS entirely and is what causes the
+recovery on the next boot. (There is deliberately no power button in waybar — it was
+removed for being a single unconfirmed click bound to `shutdown now`.)
+
+**Session wedged, kernel alive** — Ctrl+Alt+F2, log in, `systemctl poweroff`. If a
+TTY appears at all, the kernel is healthy and the disk is fine, so never hold the
+power button in this state. This is also the path for the hyprlock-after-suspend bug
+below.
+
+**Fully hung** — this is what `kernel.sysrq=1` in `/etc/sysctl.d/99-sysrq.conf`
+exists for. Hold Alt and SysRq (the PrtSc key) and tap, a second apart:
+
+```
+S   sync — flush pending writes
+U   remount all filesystems read-only
+B   reboot now
+```
+
+`S` and `U` are the whole point: they are the difference between a clean next boot
+and `recovering journal` / `Clearing orphaned inode`. Test the key combination while
+things work — `Alt+SysRq+H` prints a help line visible in `dmesg | tail`. If nothing
+appears, the F-row is in media mode and `Fn` is needed too, which is much better to
+discover now than during a hang.
+
+Caveat for the failed-resume case specifically: if the kernel never came back from
+s2idle, the keyboard input path is likely down too and SysRq will not respond. Try it
+anyway — it costs two seconds — but holding the power button is then genuinely the
+only option, and the journal recovery is unavoidable rather than a mistake.
 
 ## Services
 
@@ -192,10 +284,15 @@ Unsafe Shutdowns: 823
 
 A normal laptop drive shows a few thousand over its entire life.
 
-**Ruled out, do not re-chase:** suspend/resume is not the trigger (one crash came 46
-minutes into a boot with no suspend at all), and the kernel is not either (the first
-unclean shutdown predates the 7.0.11 → 7.1.5 upgrade). This is also distinct from
-the hyprlock-goes-deaf bug below, which still lets you reach a TTY.
+**Ruled out, do not re-chase:** suspend/resume is not the trigger *for these
+pre-fix crashes* (one came 46 minutes into a boot with no suspend at all), and the
+kernel is not either (the first unclean shutdown predates the 7.0.11 → 7.1.5
+upgrade). This is also distinct from the hyprlock-goes-deaf bug below, which still
+lets you reach a TTY.
+
+Read that first clause narrowly. It means suspend did not explain the crashes
+described here; it is not a reason to skip suspend when investigating the separate,
+undiagnosed resume failure in the next section.
 
 **The fix** is `/etc/tlp.d/99-nvme.conf` plus the kernel command line, both carried
 in `system/`. The metric for whether it is working is the power cycle count, not the
@@ -214,20 +311,51 @@ cycles in roughly 62 hours: down from about 21 an hour to about 0.08, a factor o
 suspended over that window, which is what a healthy drive looks like — it powers
 down when told to and not otherwise.
 
-**What the fix does not cover is suspend.** Six boots since it was applied: five
-ended with a clean `Journal stopped`, and one did not. On 2026-08-16 the last
-journal entry of that boot is `PM: suspend entry (s2idle)` at 18:11:09, with no
-shutdown record, and the following boot needed ext4 journal recovery on both
-partitions. Runtime power management and APST are two paths to a controller
-power-down; suspend is a third, and it powers the drive down regardless of either
-setting. Treat a hang at suspend as a separate open bug rather than evidence that
-the TLP change failed — the power cycle count is the evidence, and it is good.
-
 Still outstanding: check whether WD has released SN350 firmware newer than
 `33006000`, since several controller hang bugs on this drive were fixed in firmware.
-This is the most promising untouched lead on the suspend hang. SMART reports
-`Firmware Updates (0x14): 2 Slots, no Reset required`, so a flash would not need a
-cold reset, which makes it a low-risk thing to try.
+SMART reports `Firmware Updates (0x14): 2 Slots, no Reset required`, so a flash
+would not need a cold reset, which makes it a low-risk thing to try.
+
+## One failed resume, cause unknown
+
+Kept separate from the section above on purpose, because the evidence does not
+connect the two and an earlier draft of this document wrongly implied it did.
+
+Counting every suspend cycle in the retained journal, 2026-08-13 to 2026-08-17:
+
+```
+Aug 13 09:59:33  ->  exit 10:15:16      ok
+Aug 13 16:52:44  ->  exit 17:18:32      ok
+Aug 14 09:58:56  ->  exit 09:59:18      ok
+Aug 14 10:02:31  ->  exit 10:22:42      ok
+Aug 14 17:40:50  ->  exit 18:08:09      ok
+Aug 15 21:54:54  ->  exit 03:23:31      ok    5.5 hours suspended
+Aug 16 18:11:09  ->  never returned     FAILED
+Aug 17 04:07:12  ->  exit 04:19:39      ok
+```
+
+Seven of eight, including one 5½-hour suspend and one *after* the failure. Count
+suspends, not boots — an earlier version of this document said "one bad boot in six"
+and made a roughly 12% per-suspend failure rate sound like a per-boot one.
+
+The failure itself is unremarkable up to the moment it stops. Wifi came down,
+`nvidia-suspend` ran and finished, `systemd-sleep` started, the kernel logged
+`PM: suspend entry (s2idle)` at 18:11:09 — and then nothing. No `PM: suspend exit`,
+no shutdown record, and the next boot 7½ minutes later ran ext4 journal recovery on
+both partitions. No low-battery events that day, so a flat battery is ruled out.
+
+**What is not known is why.** There is no evidence tying this to the NVMe. The
+pre-fix freezes had a distinct signature — machine live, drive LED flashing, during
+normal use — and this has none of it, because nothing can log once the kernel is
+down in s2idle. Failed s2idle resumes are also common on AMD laptops for GPU and
+firmware reasons unrelated to storage. One unexplained resume failure in eight is
+close to the background rate for this hardware and is not yet a diagnosed bug.
+
+If it happens again, **look at the front-panel drive LED while it is stuck**. That
+single observation splits the diagnosis: flashing means storage and the section
+above applies, dark means the GPU or firmware path and the NVMe work is irrelevant.
+Note also whether it was on AC or battery, and how long it had been suspended. Two
+data points with the LED settle it; one without is a coin flip.
 
 ## Other quirks that come with this machine
 
