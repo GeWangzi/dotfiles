@@ -6,7 +6,7 @@ secrets.env
 
 # The same rule applies to the system config in system/. These files carry
 # credentials -- a VLESS server UUID, wifi PSKs in plaintext, an RDP host --
-# and BOOTSTRAP.md explains how to carry each one across by hand instead.
+# and INSTALL.md step 7 explains how to carry each one across by hand instead.
 system/etc/sing-box/
 system/etc/NetworkManager/system-connections/
 local-bin/.local/bin/connectvm
