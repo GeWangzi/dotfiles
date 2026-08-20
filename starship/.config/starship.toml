@@ -1,10 +1,10 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
 format = """
-[](surface0)\
+[](ember)\
 $os\
 $username\
-[](bg:surface2 fg:surface0)\
+[](bg:surface2 fg:ember)\
 $directory\
 [](fg:surface2 bg:surface1)\
 $git_branch\
@@ -23,45 +23,55 @@ $python\
 $docker_context\
 [](fg:surface1 bg:surface2)\
 $time\
-[ ](fg:surface2)\
+[](fg:surface2)\
 $line_break$character"""
 
-palette = "catppuccin_mocha"
+palette = "ember"
 
-[palettes.catppuccin_mocha]
-# Muted grayscale mapping (keep names, tone down colors)
-rosewater = "#F2F2F2"
-flamingo  = "#E6E6E6"
-pink      = "#DADADA"
-orange    = "#CFCFCF"
-red       = "#BFBFBF"
-maroon    = "#AFAFAF"
-peach     = "#9F9F9F"
-yellow    = "#8F8F8F"
-green     = "#7F7F7F"
-teal      = "#707070"
-sky       = "#626262"
-sapphire  = "#555555"
-blue      = "#494949"
-lavender  = "#3E3E3E"
+# Was a muted grayscale palette under the name catppuccin_mocha. The greys are
+# still greys, but warmed onto the wallpaper's plum-brown axis so the prompt
+# does not read as cold next to the bar, and the leading segment is now the
+# accent itself. Colour names are kept because the module styles below refer to
+# them; only the values moved.
+[palettes.ember]
+ember     = "#F96B69"  # the sun, and the leading prompt segment
+ember2    = "#D4525A"
+ember3    = "#A83A44"
+amber     = "#E8A04A"
+bone      = "#DED0C4"
 
-# Text & surfaces (high contrast white text on dark surfaces)
-text      = "#FFFFFF"
-subtext1  = "#D0D0D0"
-subtext0  = "#B8B8B8"
-overlay2  = "#9E9E9E"
-overlay1  = "#878787"
-overlay0  = "#757575"
-surface2  = "#3A3A3A"  # darkest segment border
-surface1  = "#2E2E2E"  # mid segment
-surface0  = "#242424"  # left pill
-base      = "#181818"  # prompt background reference (kept)
-mantle    = "#121212"
-crust     = "#0C0C0C"
+rosewater = "#EDE0DC"
+flamingo  = "#FFB0A3"
+pink      = "#DD97B8"
+orange    = "#E8A04A"
+red       = "#F96B69"
+maroon    = "#D4525A"
+peach     = "#E8A04A"
+yellow    = "#F5C06A"
+green     = "#A3B57A"
+teal      = "#7FB0A8"
+sky       = "#9CCDC4"
+sapphire  = "#8FB3C4"
+blue      = "#A8B6D4"
+lavender  = "#C9B6B3"
+
+# Text & surfaces
+text      = "#EDE0DC"
+subtext1  = "#D5C4C0"
+subtext0  = "#C9B6B3"
+overlay2  = "#A08E8F"
+overlay1  = "#8A7A7C"
+overlay0  = "#6B5D61"
+surface2  = "#4D4248"  # outer segments
+surface1  = "#3F373C"  # mid segment
+surface0  = "#322C31"
+base      = "#262126"
+mantle    = "#1E1A1E"
+crust     = "#161215"
 
 [os]
 disabled = false
-style = "bg:surface0 fg:text"
+style = "bg:ember fg:crust"
 
 [os.symbols]
 Windows = "󰍲"
@@ -86,8 +96,8 @@ RedHatEnterprise = "󱄛"
 
 [username]
 show_always = true
-style_user = "bg:surface0 fg:text"
-style_root = "bg:surface0 fg:text"
+style_user = "bg:ember fg:crust"
+style_root = "bg:ember fg:crust"
 format = "[ $user ]($style)"
 
 [directory]
@@ -173,9 +183,9 @@ disabled = false
 
 [character]
 disabled = false
-success_symbol = "[](bold fg:lavender)"   # subtle gray-white
-error_symbol   = "[](bold fg:rosewater)"  # lighter gray for contrast
-vimcmd_symbol  = "[](bold fg:flamingo)"
-vimcmd_replace_one_symbol = "[](bold fg:pink)"
-vimcmd_replace_symbol     = "[](bold fg:pink)"
-vimcmd_visual_symbol      = "[](bold fg:orange)"
+success_symbol = "[](bold fg:ember)"
+error_symbol   = "[](bold fg:ember3)"
+vimcmd_symbol  = "[](bold fg:amber)"
+vimcmd_replace_one_symbol = "[](bold fg:bone)"
+vimcmd_replace_symbol     = "[](bold fg:bone)"
+vimcmd_visual_symbol      = "[](bold fg:amber)"

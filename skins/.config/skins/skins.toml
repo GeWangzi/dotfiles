@@ -1,0 +1,428 @@
+# Skins -- the single source every themed surface is generated from.
+#
+# Before this file existed the palette was maintained as four hand-synced
+# copies (~/.config/hypr/ember.conf, ~/.config/waybar/ember.css,
+# ~/.config/wofi/ember.css, ~/.config/kitty/ember.conf), and the header
+# comment in each one said so: "Change a value here and change it there too --
+# there is no single source the four formats can share." That was tolerable
+# for one palette. It is not tolerable for eight, so `skinctl` now renders all
+# of the formats from the tokens below.
+#
+# The token names come from the Retro RPG launcher design handoff. Every
+# surface in that design reads the same sixteen colours, so the same sixteen
+# are all this file defines. Do not add a token here without also teaching
+# skinctl what to do with it.
+#
+#   bg       desktop / the void behind the frame
+#   shadow   outer 5px halo and hard drop shadow; darker than everything else
+#   window   window fill behind the grid
+#   outer    frame rule, title tab fill, big numerals
+#   inner    cell and panel rules, dividers, EMPTY METER BLOCKS
+#   cell     cell and inset fill
+#   strip    detail strip / secondary panel fill
+#   text     primary text
+#   body     body copy
+#   dim      tags, key hints, inactive
+#   accent   cursor glyph, active selector, filled meters
+#   outline  selection outline around the highlighted cell
+#   cmd      category hue -- Terminal
+#   net      category hue -- Browser
+#   txt      category hue -- Editor
+#   snd      category hue -- Music
+#
+# The one hard constraint, from the handoff: `inner` is the empty-meter track,
+# so it must stay clearly darker than every colour that fills a meter (accent,
+# outer, text and the four category hues) or a half-full bar stops reading as
+# half full. `skinctl lint` checks this.
+#
+# Order matters. The launcher binds number keys to skins by position, so the
+# nth entry below is key n. Ember is first because it is the machine's own
+# palette and the default.
+
+# Battery and peripheral health only. These are deliberately skin-independent:
+# a warning that changes colour with the theme is not a warning. The POWER OFF
+# button in the control center also uses `critical`.
+[thresholds]
+ok       = "#3ddc84"
+warn     = "#ffc53d"
+critical = "#ff4a1f"
+
+# Status-condition chip hues, also skin-independent (creature-shell handoff):
+# SLP is suspend, BRN is thermal throttling, PAR is latency/packet loss.
+slp      = "#7cb8ff"
+brn      = "#ff7a3c"
+par      = "#ffd36b"
+
+# Behaviour defaults. A skin overrides these in its own [skins.behavior]
+# table; only Dream Land does.
+[defaults]
+glyph      = "▶"
+radius     = "0px"
+blink      = "1s"
+shine      = "none"
+menu_word  = "LAUNCH"
+empty_word = "EMPTY"
+
+
+# ---------------------------------------------------------------------------
+# EMBER -- this machine's own palette, kept as the default skin.
+#
+# Every value here was sampled from ~/wallpaper/wallpaper.png rather than
+# picked by eye, so the desktop and the wallpaper agree instead of merely
+# coexisting. The sun disc is #f96b69, its reflection on the water is #d4525a,
+# the sky is #322e32 and the sea is #3b363a.
+#
+# Mapping the old sixteen Ember names onto the sixteen design tokens is not
+# one-to-one, so two things needed deciding:
+#
+#   - `shadow` had no Ember equivalent. It is crust taken two steps darker.
+#   - Ember is a two-hue palette (red and amber) and the design wants four
+#     distinguishable category hues. The assignment below is the least-bad
+#     one available without inventing colours the wallpaper does not contain,
+#     and it is the single place where Ember reads weaker than the seven
+#     designed skins. Fix by picking four real hues if it bothers you.
+#
+# The [skins.legacy] block at the bottom pins the old names to their exact
+# current values, so switching to this skin reproduces today's desktop
+# byte-for-byte rather than approximately.
+[[skins]]
+slug    = "ember"
+name    = "EMBER"
+bg      = "#262126"
+shadow  = "#0b090a"
+window  = "#322c31"
+outer   = "#f96b69"
+inner   = "#482b2c"
+cell    = "#1e1a1e"
+strip   = "#161215"
+text    = "#ede0dc"
+body    = "#c9b6b3"
+dim     = "#8a7a7c"
+accent  = "#e8a04a"
+outline = "#f96b69"
+cmd     = "#e8a04a"
+net     = "#c9b6b3"
+txt     = "#ded0c4"
+snd     = "#f96b69"
+
+# Verbatim from the retired ember.conf / ember.css pair. Without these the
+# derivation in skinctl would produce close-but-not-equal greys and the bar
+# would visibly shift the first time a skin was applied.
+[skins.legacy]
+crust    = "#161215"
+mantle   = "#1e1a1e"
+base     = "#262126"
+surface0 = "#322c31"
+surface1 = "#3f373c"
+surface2 = "#4d4248"
+overlay0 = "#6b5d61"
+overlay1 = "#8a7a7c"
+subtext  = "#c9b6b3"
+text     = "#ede0dc"
+ember    = "#f96b69"
+ember2   = "#d4525a"
+ember3   = "#a83a44"
+horizon  = "#482b2c"
+amber    = "#e8a04a"
+bone     = "#ded0c4"
+
+
+# ---------------------------------------------------------------------------
+# The seven skins from the design handoff, transcribed exactly. The three
+# game-flavoured ones are original palettes only -- no copied assets, marks or
+# characters -- and should stay that way.
+
+[[skins]]
+slug    = "vapor-shrine"
+name    = "VAPOR SHRINE"
+bg      = "#120a1c"
+shadow  = "#08040f"
+window  = "#1e0f30"
+outer   = "#ffb3e6"
+inner   = "#6a2e8c"
+cell    = "#180b28"
+strip   = "#0d0616"
+text    = "#f6e7ff"
+body    = "#d9c6ee"
+dim     = "#a377c4"
+accent  = "#4de1d0"
+outline = "#ffb3e6"
+cmd     = "#7cf5c0"
+net     = "#6fb6ff"
+txt     = "#ffd77a"
+snd     = "#ff86c8"
+
+[[skins]]
+slug    = "solar-rust"
+name    = "SOLAR RUST"
+bg      = "#14070a"
+shadow  = "#0a0305"
+window  = "#38161a"
+outer   = "#ffe9b0"
+inner   = "#8a3a12"
+cell    = "#2a0f0c"
+strip   = "#1c0806"
+text    = "#ffefd6"
+body    = "#e8c9a8"
+dim     = "#c07a4a"
+accent  = "#33e0a1"
+outline = "#ffe9b0"
+cmd     = "#33e0a1"
+net     = "#63c8ff"
+txt     = "#ffb02e"
+snd     = "#ff6f91"
+
+[[skins]]
+slug    = "ice-vault"
+name    = "ICE VAULT"
+bg      = "#04080a"
+shadow  = "#010405"
+window  = "#0a2f3a"
+outer   = "#bff4ff"
+inner   = "#17505e"
+cell    = "#072028"
+strip   = "#03151b"
+text    = "#e8feff"
+body    = "#a8d4dd"
+dim     = "#5e9fae"
+accent  = "#ffd23f"
+outline = "#bff4ff"
+cmd     = "#5ce0a8"
+net     = "#7cc4ff"
+txt     = "#ffd23f"
+snd     = "#ff8fb0"
+
+# Kirby-flavoured. The only skin that overrides the behaviour defaults: it is
+# rounded, it blinks faster, its cursor is a star and its meter blocks carry a
+# highlight along the top edge.
+[[skins]]
+slug    = "dream-land"
+name    = "DREAM LAND"
+bg      = "#1b0a14"
+shadow  = "#0f0209"
+window  = "#3d1330"
+outer   = "#ffd0e6"
+inner   = "#5a1b3c"
+cell    = "#2a0d20"
+strip   = "#1f0817"
+text    = "#fff0f6"
+body    = "#f0c2d8"
+dim     = "#c77ba1"
+accent  = "#ffd83d"
+outline = "#ffd0e6"
+cmd     = "#8ff0c0"
+net     = "#57c7f5"
+txt     = "#ffd83d"
+snd     = "#f0578f"
+
+[skins.behavior]
+glyph      = "★"
+radius     = "14px"
+blink      = "0.7s"
+shine      = "inset 0 2px 0 0 rgba(255,255,255,0.55)"
+menu_word  = "COPY"
+empty_word = "NOTHING HERE!"
+
+# Luigi's Mansion-flavoured.
+[[skins]]
+slug    = "dark-moon"
+name    = "DARK MOON"
+bg      = "#07110d"
+shadow  = "#030806"
+window  = "#12251c"
+outer   = "#e4c05a"
+inner   = "#2d5340"
+cell    = "#0f1f18"
+strip   = "#0a1712"
+text    = "#f3f7e4"
+body    = "#c2d6bd"
+dim     = "#7f9c88"
+accent  = "#9ff06a"
+outline = "#e4c05a"
+cmd     = "#9ff06a"
+net     = "#7fd4c1"
+txt     = "#e4c05a"
+snd     = "#d98cff"
+
+# Majora's Mask-flavoured.
+[[skins]]
+slug    = "termina"
+name    = "TERMINA"
+bg      = "#0d0718"
+shadow  = "#050211"
+window  = "#241141"
+outer   = "#f2e3b6"
+inner   = "#3d2160"
+cell    = "#190c2d"
+strip   = "#120821"
+text    = "#fdf3d8"
+body    = "#d3c2ea"
+dim     = "#9a7fc4"
+accent  = "#ff7a3c"
+outline = "#f2e3b6"
+cmd     = "#8de08a"
+net     = "#6fd0e8"
+txt     = "#f2c14b"
+snd     = "#ff7a3c"
+
+# The monochrome one. Its four category hues collapse to two on purpose: only
+# the terminal gets the siren orange, everything else is grey, and `outline`
+# is the accent rather than `outer`.
+[[skins]]
+slug    = "ink-and-siren"
+name    = "INK & SIREN"
+bg      = "#0b0b0b"
+shadow  = "#000000"
+window  = "#1d1d1b"
+outer   = "#f2f2f0"
+inner   = "#3a3a38"
+cell    = "#161615"
+strip   = "#111110"
+text    = "#f2f2f0"
+body    = "#c9c9c4"
+dim     = "#8a8a85"
+accent  = "#ff4a1f"
+outline = "#ff4a1f"
+cmd     = "#ff4a1f"
+net     = "#8a8a85"
+txt     = "#8a8a85"
+snd     = "#8a8a85"
+
+
+# ---------------------------------------------------------------------------
+# The three creature profiles from the creature-shell handoff (Aug 2026).
+# A creature is a skin plus a [skins.creature] table: the palette is the
+# creature's dark-field palette, and the creature block carries everything
+# the shell surfaces print about the machine-as-creature (species, level,
+# types, ability, held items, flavour note). The four category hues are
+# skin-independent in this handoff (CMD/NET/TXT/SND are fixed), so all
+# three creatures share them.
+#
+# The handoff shipped invented species (GRIMLING / PUDDLIN / FLOSSET) to
+# stay clear of the trademarks; the user swapped in the real names for this
+# personal machine (2026-08-19). The palettes are unchanged -- GENGAR here
+# is still the handoff's shade-and-venom palette.
+#
+# Held items follow the power source (handoff turn 20a): LEFTOVERS on
+# charge, GANLON BERRY on battery. The shell picks which one to show; both
+# names live here so the choice is data, not code.
+
+[[skins]]
+slug    = "gengar"
+name    = "GENGAR"
+bg      = "#0a0713"
+shadow  = "#04020a"
+window  = "#241a3c"
+outer   = "#e4d6ff"
+inner   = "#4a2e6e"
+cell    = "#1a1230"
+strip   = "#130d22"
+text    = "#f4edff"
+body    = "#d2c2ee"
+dim     = "#9a83c2"
+accent  = "#c86bff"
+outline = "#e4d6ff"
+cmd     = "#7ef0c8"
+net     = "#7cb8ff"
+txt     = "#ffd36b"
+snd     = "#ff86d0"
+
+[skins.behavior]
+blink      = "0.55s"
+menu_word  = "FIGHT"
+empty_word = "NO DATA"
+
+[skins.creature]
+species      = "GENGAR"
+level        = 47
+type1        = "GHOST"
+type2       = "POISON"
+type1_hue    = "#9c6bff"
+type2_hue    = "#d45ab8"
+sig          = "SHADOW BALL"
+ability      = "LEVITATE"
+nature       = "IMPISH"
+ball         = "POKE BALL"
+held_charge  = "LEFTOVERS"
+held_battery = "GANLON BERRY"
+note         = "Grins at nothing. Idles at 3% and never fully sleeps."
+
+[[skins]]
+slug    = "wooper"
+name    = "WOOPER"
+bg      = "#05101a"
+shadow  = "#020810"
+window  = "#123049"
+outer   = "#cfe9ff"
+inner   = "#1f5a80"
+cell    = "#0c2233"
+strip   = "#071824"
+text    = "#eaf7ff"
+body    = "#b6d8ee"
+dim     = "#6f9cba"
+accent  = "#ff9a3c"
+outline = "#cfe9ff"
+cmd     = "#7ef0c8"
+net     = "#7cb8ff"
+txt     = "#ffd36b"
+snd     = "#ff86d0"
+
+[skins.behavior]
+blink      = "1s"
+menu_word  = "FIGHT"
+empty_word = "NO DATA"
+
+[skins.creature]
+species      = "WOOPER"
+level        = 12
+type1        = "WATER"
+type2        = "GROUND"
+type1_hue    = "#4ec8ff"
+type2_hue    = "#c9a06a"
+sig          = "MUD SHOT"
+ability      = "WATER ABSORB"
+nature       = "JOLLY"
+ball         = "NET BALL"
+held_charge  = "LEFTOVERS"
+held_battery = "GANLON BERRY"
+note         = "Fresh install. Boots fast, forgets everything on restart."
+
+[[skins]]
+slug    = "whimsicott"
+name    = "WHIMSICOTT"
+bg      = "#0d1410"
+shadow  = "#050a07"
+window  = "#1e3226"
+outer   = "#eaf7d8"
+inner   = "#3d6b48"
+cell    = "#142519"
+strip   = "#0d1a12"
+text    = "#f4fbe9"
+body    = "#cbe2c2"
+dim     = "#85a88f"
+accent  = "#ff8fd0"
+outline = "#eaf7d8"
+cmd     = "#7ef0c8"
+net     = "#7cb8ff"
+txt     = "#ffd36b"
+snd     = "#ff86d0"
+
+[skins.behavior]
+blink      = "1.4s"
+menu_word  = "FIGHT"
+empty_word = "NO DATA"
+
+[skins.creature]
+species      = "WHIMSICOTT"
+type1        = "GRASS"
+level        = 33
+type2        = "FAIRY"
+type1_hue    = "#8fe06a"
+type2_hue    = "#ff9ad5"
+sig          = "COTTON GUARD"
+ability      = "PRANKSTER"
+nature       = "CALM"
+ball         = "LOVE BALL"
+held_charge  = "LEFTOVERS"
+held_battery = "GANLON BERRY"
+note         = "Drifts between workspaces. Two windows still unaccounted for."

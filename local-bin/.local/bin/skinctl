@@ -1,0 +1,646 @@
+#!/usr/bin/env python3
+"""Render one skin from ~/.config/skins/skins.toml into every format that
+consumes it, then tell the running programs to pick it up.
+
+Why this exists: the palette used to live as four hand-synced copies, one per
+config-file syntax, and each of them carried a comment admitting that keeping
+them in step was manual. Eight skins makes that untenable, so the colours now
+live in one TOML file and this script does the translating.
+
+    skinctl list                 show the skins, mark the active one
+    skinctl current              print the active slug
+    skinctl set <slug|index>     render that skin and reload consumers
+    skinctl next | prev          cycle through the list
+    skinctl generate [slug]      render without reloading anything
+    skinctl lint                 check every skin against the design rules
+
+Files written (all generated -- none of them are tracked in the dotfiles
+repository, and none of them should be edited by hand):
+
+    ~/.config/hypr/skin.conf         hyprlang $vars, sourced by hyprlock.conf
+    ~/.config/waybar/skin.css        GTK @define-color, imported by waybar
+    ~/.config/wofi/style.css         full stylesheet; wofi cannot @import
+    ~/.local/state/skins/skin.lua    Lua table, read by hyprland.lua
+    ~/.local/state/skins/skin.json   everything, for the shell surfaces
+    ~/.local/state/skins/active      the active slug, so the choice survives logout
+
+Both a design-token namespace (bg, outer, inner, accent, ...) and the legacy
+Ember namespace (crust, base, ember, ...) are emitted everywhere. The legacy
+names exist so the waybar and wofi stylesheets written before the token set
+keep resolving; they go away when those stylesheets are rewritten.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tomllib
+from pathlib import Path
+
+HOME = Path.home()
+
+# Inputs. ~/.config/skins is a stow symlink straight into the dotfiles
+# repository, so nothing generated may be written here -- it would land in the
+# repo as an untracked file.
+SKIN_DIR = HOME / ".config" / "skins"
+SKINS_TOML = SKIN_DIR / "skins.toml"
+TEMPLATES = SKIN_DIR / "templates"
+
+# Generated state that has nowhere better to live. The three files consumers
+# read by path (skin.conf, skin.css, wofi's style.css) have to sit in those
+# programs' own config directories, but these two plus the active-skin marker
+# do not, so they go where generated state belongs.
+STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local" / "state")) / "skins"
+ACTIVE_FILE = STATE_DIR / "active"
+
+# The sixteen design tokens, in the order the handoff lists them. Every skin
+# must define all sixteen; skinctl refuses to render one that does not.
+TOKENS = [
+    "bg", "shadow", "window", "outer", "inner", "cell", "strip",
+    "text", "body", "dim", "accent", "outline",
+    "cmd", "net", "txt", "snd",
+]
+
+BEHAVIOR = ["glyph", "radius", "blink", "shine", "menu_word", "empty_word"]
+
+# Optional per-skin creature block (the creature-shell handoff). All keys are
+# free-form strings apart from `level`; a skin without one is not a creature
+# and the shell surfaces fall back to plain skin behaviour.
+CREATURE_HUES = ["type1_hue", "type2_hue"]
+
+# How the old Ember colour names are reconstructed from the design tokens.
+#
+# This is a compatibility shim, not a design decision -- it only has to be
+# good enough that the pre-token stylesheets stay legible under every skin.
+# Three of the mappings are worth explaining:
+#
+#   surface1/surface2  Ember had six background steps and the token set has
+#                      five, so the two rule-coloured ones collapse onto
+#                      `inner`, which is what they were both being used for.
+#   ember3             used by waybar for the critical-battery block, so it
+#                      maps to the fixed critical threshold rather than to a
+#                      skin colour. A critical warning that changes colour
+#                      with the theme is not a warning.
+#   amber              likewise pinned to the fixed warn threshold.
+#
+# A skin can override any of these in its own [skins.legacy] table, and Ember
+# overrides all sixteen so that selecting it reproduces the old desktop
+# exactly rather than approximately.
+LEGACY_FROM_TOKEN = {
+    "crust": "bg",
+    "mantle": "strip",
+    "base": "window",
+    "surface0": "cell",
+    "surface1": "inner",
+    "surface2": "inner",
+    "overlay0": "dim",
+    "overlay1": "dim",
+    "subtext": "body",
+    "text": "text",
+    "ember": "outer",
+    "ember2": "accent",
+    "ember3": None,      # -> thresholds.critical
+    "horizon": "inner",
+    "amber": None,       # -> thresholds.warn
+    "bone": "body",
+}
+LEGACY_FROM_THRESHOLD = {"ember3": "critical", "amber": "warn"}
+
+
+def die(msg: str) -> None:
+    print(f"skinctl: {msg}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+# --------------------------------------------------------------------------
+# colour helpers
+
+def norm(value: str, where: str) -> str:
+    """Normalise "#RRGGBB" to lowercase, and reject anything else early.
+
+    Catching a malformed colour here beats catching it as a GTK parse error
+    at the next waybar restart, which is silent apart from the bar losing
+    every colour at once.
+    """
+    v = value.strip().lower()
+    if not v.startswith("#") or len(v) != 7:
+        die(f"{where}: {value!r} is not a #rrggbb colour")
+    try:
+        int(v[1:], 16)
+    except ValueError:
+        die(f"{where}: {value!r} is not a #rrggbb colour")
+    return v
+
+
+def bare(hexcolor: str) -> str:
+    """"#rrggbb" -> "rrggbb", the form hyprlang and Hyprland's rgba() want."""
+    return hexcolor.lstrip("#")
+
+
+def luminance(hexcolor: str) -> float:
+    """Relative luminance, for the empty-meter-track check in lint()."""
+    r, g, b = (int(hexcolor[i:i + 2], 16) / 255 for i in (1, 3, 5))
+
+    def lin(c: float) -> float:
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+
+
+# --------------------------------------------------------------------------
+# loading
+
+class Skin:
+    def __init__(self, raw: dict, defaults: dict, thresholds: dict) -> None:
+        self.slug = raw.get("slug") or die("a skin is missing its slug")
+        self.name = raw.get("name", self.slug.upper())
+        where = f"skin {self.slug}"
+
+        missing = [t for t in TOKENS if t not in raw]
+        if missing:
+            die(f"{where}: missing tokens {', '.join(missing)}")
+        self.tokens = {t: norm(raw[t], f"{where}.{t}") for t in TOKENS}
+
+        self.thresholds = thresholds
+        self.behavior = dict(defaults)
+        self.behavior.update(raw.get("behavior", {}))
+        unknown = set(self.behavior) - set(BEHAVIOR)
+        if unknown:
+            die(f"{where}: unknown behaviour keys {', '.join(sorted(unknown))}")
+
+        self.creature = raw.get("creature") or None
+        if self.creature:
+            for k in CREATURE_HUES:
+                if k in self.creature:
+                    self.creature[k] = norm(self.creature[k], f"{where}.creature.{k}")
+
+        self.legacy = {}
+        override = {k: norm(v, f"{where}.legacy.{k}")
+                    for k, v in raw.get("legacy", {}).items()}
+        for name, token in LEGACY_FROM_TOKEN.items():
+            if name in override:
+                self.legacy[name] = override[name]
+            elif token is None:
+                self.legacy[name] = thresholds[LEGACY_FROM_THRESHOLD[name]]
+            else:
+                self.legacy[name] = self.tokens[token]
+
+    @property
+    def primary(self) -> dict:
+        """Design tokens plus the fixed thresholds."""
+        return {**self.tokens, **self.thresholds}
+
+    @property
+    def legacy_extra(self) -> dict:
+        """Legacy names that are not already a design token name.
+
+        `text` is spelled the same in both namespaces, and emitting it twice
+        would mean a redefined $text in the hyprlang output. hyprlang tolerates
+        that but logs a config error, and hyprlock prints its config errors on
+        every lock, so the duplicate is dropped here instead.
+        """
+        return {k: v for k, v in self.legacy.items() if k not in self.primary}
+
+    @property
+    def colors(self) -> dict:
+        """Every colour that gets emitted, tokens first then legacy."""
+        return {**self.primary, **self.legacy_extra}
+
+
+def load() -> list[Skin]:
+    if not SKINS_TOML.exists():
+        die(f"{SKINS_TOML} not found -- is the `skins` stow package installed?")
+    with SKINS_TOML.open("rb") as fh:
+        data = tomllib.load(fh)
+
+    thresholds = {k: norm(v, f"thresholds.{k}")
+                  for k, v in data.get("thresholds", {}).items()}
+    for required in ("ok", "warn", "critical"):
+        if required not in thresholds:
+            die(f"thresholds.{required} is not defined")
+
+    defaults = data.get("defaults", {})
+    skins = [Skin(raw, defaults, thresholds) for raw in data.get("skins", [])]
+    if not skins:
+        die("no skins defined")
+
+    seen = set()
+    for s in skins:
+        if s.slug in seen:
+            die(f"duplicate slug {s.slug}")
+        seen.add(s.slug)
+    return skins
+
+
+def resolve(skins: list[Skin], ref: str) -> Skin:
+    """Accept either a slug or a 1-based index, so the number keys the
+    launcher binds and the name a human types both work."""
+    if ref.isdigit():
+        i = int(ref)
+        if not 1 <= i <= len(skins):
+            die(f"index {i} out of range (1-{len(skins)})")
+        return skins[i - 1]
+    for s in skins:
+        if s.slug == ref:
+            return s
+    die(f"unknown skin {ref!r} -- try `skinctl list`")
+
+
+def active_slug(skins: list[Skin]) -> str:
+    if ACTIVE_FILE.exists():
+        slug = ACTIVE_FILE.read_text().strip()
+        if any(s.slug == slug for s in skins):
+            return slug
+    return skins[0].slug
+
+
+# --------------------------------------------------------------------------
+# rendering
+
+BANNER = "GENERATED BY skinctl -- DO NOT EDIT. Source: ~/.config/skins/skins.toml"
+
+
+def write(path: Path, content: str) -> None:
+    """Write via a temporary file in the same directory and rename over the
+    target, so a consumer reading the file mid-write never sees half of it.
+    waybar in particular re-reads its stylesheet on SIGUSR2 and would render
+    a truncated one without complaint."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content)
+    tmp.replace(path)
+
+
+def render_hyprlang(skin: Skin) -> str:
+    """hyprlang $vars. Each colour is emitted twice: once as rgb() for
+    hyprlock's colour fields, and once bare as <name>Alpha, which is the
+    convention the retired ember.conf used for the places that need to append
+    their own alpha byte."""
+    out = [f"# {BANNER}", f"# Skin: {skin.name}", ""]
+    for group, colors in (("Design tokens", skin.primary),
+                          ("Legacy Ember names", skin.legacy_extra)):
+        out.append(f"# {group}.")
+        for name, value in colors.items():
+            out.append(f"${name} = rgb({bare(value)})")
+            out.append(f"${name}Alpha = {bare(value)}")
+        out.append("")
+    if skin.creature:
+        out.append("# Creature block, for hyprlock's card. Hues are colours;")
+        out.append("# the rest are strings interpolated into label text.")
+        for name, value in skin.creature.items():
+            key = "cr_" + name
+            if name in CREATURE_HUES:
+                out.append(f"${key} = rgb({bare(value)})")
+            else:
+                out.append(f"${key} = {value}")
+        out.append("")
+    else:
+        # hyprlock.conf references these unconditionally, so a non-creature
+        # skin must still define them or every lock logs config errors.
+        # hyprlang rejects an empty value, hence the dashes.
+        out.append("# No creature block on this skin; neutral fallbacks.")
+        dim = f"rgb({bare(skin.tokens['dim'])})"
+        for key, value in (("species", skin.name), ("level", 1),
+                           ("type1", "NORMAL"), ("type2", "-"),
+                           ("type1_hue", dim), ("type2_hue", dim),
+                           ("sig", "-"), ("ability", "-"), ("nature", "-"),
+                           ("ball", "POKE BALL"),
+                           ("held_charge", "LEFTOVERS"),
+                           ("held_battery", "GANLON BERRY"), ("note", "-")):
+            out.append(f"$cr_{key} = {value}")
+        out.append("")
+    return "\n".join(out)
+
+
+def render_gtk_css(skin: Skin) -> str:
+    out = [f"/* {BANNER}", f"   Skin: {skin.name} */", ""]
+    for group, colors in (("Design tokens.", skin.primary),
+                          ("Legacy Ember names.", skin.legacy_extra)):
+        out.append(f"/* {group} */")
+        width = max(len(n) for n in colors)
+        for name, value in colors.items():
+            out.append(f"@define-color {name.ljust(width)} {value};")
+        out.append("")
+    return "\n".join(out)
+
+
+def render_wofi(skin: Skin) -> str:
+    rules = TEMPLATES / "wofi.rules.css"
+    if not rules.exists():
+        die(f"{rules} not found -- is the `skins` stow package installed?")
+    return render_gtk_css(skin) + rules.read_text()
+
+
+def render_lua(skin: Skin) -> str:
+    """A Lua table for hyprland.lua. Colours are bare six-digit hex with no
+    leading '#', because the only consumer builds Hyprland rgba() strings out
+    of them: rgba(skin.outer .. "ff")."""
+    out = [
+        f"-- {BANNER}",
+        f"-- Skin: {skin.name}",
+        "-- Colours are bare rrggbb, ready for rgba(<value> .. \"ff\").",
+        "return {",
+        f'  slug = "{skin.slug}",',
+        f'  name = "{skin.name}",',
+    ]
+    for name, value in skin.colors.items():
+        out.append(f'  {name} = "{bare(value)}",')
+    for name in BEHAVIOR:
+        value = str(skin.behavior[name]).replace('"', '\\"')
+        out.append(f'  {name} = "{value}",')
+    out.append("}")
+    return "\n".join(out) + "\n"
+
+
+def render_json(skin: Skin) -> str:
+    return json.dumps({
+        "_generated_by": "skinctl",
+        "slug": skin.slug,
+        "name": skin.name,
+        "tokens": skin.tokens,
+        "thresholds": skin.thresholds,
+        "legacy": skin.legacy,
+        "behavior": skin.behavior,
+        "creature": skin.creature,
+    }, indent=2, ensure_ascii=False) + "\n"
+
+
+
+
+# --------------------------------------------------------------------------
+# capture-device rendering
+#
+# The lock screen's capture device is a real 16x16 pixel grid (handoff turn
+# 14): palette-coloured cells, a white highlight block, accent upper half,
+# text lower half, a shadow band across the middle. hyprlock cannot draw a
+# cell grid, so skinctl rasterises it to a PNG at skin-generate time and the
+# lock screen shows it with an image widget. Pure stdlib: a paletted PNG is
+# just zlib-compressed scanlines.
+
+BALL_N = 16
+BALL_CELL = 11   # px per cell -> 176x176, the design's 300px column scaled to 720
+
+
+def ball_grid(tokens: dict) -> list[list[str | None]]:
+    """The design's ballCells() verbatim: distance-field circle, accent top,
+    text bottom, shadow band and ring, white highlight at (4-5, 3-4)."""
+    import math
+    cx = cy = (BALL_N - 1) / 2
+    grid = []
+    for y in range(BALL_N):
+        row = []
+        for x in range(BALL_N):
+            d = math.hypot(x - cx, y - cy)
+            c = None
+            if d <= 7.9:
+                if d > 6.8:
+                    c = tokens["shadow"]
+                elif d <= 1.5:
+                    c = tokens["text"]      # centre button (blinks in the design)
+                elif d <= 2.5:
+                    c = tokens["shadow"]
+                elif y in (7, 8):
+                    c = tokens["shadow"]
+                elif y < 7:
+                    c = tokens["accent"]
+                else:
+                    c = tokens["text"]
+                if x in (4, 5) and y in (3, 4):
+                    c = "#ffffff"
+            row.append(c)
+        grid.append(row)
+    return grid
+
+
+def write_png(path: Path, grid: list[list[str | None]], cell: int) -> None:
+    import struct, zlib
+
+    gh, gw = len(grid), len(grid[0])
+    rows = []
+    for gy in range(gh):
+        scan = bytearray()
+        for gx in range(gw):
+            c = grid[gy][gx]
+            if c is None:
+                px = b"\x00\x00\x00\x00"
+            else:
+                px = bytes.fromhex(c.lstrip("#")) + b"\xff"
+            scan += px * cell
+        row = b"\x00" + bytes(scan)
+        rows.extend([row] * cell)
+
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return (struct.pack(">I", len(data)) + tag + data
+                + struct.pack(">I", zlib.crc32(tag + data)))
+
+    png = (b"\x89PNG\r\n\x1a\n"
+           + chunk(b"IHDR", struct.pack(">IIBBBBB", gw * cell, gh * cell, 8, 6, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(b"".join(rows)))
+           + chunk(b"IEND", b""))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".png.tmp")
+    tmp.write_bytes(png)
+    tmp.replace(path)
+
+
+def render_kitty(skin: Skin) -> str:
+    """The 16-colour ANSI palette from handoff turn 18b, as a kitty include.
+
+    Every slot that has a token maps to it; the four the palette had no
+    equivalent for are fixed values flagged NEW in the handoff (base blue is
+    a darkened NET, base/bright cyan because the palette has no cyan at all,
+    bright red a lift of the critical hue). ANSI 0 and 8 are backgrounds and
+    box drawing, not text; the design checked every other slot against the
+    GRIMLING bg for contrast.
+    """
+    t = skin.tokens
+    th = skin.thresholds
+    out = [f"# {BANNER}", f"# Skin: {skin.name} -- ANSI from handoff turn 18b", ""]
+    pairs = [
+        ("background", t["bg"]), ("foreground", t["body"]),
+        ("cursor", t["accent"]), ("cursor_text_color", t["shadow"]),
+        ("selection_background", t["inner"]), ("selection_foreground", t["text"]),
+        ("url_color", t["net"]),
+        ("active_border_color", t["outer"]), ("inactive_border_color", t["inner"]),
+        ("active_tab_background", t["outer"]), ("active_tab_foreground", t["window"]),
+        ("inactive_tab_background", t["strip"]), ("inactive_tab_foreground", t["dim"]),
+        ("color0", t["shadow"]), ("color8", t["inner"]),
+        ("color1", th["critical"]), ("color9", "#ff8a63"),
+        ("color2", th["ok"]), ("color10", t["cmd"]),
+        ("color3", th["warn"]), ("color11", t["txt"]),
+        ("color4", "#4a86e8"), ("color12", t["net"]),
+        ("color5", t["accent"]), ("color13", t["snd"]),
+        ("color6", "#3fbfd4"), ("color14", "#7ee8f0"),
+        ("color7", t["body"]), ("color15", t["text"]),
+    ]
+    width = max(len(k) for k, _ in pairs)
+    out += [f"{k.ljust(width)} {v}" for k, v in pairs]
+    return "\n".join(out) + "\n"
+
+
+TARGETS = [
+    (HOME / ".config" / "hypr" / "skin.conf", render_hyprlang),
+    (HOME / ".config" / "waybar" / "skin.css", render_gtk_css),
+    (HOME / ".config" / "swaync" / "skin.css", render_gtk_css),
+    (HOME / ".config" / "wofi" / "style.css", render_wofi),
+    (HOME / ".config" / "kitty" / "skin.conf", render_kitty),
+    (STATE_DIR / "skin.lua", render_lua),
+    (STATE_DIR / "skin.json", render_json),
+]
+
+
+# A hand-supplied capture-device sprite map, if the (gitignored) assets
+# folder carries one: role characters per cell, recoloured into the active
+# palette. '#' shadow, 'a' accent, 'p' accent lifted toward white (the
+# sprite's pink sheen), 'w' pure white highlight, 't' text, 'g' dim,
+# space transparent. Falls back to the procedural 16x16 ball when absent,
+# so a fresh clone still locks in style.
+BALL_MAP = (HOME / ".config" / "quickshell" / "assets" / "ball-map.txt")
+
+
+def lift(hexcolor: str, amount: float) -> str:
+    """Blend a colour toward white by `amount` (0-1)."""
+    r, g, b = (int(hexcolor[i:i + 2], 16) for i in (1, 3, 5))
+    mix = lambda c: round(c + (255 - c) * amount)
+    return f"#{mix(r):02x}{mix(g):02x}{mix(b):02x}"
+
+
+def ball_grid_from_map(tokens: dict) -> list[list[str | None]]:
+    roles = {
+        "#": tokens["shadow"],
+        "a": tokens["accent"],
+        "p": lift(tokens["accent"], 0.45),
+        "w": "#ffffff",
+        "t": tokens["text"],
+        "g": tokens["dim"],
+    }
+    rows = BALL_MAP.read_text().rstrip("\n").split("\n")
+    width = max(len(r) for r in rows)
+    return [[roles.get(ch) for ch in row.ljust(width)] for row in rows]
+
+
+def generate(skin: Skin) -> None:
+    for path, renderer in TARGETS:
+        write(path, renderer(skin))
+    if BALL_MAP.exists():
+        # 18 cells at 15px = 270px, sized for hyprlock's physical-pixel
+        # canvas (1920x1080; hyprlock ignores the fractional scale).
+        write_png(STATE_DIR / "ball.png", ball_grid_from_map(skin.tokens), 15)
+    else:
+        write_png(STATE_DIR / "ball.png", ball_grid(skin.tokens), BALL_CELL)
+    write(ACTIVE_FILE, skin.slug + "\n")
+
+
+# --------------------------------------------------------------------------
+# reloading
+
+def reload_consumers() -> list[str]:
+    """Nudge whatever is running. Anything not running is skipped silently --
+    generating a skin from a TTY with no session up is a legitimate thing to
+    do, and is what the install script does."""
+    done = []
+
+    if shutil.which("pkill") and subprocess.run(
+            ["pkill", "-0", "-x", "waybar"], capture_output=True).returncode == 0:
+        subprocess.run(["pkill", "-SIGUSR2", "-x", "waybar"], check=False)
+        done.append("waybar")
+
+    if shutil.which("swaync-client") and subprocess.run(
+            ["pkill", "-0", "-x", "swaync"], capture_output=True).returncode == 0:
+        subprocess.run(["swaync-client", "-rs"], check=False,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        done.append("swaync")
+
+    if shutil.which("pkill") and subprocess.run(
+            ["pkill", "-0", "-x", "kitty"], capture_output=True).returncode == 0:
+        subprocess.run(["pkill", "-SIGUSR1", "-x", "kitty"], check=False)
+        done.append("kitty")
+
+    if os.environ.get("HYPRLAND_INSTANCE_SIGNATURE") and shutil.which("hyprctl"):
+        subprocess.run(["hyprctl", "reload"], check=False,
+                       stdout=subprocess.DEVNULL)
+        done.append("hyprland")
+
+    return done
+
+
+# --------------------------------------------------------------------------
+# commands
+
+def cmd_list(skins: list[Skin]) -> None:
+    active = active_slug(skins)
+    for i, s in enumerate(skins, 1):
+        # The inactive marker is a dash rather than a space so that every row
+        # has the same number of whitespace-separated fields and `skinctl list
+        # | awk '{print $3}'` gets the slug on all of them.
+        mark = "*" if s.slug == active else "-"
+        print(f"{mark} {i}  {s.slug.ljust(14)}  {s.name}")
+
+
+def cmd_set(skins: list[Skin], ref: str) -> None:
+    skin = resolve(skins, ref)
+    generate(skin)
+    reloaded = reload_consumers()
+    note = f" (reloaded: {', '.join(reloaded)})" if reloaded else ""
+    print(f"skin: {skin.name}{note}")
+    # hyprlock reads its config when it starts, so a running session keeps the
+    # old lock screen until the next lock. Nothing can be signalled to fix
+    # that; say so rather than let it look like a bug.
+    print("      hyprlock picks this up at the next lock; wofi at next launch")
+
+
+def cmd_lint(skins: list[Skin]) -> int:
+    """Check the one rule the handoff states outright, plus the ordering the
+    frame construction assumes. Warnings only -- a skin that trips these is
+    ugly, not broken, and the judgement is the designer's."""
+    problems = 0
+    for s in skins:
+        fills = ["accent", "outer", "text", "cmd", "net", "txt", "snd"]
+        track = luminance(s.tokens["inner"])
+        for f in fills:
+            if luminance(s.tokens[f]) <= track:
+                print(f"{s.slug}: `inner` is not darker than `{f}` -- "
+                      f"filled meter blocks will not read as filled")
+                problems += 1
+        if luminance(s.tokens["shadow"]) > luminance(s.tokens["bg"]):
+            print(f"{s.slug}: `shadow` is lighter than `bg` -- "
+                  f"the frame halo will glow instead of recede")
+            problems += 1
+    print(f"{len(skins)} skins checked, {problems} problems")
+    return 1 if problems else 0
+
+
+def main(argv: list[str]) -> int:
+    skins = load()
+    cmd = argv[0] if argv else "list"
+    args = argv[1:]
+
+    if cmd == "list":
+        cmd_list(skins)
+    elif cmd == "current":
+        print(active_slug(skins))
+    elif cmd == "set":
+        if not args:
+            die("set needs a slug or an index -- try `skinctl list`")
+        cmd_set(skins, args[0])
+    elif cmd in ("next", "prev"):
+        slugs = [s.slug for s in skins]
+        i = slugs.index(active_slug(skins))
+        step = 1 if cmd == "next" else -1
+        cmd_set(skins, slugs[(i + step) % len(slugs)])
+    elif cmd == "generate":
+        skin = resolve(skins, args[0]) if args else resolve(skins, active_slug(skins))
+        generate(skin)
+        print(f"generated: {skin.name}")
+    elif cmd == "lint":
+        return cmd_lint(skins)
+    else:
+        die(f"unknown command {cmd!r} -- see the header of {__file__}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
