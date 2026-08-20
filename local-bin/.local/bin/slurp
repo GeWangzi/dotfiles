@@ -1,0 +1,18 @@
+#!/bin/sh
+# Region select in the shell's own dress (handoff turn 19f): slurp accepts
+# only border colour, background colour and stroke weight, so that is the
+# whole design -- border in the active skin's accent, the void in `shadow`
+# at 72%, and a 5px stroke to match the outer frame weight.
+#
+# This is a PATH shim over /usr/bin/slurp: hyprshot hardcodes its slurp
+# calls, so the dress has to come from the resolver, not the caller. The
+# keybinds in hyprland.lua prefix PATH with ~/.local/bin for exactly this.
+skin="${XDG_STATE_HOME:-$HOME/.local/state}/skins/skin.json"
+if command -v jq >/dev/null && [ -r "$skin" ]; then
+    accent=$(jq -r '.tokens.accent // "#c86bff"' "$skin" | tr -d '#')
+    shadow=$(jq -r '.tokens.shadow // "#04020a"' "$skin" | tr -d '#')
+else
+    accent=c86bff
+    shadow=04020a
+fi
+exec /usr/bin/slurp -c "${accent}ff" -b "${shadow}b8" -w 5 "$@"
