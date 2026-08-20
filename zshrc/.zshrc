@@ -6,8 +6,15 @@
 eval "$(starship init zsh)"
 [ -f ~/.config/user-dirs.dirs ] && source ~/.config/user-dirs.dirs
 
-export EDITOR="nvim"
-export SUDO_EDITOR="$EDITOR"
+# -w makes `code` block until the file is closed again, which is what git,
+# crontab and anything else that shells out to $EDITOR needs; without it they
+# see the editor exit immediately and treat the file as unchanged.
+export EDITOR="code -w"
+
+# Deliberately NOT "$EDITOR". sudoedit runs this as root, VS Code refuses to
+# start as root, and a GUI editor with a root-owned config directory is not a
+# thing to want anyway. vim is in the base install and always works.
+export SUDO_EDITOR="vim"
 export PGHOST="/var/run/postgresql"
 
 # Keep $path (and the $PATH it mirrors) free of duplicates. A login shell
