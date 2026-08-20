@@ -1,4 +1,5 @@
 catppuccin-gtk-theme-mocha
+cozette-ttf
 google-chrome
 hyprevents-git
 hyprprop-git

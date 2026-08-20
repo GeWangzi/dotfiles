@@ -8,6 +8,7 @@ bluez-utils
 brightnessctl
 catppuccin-gtk-theme-mocha
 cliphist
+cozette-ttf
 discord
 dkms
 docker
@@ -70,11 +71,13 @@ pipewire-jack
 pipewire-pulse
 pnpm
 polkit-kde-agent
+power-profiles-daemon
 python-dbus
 python-pip
 python312
 qt5-wayland
 qt6-wayland
+quickshell
 reflector
 remmina
 rsync
