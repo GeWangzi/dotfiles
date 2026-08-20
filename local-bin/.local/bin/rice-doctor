@@ -1,0 +1,89 @@
+#!/bin/sh
+# rice-doctor -- restart the Quickshell shell and verify it came up clean.
+#
+# QML errors only surface at runtime, so a typo saved today is a black shell
+# at the next login. Run this after every shell edit, before logging out.
+#
+# This is also the safe way to restart the shell by hand: `qs kill` leaves
+# stale instances behind and every later IPC call hangs on them, so the
+# restart is pkill -x. SUPER+SHIFT+R does the same restart without the
+# verdict.
+
+fail=0
+ok()   { printf 'ok    %s\n' "$1"; }
+warn() { printf 'WARN  %s\n' "$1"; }
+bad()  { printf 'FAIL  %s\n' "$1"; fail=1; }
+
+# --- preconditions the shell needs before it is worth starting -------------
+
+skinjson="${XDG_STATE_HOME:-$HOME/.local/state}/skins/skin.json"
+if [ -r "$skinjson" ]; then
+    ok "skin.json present"
+else
+    bad "skin.json missing -- run: skinctl generate"
+fi
+
+if fc-list 2>/dev/null | grep -qi cozettevector; then
+    ok "CozetteVector installed"
+else
+    warn "CozetteVector not in the font cache -- kitty will fall back badly (fc-cache -f)"
+fi
+
+if fc-list 2>/dev/null | grep -qi silkscreen; then
+    ok "Silkscreen installed"
+else
+    warn "Silkscreen not in the font cache -- shell text falls back (fc-cache -f)"
+fi
+
+# Gitignored sprite art. Its absence is a degraded-but-working state, never
+# a failure: every surface falls back to dashed placeholder slots.
+if [ -e "$HOME/.config/quickshell/assets/ally-front.png" ]; then
+    ok "sprite assets present"
+else
+    warn "assets missing -- surfaces will show placeholder slots (restore the assets tarball)"
+fi
+
+# --- restart ---------------------------------------------------------------
+
+pkill -x qs 2>/dev/null && sleep 0.5
+qs -d >/dev/null 2>&1
+sleep 3
+
+if pgrep -x qs >/dev/null; then
+    ok "qs process alive 3s after start"
+else
+    bad "qs is not running -- start it in the foreground to see why: qs"
+    echo "VERDICT: FAIL"
+    exit 1
+fi
+
+if qs ipc show >/dev/null 2>&1; then
+    ok "IPC answering"
+else
+    bad "IPC not answering (stale instance? pkill -x qs and retry)"
+fi
+
+# --- read the new instance's log -------------------------------------------
+# by-id/ keeps logs from dead instances too; the newest directory is the one
+# just started. The log is not plain text, hence strings.
+
+byid="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/quickshell/by-id"
+inst=$(ls -t "$byid" 2>/dev/null | head -1)
+if [ -z "$inst" ]; then
+    bad "no instance directory under $byid"
+else
+    errs=$(strings "$byid/$inst/log.qslog" 2>/dev/null | grep -E 'ERROR|CRITICAL')
+    if [ -n "$errs" ]; then
+        bad "errors in the shell log ($inst):"
+        printf '%s\n' "$errs" | head -8 | sed 's/^/      /'
+    else
+        ok "shell log clean ($inst)"
+    fi
+fi
+
+if [ "$fail" -eq 0 ]; then
+    echo "VERDICT: PASS"
+else
+    echo "VERDICT: FAIL"
+fi
+exit "$fail"

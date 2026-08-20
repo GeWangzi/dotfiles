@@ -160,7 +160,15 @@ done
 
 There is no display manager. Login is a plain `getty` on tty1, and `~/.zprofile`
 execs `start-hyprland` when it sees a login shell on `/dev/tty1` with no `DISPLAY`.
-Hyprland is 0.56.1.
+Hyprland is 0.56.1; Quickshell is 0.3.0 (as of 2026-08-21).
+
+Both are pre-1.0-stability projects whose APIs break between releases, and the
+shell, lock screen and wallpaper all die together if they do. After any
+`pacman -Syu` that bumps either package, run `rice-doctor` **before logging
+out** — it restarts the shell and greps the new instance's log for errors. If
+it fails, the previous package versions are still in `/var/cache/pacman/pkg/`
+(`sudo pacman -U <cached .pkg.tar.zst>`), and the fallback locker (hyprlock)
+plus the rescue Hyprland config below keep the machine usable meanwhile.
 
 The login shell is zsh. `~/.bash_profile` and `~/.bashrc` are deliberately left in
 place and working, so `chsh -s /usr/bin/bash` is a complete escape hatch if the zsh
@@ -195,8 +203,9 @@ it is worth knowing the three levels.
 `/etc/systemd/logind.conf` is empty, so systemd defaults apply, and the relevant one
 is `HandlePowerKey=poweroff`: a short press is already a clean shutdown. The long
 press is a firmware force-off that bypasses the OS entirely and is what causes the
-recovery on the next boot. (There is deliberately no power button in waybar — it was
-removed for being a single unconfirmed click bound to `shutdown now`.)
+recovery on the next boot. (The desktop's power menu is SUPER+ESC in the shell;
+its SHUT DOWN asks first with a red confirm line — the old waybar power button
+was removed for being a single unconfirmed click bound to `shutdown now`.)
 
 **Session wedged, kernel alive** — Ctrl+Alt+F2, log in, `systemctl poweroff`. If a
 TTY appears at all, the kernel is healthy and the disk is fine, so never hold the
@@ -359,7 +368,10 @@ data points with the LED settle it; one without is a coin flip.
 
 ## Other quirks that come with this machine
 
-**The lock screen goes deaf after suspend.** Locking and then suspending leaves
+**The lock screen goes deaf after suspend.** The primary locker is the
+Quickshell surface now (Lock.qml); whether it shares this bug is untested —
+what follows was reproduced with hyprlock, which remains the fallback locker,
+and `fixlock` still targets hyprlock. Locking and then suspending leaves
 hyprlock visible but ignoring the keyboard (Hyprland 0.56.1, hyprlock 0.9.6).
 Instrumented repro confirmed the input devices tear down on suspend, return about
 two seconds after resume, and stay healthy — but hyprlock's ext-session-lock surface
@@ -452,7 +464,7 @@ that profile, or revert to wpa_supplicant for the trip.
 
 ## What in this repo is hardware-specific
 
-Safe anywhere — the stow packages. Configs for Hyprland, waybar, wofi, kitty, nvim,
+Safe anywhere — the stow packages. Configs for Hyprland, waybar, wofi, kitty,
 zsh, tmux, starship, and the scripts in `local-bin`. Worst case a keybind refers to
 hardware that is not there.
 

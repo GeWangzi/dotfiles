@@ -73,11 +73,33 @@ under `$HOME`, so `stow -t ~ waybar` links `waybar/.config/waybar/*` into
 
 ```bash
 cd ~/dotfiles
-stow -t ~ backgrounds chrome hyprland hyprlock hyprmocha hyprpaper kitty \
-          local-bin nvim spotify starship systemd-user tmux waybar \
-          wireplumber wofi zshrc
+stow -t ~ backgrounds chrome ember fontconfig fonts hyprland hyprlock hyprmocha \
+          hyprpaper kitty local-bin quickshell skins spotify starship swaync \
+          systemd-user tmux waybar wireplumber zshrc
 chsh -s /usr/bin/zsh
+fc-cache -f
+skinctl generate
 ```
+
+There is no `wofi` package any more. Its stylesheet has to have the palette
+inlined rather than imported, so the whole file is generated; the rules live in
+`skins/.config/skins/templates/wofi.rules.css` and `skinctl` writes
+`~/.config/wofi/style.css`.
+
+`fc-cache -f` is not optional, for two reasons. The `fontconfig` package marks
+CozetteVector as a monospaced family, that edit is applied when fonts are
+scanned into the cache, and without it kitty rejects the theme's font and
+renders in Noto Sans CJK instead. The `fonts` package also installs Silkscreen
+and DotGothic16, which nothing can see until the cache is rebuilt. README's
+*Theme* section has the details.
+
+`skinctl generate` is not optional either. The Quickshell shell reads
+`skin.json`, kitty includes `skin.conf`, swaync imports `skin.css`, the
+fallback hyprlock sources the hyprlang `skin.conf` and wofi reads a generated
+`style.css` — none of which exist until skinctl has run once. The waybar and
+hyprpaper packages are stowed for reverting but nothing starts them: the
+shell draws the bar and the wallpaper itself. See README's *Skins* and *The
+shell* sections.
 
 `stow -t ~ */` also works and picks up everything, including `system/`. That is
 harmless but pointless — `system/` is installed by its own script in step 5, not by
@@ -154,6 +176,7 @@ this migration.
 
 | What | Where it goes | Notes |
 |---|---|---|
+| sprite art | `~/dotfiles/quickshell/.config/quickshell/assets/` | gitignored (personal-use art); tarball lives in `~/Backups/quickshell-assets-*.tar.gz` on the old machine. Without it the shell runs with dashed placeholder slots and no route backgrounds |
 | `secrets.env` | `~/.config/secrets.env`, mode 0600 | API keys; sourced by `.zshrc` and `.zprofile` |
 | sing-box config | `/etc/sing-box/config.json`, mode 0640 `root:sing-box` | holds the VLESS server address and UUID |
 | wifi profiles | `/etc/NetworkManager/system-connections/` | ~32 profiles, PSKs in plaintext |
@@ -223,6 +246,7 @@ Log in on tty1 — there is no display manager; `.zprofile` execs `start-hyprlan
 when it sees a login shell on tty1. Then:
 
 ```bash
+rice-doctor                                         # shell up, fonts seen, log clean
 bash ~/.local/bin/netcheck.sh                       # link, then proxy, layer by layer
 sudo smartctl -a /dev/nvme0n1 | grep -i "power cycles"   # baseline for the NVMe fix
 iw dev wlan0 get power_save                         # expect: off
