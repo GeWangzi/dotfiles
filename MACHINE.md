@@ -113,7 +113,8 @@ lockups described below and left in place because it is correct configuration, n
 because hibernate is in use.
 
 **Battery** — ASUS Battery, 76.0 Wh design capacity, 59.0 Wh full charge as
-measured, so roughly 78% health.
+measured, so roughly 78% health. Charging stops at 80%, enforced by
+`battery-charge-limit.service`; see "The battery charge limit" below.
 
 ## What is actually on the disk, and what would hurt to lose
 
@@ -237,8 +238,8 @@ only option, and the journal recovery is unavoidable rather than a mistake.
 Enabled at the system level:
 
 ```
-NetworkManager  iwd  tlp  bluetooth  docker
-sing-box  panel-od-off
+NetworkManager  iwd  bluetooth  docker
+sing-box  panel-od-off  power-profiles-daemon  battery-charge-limit
 nvidia-suspend  nvidia-resume  nvidia-hibernate
 ```
 
@@ -253,6 +254,44 @@ lowbattery.timer
 `OLLAMA_MODELS=/home/ollama-models`, `ProtectHome=false`) but is **not** enabled;
 it gets started by hand when wanted. The models live outside `$HOME` at
 `/home/ollama-models`, which is why the drop-in has to turn `ProtectHome` off.
+
+## The battery charge limit
+
+The limit is `battery-charge-limit.service`, which writes `80` to
+`/sys/class/power_supply/BAT0/charge_control_end_threshold` at boot. It has to be a
+unit rather than a value set once, because `asus_wmi` does not persist the threshold
+across a reboot.
+
+Only the end threshold exists on this laptop. There is no
+`charge_control_start_threshold` node, so a start threshold is silently inert — TLP's
+`START_CHARGE_THRESH_BAT0=75` never did anything at all.
+
+**Why TLP is gone.** TLP used to own the limit. It was removed on 2026-08-20, after
+the limit stopped working without any warning and the battery reached 87% on AC. The
+cause is that `power-profiles-daemon.service` ships
+
+```
+Conflicts=tuned.service tlp.service auto-cpufreq.service system76-power.service
+```
+
+and the shell binds `PowerProfiles` (`SysState.qml`, `DetailsMenu.qml`), which
+D-Bus-activates ppd at login even though the unit is not enabled. systemd then killed
+TLP mid-init, after `Applying power save settings` and before
+`Setting battery charge thresholds`. Every boot since the shell landed had no charge
+limit. The journal shows it plainly — a boot with the limit applied logs both lines
+and `Finished`, a broken one logs the first line and `killed, status=15/TERM`.
+
+The two daemons do genuinely overlap on CPU scaling and `platform_profile`, so the
+`Conflicts=` is not a packaging mistake. But it takes TLP down wholesale, including
+the charge threshold, which ppd does not touch. Moving the threshold into its own
+unit ends the argument: ppd keeps the CPU and platform-profile knobs, which is what
+the shell's POWER MODE tile talks to, and the limit no longer rides on a daemon that
+something else is entitled to shoot.
+
+Nothing was lost with TLP. The governor, energy-performance-preference and
+platform-profile settings in `tlp.conf` are ppd's job and ppd was already doing them,
+and `tlp.d/99-nvme.conf` existed only to cancel TLP's own defaults — see the next
+section.
 
 ## The NVMe hang
 
@@ -303,16 +342,23 @@ Read that first clause narrowly. It means suspend did not explain the crashes
 described here; it is not a reason to skip suspend when investigating the separate,
 undiagnosed resume failure in the next section.
 
-**The fix** is `/etc/tlp.d/99-nvme.conf` plus the kernel command line, both carried
-in `system/`. The metric for whether it is working is the power cycle count, not the
-absence of crashes:
+**The fix** was `/etc/tlp.d/99-nvme.conf` plus the kernel command line. Since TLP was
+removed on 2026-08-20 only the kernel command line remains, carried in `system/`, and
+it is enough on its own. `RUNTIME_PM_ON_BAT` and `PCIE_ASPM_ON_BAT` were TLP settings
+and that file existed only to cancel TLP's own aggressive defaults; with TLP gone the
+kernel defaults are already what it was asking for —
+`/sys/class/nvme/nvme0/device/power/control` reads `on` and
+`/sys/module/pcie_aspm/parameters/policy` reads `default`. Nothing else on the system
+writes either knob, power-profiles-daemon included. The metric for whether it is
+working is the power cycle count, not the absence of crashes:
 
 ```bash
 sudo smartctl -a /dev/nvme0n1 | grep -i "power cycles"
 ```
 
 Baseline was 214,757 on 2026-08-14. After hours on battery it should climb by single
-digits. If it still races upward, something other than TLP is driving D3cold.
+digits. If it still races upward, something is driving D3cold again — check the two
+sysfs values named above before looking anywhere else.
 
 **Measured 2026-08-17 09:12 — the fix works.** The count reads 214,762, so five
 cycles in roughly 62 hours: down from about 21 an hour to about 0.08, a factor of
@@ -472,9 +518,9 @@ Tied to this laptop — most of `system/`:
 
 | File | Tied to |
 |---|---|
-| `tlp.d/99-nvme.conf`, the grub NVMe parameter | the WD SN350 controller specifically |
+| the grub NVMe parameter | the WD SN350 controller specifically |
 | `systemd/system/panel-od-off.service` | an ASUS `asus-nb-wmi` sysfs path |
-| `tlp.d/02-profile.conf` | the G14's platform-profile fan curves |
+| `systemd/system/battery-charge-limit.service` | the ASUS `asus_wmi` charge-threshold node |
 | `wireplumber` soft-mixer drop-in | the ALC285 node name |
 | `rootfstype=ext4` in the grub cmdline | this machine's root filesystem |
 

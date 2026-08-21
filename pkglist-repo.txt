@@ -93,7 +93,6 @@ steam
 stow
 swaync
 thunderbird
-tlp
 ttf-cascadia-code-nerd
 unzip
 vim

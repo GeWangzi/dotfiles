@@ -160,7 +160,8 @@ cmdline there instead.
 Nothing above enables anything. System level:
 
 ```bash
-sudo systemctl enable NetworkManager iwd tlp bluetooth panel-od-off
+sudo systemctl enable NetworkManager iwd bluetooth panel-od-off
+sudo systemctl enable power-profiles-daemon battery-charge-limit
 sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
 sudo systemctl enable docker          # optional
 sudo systemctl enable sing-box        # only after step 7

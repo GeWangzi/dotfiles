@@ -107,17 +107,13 @@ install_file NetworkManager/conf.d/wifi-powersave.conf
 install_file NetworkManager/conf.d/dns.conf
 
 say ""
-say "TLP (keep the NVMe controller awake, tame the fan curve on AC):"
-install_file tlp.d/99-nvme.conf
-install_file tlp.d/02-profile.conf
-
-say ""
 say "sysctl (full SysRq, so a hung system can be rebooted cleanly):"
 install_file sysctl.d/99-sysrq.conf
 
 say ""
 say "systemd units:"
 install_file systemd/system/panel-od-off.service
+install_file systemd/system/battery-charge-limit.service
 install_file systemd/system/sing-box.service.d/override.conf
 
 # --- grub kernel command line ------------------------------------------------
@@ -203,7 +199,8 @@ Still to do by hand, in rough order:
 
 1. Enable the services. None of them are enabled by this script.
 
-     sudo systemctl enable NetworkManager iwd tlp bluetooth panel-od-off
+     sudo systemctl enable NetworkManager iwd bluetooth panel-od-off
+     sudo systemctl enable power-profiles-daemon battery-charge-limit
      sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
      sudo systemctl enable docker        # optional
      sudo systemctl enable sing-box      # only after the config below exists
