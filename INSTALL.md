@@ -79,6 +79,7 @@ stow -t ~ backgrounds chrome ember fontconfig fonts hyprland hyprlock hyprmocha 
 chsh -s /usr/bin/zsh
 fc-cache -f
 skinctl generate
+make-cursors
 ```
 
 There is no `wofi` package any more. Its stylesheet has to have the palette
@@ -100,6 +101,12 @@ fallback hyprlock sources the hyprlang `skin.conf` and wofi reads a generated
 hyprpaper packages are stowed for reverting but nothing starts them: the
 shell draws the bar and the wallpaper itself. See README's *Skins* and *The
 shell* sections.
+
+`make-cursors` builds the pixel-art cursor theme into
+`~/.local/share/icons/rpg-cursors` — the theme is generated, not carried in
+the repo. Hyprland and the GTK settings both name it; until the script has
+run, everything falls back to Adwaita via the theme's `Inherits` and nothing
+breaks.
 
 `stow -t ~ */` also works and picks up everything, including `system/`. That is
 harmless but pointless — `system/` is installed by its own script in step 5, not by

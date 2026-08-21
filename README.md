@@ -191,6 +191,14 @@ font until they are restarted.
 Waybar and wofi additionally list CaskaydiaCove behind Cozette in their font
 stacks, so a missing font degrades there rather than breaking.
 
+The cursor is pixel art too: `make-cursors` (in `local-bin`) draws eleven
+12px shapes in code — warm-white fill, crust outline, ember red for the
+wait-cursor sand and the not-allowed ring — and writes them straight into
+Xcursor binary format under `~/.local/share/icons/rpg-cursors`, upscaled
+nearest-neighbour to 24/36/48. Missing shapes inherit from Adwaita. Set for
+Hyprland in `hyprland.lua` (`XCURSOR_THEME`) and for GTK apps in
+`gtk-3.0/settings.ini` plus the gsettings key.
+
 The `fonts` package adds **Silkscreen** and **DotGothic16**, the two faces the
 RPG design specifies, self-hosted rather than pulled from a package; every
 shell surface uses them. Silkscreen is a pixel face and the panel runs at scale 1.5, so

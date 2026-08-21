@@ -154,6 +154,14 @@ end)
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
 
+-- The pixel-art cursor theme, built by `make-cursors` into
+-- ~/.local/share/icons/rpg-cursors. Xcursor-format only -- there is no
+-- hyprcursor theme of this name, and Hyprland falls back to Xcursor on its
+-- own. Missing shapes inherit from Adwaita, so nothing renders invisible if
+-- the generator has not run; GTK apps get the same theme from
+-- gtk-3.0/settings.ini and the gsettings key.
+hl.env("XCURSOR_THEME", "rpg-cursors")
+
 -- Electron apps (Discord, VS Code) default to Xwayland, where the compositor
 -- can only bitmap-upscale them: right size, but soft at scale 1.5. This makes
 -- them native Wayland so they render sharp. "auto" falls back to X11 when
@@ -434,7 +442,7 @@ hl.bind(mainMod .. " + Escape",    hl.dsp.exec_cmd("qs ipc call power toggle"))
 
 -- Details menu (Quickshell, handoff turn 17a): the control panel as a game
 -- menu, one layer deep -- SUMMARY / STATS / ABILITIES / ITEMS / MOVES /
--- TRAINABLE / SESSION.
+-- TM / TRAIN / SESSION.
 hl.bind(mainMod .. " + D",         hl.dsp.exec_cmd("qs ipc call details toggle"))
 
 -- Color picker. -a copies to clipboard, -n notifies via swaync, -l gives
