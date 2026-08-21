@@ -91,13 +91,10 @@ local fileManager = "nautilus"
 -------------------
 
 hl.on("hyprland.start", function()
-    -- swaync is deliberately NOT here. It ships a systemd unit with
-    -- Restart=on-failure and a D-Bus name (org.freedesktop.Notifications).
-    -- Starting it as a bare process here meant the unit and the process raced
-    -- for that name every login: the loser exited 1, systemd retried it five
-    -- times and gave up with start-limit-hit, leaving a permanently failed
-    -- unit next to a working daemon. It is enabled into
-    -- graphical-session.target.wants now and systemd owns it alone.
+    -- swaync retired 2026-08-20: the shell is the notification daemon
+    -- (Notifs.qml claims org.freedesktop.Notifications). The unit is
+    -- disabled and the stow package deleted -- do not re-enable it, two
+    -- daemons race for the bus name and the loser wedges its unit.
     -- waybar and hyprpaper retired 2026-08-19: the status bar is the
     -- Quickshell surface (Bar.qml, handoff turn 13b) and the wallpaper is
     -- the battle field (Wallpaper.qml, turn 16a), which owns the background
@@ -195,27 +192,20 @@ hl.env("HYPRSHOT_DIR", os.getenv("HOME") .. "/Pictures/clipboard")
 
 hl.config({
     general = {
-        -- Chunky pass. Gaps are wide enough that the wallpaper reads as a
-        -- frame around the windows rather than a sliver between them, and
-        -- gaps_out is no longer 0, so windows stop touching the screen edge
-        -- and the bar. Back to 5/0/2 for the previous tight look.
-        gaps_in  = 6,
-        gaps_out = 12,
+        -- Simple pass (user request 2026-08-21, replacing the chunky pass):
+        -- no gaps, plain flat border. Back to 6/12/4 plus the gradient below
+        -- for the chunky look.
+        gaps_in  = 0,
+        gaps_out = 0,
 
-        border_size = 4,
+        border_size = 2,
 
-        -- col.active_border is now a nested table; gradients are
-        -- { colors = {...}, angle = deg }
-        --
-        -- The focused border runs the skin's frame colour into its accent --
-        -- under Ember that is the sun disc into amber, where it used to be
-        -- the sun disc into its reflection (rgba(d4525aff)), which the token
-        -- set has no name for. The inactive border is `inner`, the same
-        -- colour the design uses for every rule and empty meter track:
-        -- visible against the wallpaper, but far enough down in brightness
-        -- that only one window ever looks focused.
+        -- Flat single colours: accent for the focused window, `inner` for the
+        -- rest -- visible against the wallpaper, but far enough down in
+        -- brightness that only one window ever looks focused.
+        -- was: active_border = { colors = { rgba(skin.outer), rgba(skin.accent) }, angle = 45 }
         col = {
-            active_border   = { colors = { rgba(skin.outer), rgba(skin.accent) }, angle = 45 },
+            active_border   = rgba(skin.accent),
             inactive_border = rgba(skin.inner),
         },
 
@@ -235,13 +225,12 @@ hl.config({
         active_opacity   = 1.0,
         inactive_opacity = 1.0,
 
-        -- A hard offset shadow rather than a soft halo: sharp turns off the
-        -- gaussian falloff, so this renders as a solid slab displaced down and
-        -- right, the way a sticker sits above paper. render_power is ignored
-        -- while sharp is true. Previous soft shadow was range 4, power 3, no
-        -- offset.
+        -- Off with the simple-border pass: the sticker slab read as a stray
+        -- extra border on the bottom and right, and with zero gaps it has
+        -- nowhere to render anyway. The sharp/offset settings are kept so
+        -- enabled = true restores the old look exactly.
         shadow = {
-            enabled      = true,
+            enabled      = false,
             sharp        = true,
             range        = 10,
             offset       = "6 6",
@@ -391,8 +380,8 @@ hl.bind(mainMod .. " + B",      hl.dsp.exec_cmd("firefox"))
 -- type, so it replaces what wofi was bound here for.
 --
 -- Was: hl.dsp.exec_cmd(menu), i.e. `wofi --show drun`. wofi is still
--- installed and still used by the clipboard picker on SUPER + V; only the
--- application menu moved.
+-- installed but only as cliphist-wofi's fallback picker -- both the
+-- application menu and the SUPER + V clipboard moved into the shell.
 hl.bind(mainMod .. " + space",  hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 hl.bind(mainMod .. " + F",      hl.dsp.window.fullscreen())
 -- hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))
@@ -418,11 +407,21 @@ hl.bind(mainMod .. " + SHIFT + L", hl.dsp.exit())
 hl.bind("PRINT",         hl.dsp.exec_cmd('PATH="$HOME/.local/bin:$PATH" hyprshot -m window'))
 hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd('PATH="$HOME/.local/bin:$PATH" hyprshot -m region'))
 
--- exec_cmd runs through sh -c, so pipes and && still work as before.
--- Wrapper rather than an inline pipeline: it renders image entries as actual
--- thumbnails instead of "[[ binary data ... ]]". Absolute path because
--- Hyprland's exec environment does not carry ~/.local/bin on PATH.
-hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(os.getenv("HOME") .. "/.local/bin/cliphist-wofi"))
+-- Clipboard history, now the launcher's list mode (handoff turn 25d).
+-- cliphist-wofi stays in ~/.local/bin as the fallback picker; only the bind
+-- moved. The glyph picker (25e) rides the same surface on G.
+hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("qs ipc call launcher clipboard"))
+hl.bind(mainMod .. " + G", hl.dsp.exec_cmd("qs ipc call launcher glyphs"))
+
+-- The CONNECT panel (turns 25f-25j): Wi-Fi and Bluetooth as an encounter
+-- screen. Scanning runs only while it is open.
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call connect toggle"))
+
+-- Notifications (turns 25a-25c): the shell is the daemon now (swaync is
+-- retired). N shows the BATTLE LOG history; SHIFT+D raises/lowers SUB
+-- (do not disturb, a field effect -- suppressed events pile up in the log).
+hl.bind(mainMod .. " + N",         hl.dsp.exec_cmd("qs ipc call notifs history"))
+hl.bind(mainMod .. " + SHIFT + D", hl.dsp.exec_cmd("qs ipc call notifs dnd"))
 -- SUPER+X (wipe clipboard + history) removed: unguarded, silent, no undo, and
 -- one key away from SUPER+C (close window). Run `cliphist wipe` in a terminal
 -- for the rare case that needs it.
@@ -445,8 +444,9 @@ hl.bind(mainMod .. " + Escape",    hl.dsp.exec_cmd("qs ipc call power toggle"))
 -- TM / TRAIN / SESSION.
 hl.bind(mainMod .. " + D",         hl.dsp.exec_cmd("qs ipc call details toggle"))
 
--- Color picker. -a copies to clipboard, -n notifies via swaync, -l gives
--- lowercase hex. Drop -n if the notification gets annoying.
+-- Color picker. -a copies to clipboard, -n notifies via the shell's own
+-- notification daemon (Notifs.qml), -l gives lowercase hex. Drop -n if the
+-- notification gets annoying.
 hl.bind(mainMod .. " + P", hl.dsp.exec_cmd("hyprpicker -a -f hex -l -n"))
 
 -- Blue-light filter manual override, on top of the hyprsunset.conf schedule.

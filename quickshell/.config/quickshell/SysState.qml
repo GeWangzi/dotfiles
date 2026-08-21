@@ -29,18 +29,32 @@ Singleton {
     // ---------------------------------------------------------------- HP
 
     readonly property var battery: UPower.displayDevice
-    readonly property bool onBattery: UPower.onBattery
+
+    // Derived from the device's own state rather than UPower.onBattery: the
+    // daemon-level flag read stale here (the bar said CHARGING while
+    // draining), and state also distinguishes full/pending-charge on the
+    // wire, which onBattery cannot.
+    readonly property bool onBattery: battery && battery.ready
+        ? battery.state === UPowerDeviceState.Discharging
+          || battery.state === UPowerDeviceState.PendingDischarge
+          || battery.state === UPowerDeviceState.Empty
+        : UPower.onBattery
+    readonly property bool charging: battery && battery.ready
+        && battery.state === UPowerDeviceState.Charging
 
     // 0.0 - 1.0. UPowerDevice.percentage is already a fraction in quickshell.
     readonly property real hp: battery && battery.ready
         ? (battery.percentage > 1 ? battery.percentage / 100 : battery.percentage)
         : 1
 
-    // "68% — 4H 10M" while draining, "82% — CHARGING" on the wire.
+    // "68% — 4H 10M" while draining, "82% — CHARGING" only while current is
+    // actually flowing in, "100% — FULL" once it stops.
     readonly property string hpNum: {
         if (!battery || !battery.ready) return "";
         const pct = Math.round(root.hp * 100) + "%";
-        if (!root.onBattery) return pct + " — CHARGING";
+        if (root.charging) return pct + " — CHARGING";
+        if (battery.state === UPowerDeviceState.FullyCharged) return pct + " — FULL";
+        if (!root.onBattery) return pct;
         const s = battery.timeToEmpty;
         if (!s || s <= 0) return pct;
         const h = Math.floor(s / 3600);
@@ -142,7 +156,13 @@ Singleton {
         }
     }
 
-    Component.onCompleted: wifiQuery.running = true
+    // One handler for the whole singleton -- QML rejects a second
+    // Component.onCompleted on the same object. syncNature's rationale is
+    // with the function, below.
+    Component.onCompleted: {
+        wifiQuery.running = true;
+        syncNature();
+    }
 
     // ---------------------------------------------------------------- brightness
 
@@ -188,22 +208,9 @@ Singleton {
 
     // ---------------------------------------------------------------- SUB (do not disturb)
 
-    // swaync owns notifications for now; its -sw subscription emits a JSON
-    // line on every state change, so this costs nothing between changes.
-    property bool sub: false
-
-    Process {
-        command: ["swaync-client", "-sw"]
-        running: true
-        stdout: SplitParser {
-            onRead: data => {
-                try {
-                    const state = JSON.parse(data);
-                    if (state.dnd !== undefined) root.sub = !!state.dnd;
-                } catch (e) { /* partial line; the next one will parse */ }
-            }
-        }
-    }
+    // The shell's own notification daemon owns do-not-disturb now (swaync is
+    // retired); SUB is just its dnd flag under the battle vocabulary.
+    readonly property bool sub: Notifs.dnd
 
     // ---------------------------------------------------------------- foes
 
@@ -346,16 +353,6 @@ Singleton {
         onLoaded: root.gpuBusy = parseInt(text(), 10) || 0
     }
 
-    property int cores: 0
-
-    Process {
-        command: ["nproc"]
-        running: true
-        stdout: StdioCollector {
-            onStreamFinished: root.cores = parseInt(text.trim(), 10) || 0
-        }
-    }
-
     Timer {
         running: root.statsWanted
         interval: 5000
@@ -372,12 +369,36 @@ Singleton {
         }
     }
 
-    // The IVs: hardware, fixed at birth, they cap the stats.
-    readonly property var ivRows: [
-        { label: "RAM", val: Math.round(memTotalKb / 1024 / 1024) + " GB", note: "CAPS SPEED" },
-        { label: "CORES", val: String(cores), note: "CAPS ATTACK" },
-        { label: "DISK", val: diskSizeG + " GB", note: "CAPS SP. DEF" }
-    ]
+    // Nature is the power profile (user request 2026-08-21): CALM saves
+    // power, HARDY is balanced, MODEST runs hot. Falls back to HARDY when
+    // power-profiles-daemon is not running.
+    readonly property string nature:
+        PowerProfiles.profile === PowerProfile.PowerSaver ? "CALM"
+        : PowerProfiles.profile === PowerProfile.Performance ? "MODEST"
+        : "HARDY"
+
+    // Nature follows the wire: unplugging drops to CALM, plugging back in
+    // returns to HARDY. power-profiles-daemon will not do this on its own --
+    // it holds whatever profile it was last handed -- and TLP used to, until
+    // it was removed on 2026-08-20 (MACHINE.md, "The battery charge limit").
+    // Without this the machine sat in HARDY on battery, which is the one
+    // thing TLP had still been doing for runtime.
+    //
+    // The wire always wins over a pick from the details menu, which is what
+    // TLP did and keeps the rule sayable in one line: choose what you like,
+    // but changing power source resets it.
+    function syncNature() {
+        PowerProfiles.profile = root.onBattery
+            ? PowerProfile.PowerSaver
+            : PowerProfile.Balanced
+    }
+
+    // Both this signal AND the completion call (in the singleton's one
+    // Component.onCompleted, up by the wifi query): on a boot that starts
+    // on battery there is no transition to react to. UPower is often not
+    // ready at completion, so the first call can read wrong -- the signal
+    // corrects it a moment later.
+    onOnBatteryChanged: syncNature()
 
     // The six stats of the details menu's STATS section, each mapped to the
     // real figure named in its sub-label.
@@ -388,7 +409,7 @@ Singleton {
           val: (cpuCurMHz / 1000).toFixed(1) + " / " + (cpuMaxMHz / 1000).toFixed(1) + " GHZ",
           frac: cpuCurMHz / cpuMaxMHz, hue: Skin.cmd },
         { label: "DEFENSE", sub: "THERMALS",
-          val: tempC + "°C — " + Math.max(0, 90 - tempC) + " HEADROOM",
+          val: tempC + "°C",
           frac: Math.max(0, Math.min(1, 1 - tempC / 90)), hue: Skin.net },
         { label: "SP. ATK", sub: "GPU LOAD", val: gpuBusy + "%",
           frac: gpuBusy / 100, hue: Skin.snd },
@@ -442,6 +463,11 @@ Singleton {
         ? Math.max(0, (clock.date.getTime() - bootEpochMs) / 1000)
         : 0
     readonly property real expFrac: (uptimeSec % 86400) / 86400
+
+    // The level rides the same clock: starts at 50, +1 every time the EXP
+    // bar wraps (a full day awake). The per-skin level in skins.toml is dead
+    // (user request 2026-08-21).
+    readonly property int level: 50 + Math.floor(uptimeSec / 86400)
 
     // ---------------------------------------------------------------- clock
 

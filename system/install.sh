@@ -111,6 +111,10 @@ say "sysctl (full SysRq, so a hung system can be rebooted cleanly):"
 install_file sysctl.d/99-sysrq.conf
 
 say ""
+say "polkit (timezone changes from the shell menu, no password dialog):"
+install_file polkit-1/rules.d/49-rpg-shell.rules
+
+say ""
 say "systemd units:"
 install_file systemd/system/panel-od-off.service
 install_file systemd/system/battery-charge-limit.service
@@ -205,7 +209,7 @@ Still to do by hand, in rough order:
      sudo systemctl enable docker        # optional
      sudo systemctl enable sing-box      # only after the config below exists
 
-     systemctl --user enable hyprpolkitagent hyprsunset swaync lowbattery.timer
+     systemctl --user enable hyprpolkitagent hyprsunset lowbattery.timer
      systemctl --user enable wireplumber pipewire-pulse
 
 2. sing-box is NOT in this repo. /etc/sing-box/config.json holds the VLESS

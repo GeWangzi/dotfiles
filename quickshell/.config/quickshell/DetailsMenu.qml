@@ -2,11 +2,12 @@
 // panel as a real game menu, ONE layer deep -- every section shows its whole
 // contents with the controls in place, and there are no drill-in pages.
 //
-// Left rail: SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TRAINABLE /
-// SESSION, plus the nature + caught plate. Right pane: that section's
-// contents. Keys: up/down row, left/right section, return toggles, ESC
-// closes. `mSec` is the section NAME, never an index -- an index-keyed
-// version of this menu shipped an off-by-one (decision log).
+// Left rail: SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TM / TRAIN /
+// SESSION, plus the caught plate. Right pane: that section's contents,
+// scrollable when it overflows (MOVES and TM list everything). Keys:
+// up/down row, left/right section, return toggles, ESC closes. `mSec` is
+// the section NAME, never an index -- an index-keyed version of this menu
+// shipped an off-by-one (decision log).
 //
 // Everything shown is real: HP is the battery, the IVs are the hardware,
 // MUSIC is MPRIS, WIFI is NetworkManager, ITEMS is bluez, MOVES is the
@@ -36,14 +37,14 @@ PanelWindow {
     property int mRow: 0
 
     readonly property var sections: ["SUMMARY", "STATS", "ABILITIES", "ITEMS",
-                                     "MOVES", "TRAINABLE", "SESSION"]
+                                     "MOVES", "TM", "TRAIN", "SESSION"]
 
     readonly property int rowCount: {
         switch (mSec) {
         case "ABILITIES": return 2;
         case "ITEMS":     return 1;
-        case "TRAINABLE": return 3;
-        case "SESSION":   return 4;
+        case "TRAIN":     return 4;
+        case "SESSION":   return 2;
         default:          return 0;
         }
     }
@@ -74,6 +75,7 @@ PanelWindow {
     function refresh() {
         if (!topProcs.running) topProcs.running = true;
         if (!wifiDetail.running) wifiDetail.running = true;
+        if (!tzQuery.running) tzQuery.running = true;
     }
 
     Timer {
@@ -85,9 +87,9 @@ PanelWindow {
 
     // ---------------------------------------------------------------- gated data
 
-    // Top processes by CPU. One ps per refresh tick, menu-visible only.
+    // Processes by CPU, every one of them (the pane scrolls). One ps per
+    // refresh tick, menu-visible only.
     property var procRows: []
-    property int procMore: 0
 
     Process {
         id: topProcs
@@ -95,22 +97,22 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: {
                 const byName = {};
-                let count = 0;
                 text.split("\n").forEach(line => {
                     const parts = line.trim().split(/\s+/);
                     if (parts.length < 3) return;
                     const rss = parseInt(parts[parts.length - 1], 10) || 0;
                     const cpu = parseFloat(parts[parts.length - 2]) || 0;
                     const name = parts.slice(0, parts.length - 2).join(" ");
-                    if (!byName[name]) { byName[name] = { name: name, cpu: 0, rss: 0 }; count++; }
+                    if (!byName[name]) byName[name] = { name: name, cpu: 0, rss: 0 };
                     byName[name].cpu += cpu;
                     byName[name].rss += rss;
                 });
-                const rows = Object.values(byName)
-                    .sort((a, b) => b.cpu - a.cpu || b.rss - a.rss)
-                    .slice(0, 4);
-                win.procRows = rows;
-                win.procMore = Math.max(0, count - 4);
+                // pcpu is per-thread lifetime usage, so a busy multi-threaded
+                // process can sum past 100 for a moment; the figure is capped
+                // because "134%" reads as a bug, not a stat.
+                win.procRows = Object.values(byName)
+                    .map(r => ({ name: r.name, rss: r.rss, cpu: Math.min(100, r.cpu) }))
+                    .sort((a, b) => b.cpu - a.cpu || b.rss - a.rss);
             }
         }
     }
@@ -155,23 +157,50 @@ PanelWindow {
         }
     }
 
-    // TMs: installed, teachable, not running.
+    // TMs: installed, teachable, not running. All of them -- the TM page
+    // scrolls.
     readonly property var tmRows: {
         const apps = DesktopEntries.applications.values;
         const out = [];
-        let more = 0;
         for (let i = 0; i < apps.length; i++) {
             const entry = apps[i];
             if (entry.noDisplay) continue;
             const match = Apps.processName(entry);
             if (match !== "" && Apps.windowsFor(match) > 0) continue;
-            if (out.length < 5)
-                out.push({ name: (entry.name || "").toUpperCase(),
-                           tag: Apps.categoryOf(entry) });
-            else
-                more++;
+            out.push({ name: (entry.name || "").toUpperCase(),
+                       tag: Apps.categoryOf(entry) });
         }
-        return { rows: out, more: more };
+        out.sort((a, b) => a.name.localeCompare(b.name));
+        return out;
+    }
+
+    // Timezone. A short curated ring, not the whole zoneinfo database --
+    // left/right through six hundred zones is not a control. timedatectl
+    // goes through polkit; without the rule from
+    // system/etc/polkit-1/rules.d/49-rpg-shell.rules installed, the auth
+    // dialog opens behind this menu (regular windows cannot stack above
+    // the Overlay layer) and the chip appears to do nothing.
+    readonly property var timezones: ["Asia/Shanghai", "Asia/Tokyo", "UTC",
+                                      "Europe/London", "America/New_York",
+                                      "America/Chicago", "America/Los_Angeles"]
+    property string timezone: ""
+
+    Process {
+        id: tzQuery
+        command: ["timedatectl", "show", "-p", "Timezone", "--value"]
+        stdout: StdioCollector {
+            onStreamFinished: win.timezone = text.trim()
+        }
+    }
+
+    function setTimezone(zone) {
+        Quickshell.execDetached(["timedatectl", "set-timezone", zone]);
+        win.timezone = zone;
+    }
+
+    function cycleTimezone() {
+        const i = timezones.indexOf(timezone);
+        setTimezone(timezones[(i + 1) % timezones.length]);
     }
 
     // MPRIS.
@@ -232,21 +261,21 @@ PanelWindow {
         case "ITEMS":
             if (btAdapter) btAdapter.enabled = !btAdapter.enabled;
             break;
-        case "TRAINABLE":
+        case "TRAIN":
             if (mRow === 0) SysState.setVolPct(
                 SysState.volPct >= 100 ? 0 : SysState.volPct + 5);
             else if (mRow === 1) SysState.setBright8((SysState.bright8 % 8) + 1);
-            else cyclePerf();
+            else if (mRow === 2) cyclePerf();
+            else cycleTimezone();
             break;
-        case "SESSION":
-            switch (mRow) {
-            case 0: Quickshell.execDetached(["loginctl", "lock-session"]); win.dismissed(); break;
-            case 1: Quickshell.execDetached(["systemctl", "suspend"]); win.dismissed(); break;
-            // Restart and shut down ask first -- in the power menu's red
-            // log line, which owns that flow.
-            default: win.dismissed(); Quickshell.execDetached(["qs", "ipc", "call", "power", "toggle"]);
-            }
+        case "SESSION": {
+            // Both rows ask first -- on the power menu's red log line,
+            // which owns that flow and opens straight onto it.
+            const act = mRow === 0 ? "RESTART" : "SHUT DOWN";
+            win.dismissed();
+            Quickshell.execDetached(["qs", "ipc", "call", "power", "confirm", act]);
             break;
+        }
         }
     }
 
@@ -257,8 +286,17 @@ PanelWindow {
         anchors.fill: parent
         focus: true
 
+        // Dismiss only on a click OUTSIDE the frame. The old empty
+        // TapHandler on the frame did not actually swallow taps -- default
+        // gesturePolicy takes no exclusive grab, so this handler fired too
+        // and every click anywhere closed the menu.
         TapHandler {
-            onTapped: win.dismissed()
+            onTapped: eventPoint => {
+                const p = menuFrame.mapFromItem(keys,
+                    eventPoint.position.x, eventPoint.position.y);
+                if (p.x < 0 || p.y < 0 || p.x > menuFrame.width || p.y > menuFrame.height)
+                    win.dismissed();
+            }
         }
 
         Keys.onPressed: event => {
@@ -272,10 +310,19 @@ PanelWindow {
                 break;
             }
             case Qt.Key_Up:
-                win.mRow = Math.max(0, win.mRow - 1);
+                // Sections with no rows scroll instead.
+                if (win.rowCount === 0)
+                    paneScroll.contentY = Math.max(0, paneScroll.contentY - 72);
+                else
+                    win.mRow = Math.max(0, win.mRow - 1);
                 break;
             case Qt.Key_Down:
-                win.mRow = Math.min(Math.max(0, win.rowCount - 1), win.mRow + 1);
+                if (win.rowCount === 0)
+                    paneScroll.contentY = Math.min(
+                        Math.max(0, paneScroll.contentHeight - paneScroll.height),
+                        paneScroll.contentY + 72);
+                else
+                    win.mRow = Math.min(Math.max(0, win.rowCount - 1), win.mRow + 1);
                 break;
             case Qt.Key_Return:
             case Qt.Key_Enter:
@@ -291,6 +338,7 @@ PanelWindow {
         }
 
         Frame {
+            id: menuFrame
             width: 940
             anchors.centerIn: parent
             title: Skin.species
@@ -298,10 +346,6 @@ PanelWindow {
             padTop: 26
             padSide: 20
             padBottom: 18
-
-            TapHandler {
-                onTapped: {}
-            }
 
             Column {
                 width: parent.width
@@ -422,35 +466,24 @@ PanelWindow {
                             }
                         }
 
-                        // nature + caught plate
+                        // caught plate (the nature line moved to STATS,
+                        // where it names the power mode)
                         Rectangle {
                             width: rail.width
-                            height: naturePlate.implicitHeight + 22
+                            height: caughtText.implicitHeight + 22
                             color: Skin.strip
                             border.width: 3
                             border.color: Skin.inner
 
-                            Column {
-                                id: naturePlate
+                            Text {
+                                id: caughtText
                                 x: 12
                                 y: 11
-                                spacing: 5
-
-                                Text {
-                                    text: Skin.nature
-                                    color: Skin.dim
-                                    font.family: "Silkscreen"
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.14
-                                }
-
-                                Text {
-                                    text: win.caught
-                                    color: Skin.dim
-                                    font.family: "Silkscreen"
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.12
-                                }
+                                text: win.caught
+                                color: Skin.dim
+                                font.family: "Silkscreen"
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
                             }
                         }
                     }
@@ -459,7 +492,11 @@ PanelWindow {
                     Rectangle {
                         id: pane
                         width: parent.width - rail.width - 16
-                        height: Math.max(rail.implicitHeight + 120, paneLoader.implicitHeight + 40)
+                        // Capped: a section that overflows (MOVES, TM) scrolls
+                        // inside the pane instead of growing the frame off
+                        // the panel.
+                        height: Math.max(rail.implicitHeight + 120,
+                                         Math.min(540, paneLoader.implicitHeight + 40))
                         color: Skin.strip
                         border.width: 4
                         border.color: Skin.inner
@@ -492,20 +529,33 @@ PanelWindow {
                             }
                         }
 
-                        Loader {
-                            id: paneLoader
+                        Flickable {
+                            id: paneScroll
                             x: 18
                             y: 20
                             width: parent.width - 36
-                            sourceComponent: {
-                                switch (win.mSec) {
-                                case "SUMMARY":   return summarySec;
-                                case "STATS":     return statsSec;
-                                case "ABILITIES": return abilitiesSec;
-                                case "ITEMS":     return itemsSec;
-                                case "MOVES":     return movesSec;
-                                case "TRAINABLE": return trainSec;
-                                default:          return sessionSec;
+                            height: parent.height - 40
+                            contentWidth: width
+                            contentHeight: paneLoader.implicitHeight
+                            clip: true
+                            interactive: contentHeight > height
+                            boundsBehavior: Flickable.StopAtBounds
+
+                            Loader {
+                                id: paneLoader
+                                width: paneScroll.width
+                                onLoaded: paneScroll.contentY = 0
+                                sourceComponent: {
+                                    switch (win.mSec) {
+                                    case "SUMMARY":   return summarySec;
+                                    case "STATS":     return statsSec;
+                                    case "ABILITIES": return abilitiesSec;
+                                    case "ITEMS":     return itemsSec;
+                                    case "MOVES":     return movesSec;
+                                    case "TM":        return tmSec;
+                                    case "TRAIN":     return trainSec;
+                                    default:          return sessionSec;
+                                    }
                                 }
                             }
                         }
@@ -624,7 +674,7 @@ PanelWindow {
                     Text {
                         x: sumName.implicitWidth + 10
                         anchors.baseline: sumName.baseline
-                        text: "LV " + Skin.level
+                        text: "LV " + SysState.level
                         color: Skin.dim
                         font.family: "Silkscreen"
                         font.pixelSize: 12
@@ -724,10 +774,10 @@ PanelWindow {
                         color: Skin.inner
 
                         Rectangle {
-                            readonly property real frac:
-                                (SysState.clock.date.getHours() * 3600
-                                 + SysState.clock.date.getMinutes() * 60) / 86400
-                            width: Math.round(parent.width * frac)
+                            // Uptime, wrapping at 24 hours awake -- the same
+                            // rule as the wallpaper and the lock screen (this
+                            // row used to run on time-of-day instead).
+                            width: Math.round(parent.width * SysState.expFrac)
                             height: parent.height
                             color: Skin.net
                         }
@@ -736,11 +786,8 @@ PanelWindow {
                     Text {
                         id: sumExpNum
                         anchors.verticalCenter: parent.verticalCenter
-                        text: {
-                            const frac = (SysState.clock.date.getHours() * 3600
-                                + SysState.clock.date.getMinutes() * 60) / 86400;
-                            return "EXP TO NEXT LV — " + (100 - Math.round(frac * 100)) + "%";
-                        }
+                        text: "EXP TO NEXT LV — "
+                              + (100 - Math.round(SysState.expFrac * 100)) + "%"
                         color: Skin.dim
                         font.family: "Silkscreen"
                         font.pixelSize: 10
@@ -767,7 +814,10 @@ PanelWindow {
                         font.pixelSize: 10
                     }
 
+                    // On charge the row disappears -- LEFTOVERS on the wire
+                    // told the user nothing (their request, 2026-08-21).
                     Text {
+                        visible: SysState.onBattery
                         width: 84
                         text: "HELD"
                         color: Skin.dim
@@ -776,8 +826,8 @@ PanelWindow {
                         font.letterSpacing: 10 * 0.14
                     }
                     Text {
-                        text: SysState.heldItem + " — "
-                              + (SysState.onBattery ? "ON BATTERY" : "ON CHARGE")
+                        visible: SysState.onBattery
+                        text: SysState.heldItem + " — ON BATTERY"
                         color: Skin.text
                         font.family: "Silkscreen"
                         font.pixelSize: 10
@@ -816,60 +866,6 @@ PanelWindow {
                             color: Skin.dim
                             font.family: "Silkscreen"
                             font.pixelSize: 10
-                        }
-                    }
-                }
-
-                // HARDWARE plate: the IVs.
-                Rectangle {
-                    width: parent.width
-                    height: ivCol.implicitHeight + 20
-                    color: Skin.strip
-                    border.width: 3
-                    border.color: Skin.inner
-
-                    Column {
-                        id: ivCol
-                        x: 12
-                        y: 10
-                        spacing: 6
-
-                        Text {
-                            text: "HARDWARE — FIXED AT BIRTH"
-                            color: Skin.dim
-                            font.family: "Silkscreen"
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.18
-                        }
-
-                        Row {
-                            spacing: 18
-
-                            Repeater {
-                                model: SysState.ivRows
-
-                                Row {
-                                    required property var modelData
-                                    spacing: 7
-
-                                    Text {
-                                        anchors.baseline: ivVal.baseline
-                                        text: modelData.label
-                                        color: Skin.dim
-                                        font.family: "Silkscreen"
-                                        font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.12
-                                    }
-
-                                    Text {
-                                        id: ivVal
-                                        text: modelData.val
-                                        color: Skin.text
-                                        font.family: "Silkscreen"
-                                        font.pixelSize: 10
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -947,70 +943,17 @@ PanelWindow {
                 }
             }
 
+            // Nature IS the power mode: CALM saves power, HARDY is balanced,
+            // MODEST runs hot. Changed in TRAIN.
             Text {
-                text: Skin.nature + " — NATURE SHAPES NOTHING YET"
+                text: SysState.nature + " NATURE — "
+                      + (SysState.nature === "CALM" ? "QUIET, HP DRAINS SLOWEST"
+                         : SysState.nature === "MODEST" ? "MEGA, HP DRAINS FASTER"
+                         : "BALANCED")
                 color: Skin.accent
                 font.family: "Silkscreen"
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.12
-            }
-
-            Rectangle {
-                width: parent.width
-                height: capsCol.implicitHeight + 24
-                color: Skin.strip
-                border.width: 3
-                border.color: Skin.inner
-
-                Column {
-                    id: capsCol
-                    x: 12
-                    y: 12
-                    width: parent.width - 24
-                    spacing: 7
-
-                    Text {
-                        text: "HARDWARE CAPS — WHY THE STATS STOP WHERE THEY DO"
-                        color: Skin.dim
-                        font.family: "Silkscreen"
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.18
-                    }
-
-                    Repeater {
-                        model: SysState.ivRows
-
-                        Row {
-                            required property var modelData
-                            spacing: 10
-
-                            Text {
-                                width: 62
-                                text: modelData.label
-                                color: Skin.dim
-                                font.family: "Silkscreen"
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
-                            }
-
-                            Text {
-                                width: 88
-                                text: modelData.val
-                                color: Skin.text
-                                font.family: "Silkscreen"
-                                font.pixelSize: 10
-                            }
-
-                            Text {
-                                text: modelData.note
-                                color: Skin.dim
-                                font.family: "Silkscreen"
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
-                            }
-                        }
-                    }
-                }
             }
 
             Row {
@@ -1604,10 +1547,7 @@ PanelWindow {
                             Text {
                                 anchors.right: parent.right
                                 anchors.baseline: procName.baseline
-                                text: "PP " + Math.max(0,
-                                    Math.round(SysState.memTotalKb / 1024 / 1024)
-                                    - Math.ceil(parent.parent.parent.modelData.rss / 1024 / 1024))
-                                    + "/" + Math.round(SysState.memTotalKb / 1024 / 1024)
+                                text: Apps.ppForCpu(parent.parent.parent.modelData.cpu)
                                 color: Skin.dim
                                 font.family: "Silkscreen"
                                 font.pixelSize: 10
@@ -1680,89 +1620,69 @@ PanelWindow {
                 }
             }
 
+        }
+    }
+
+    // ---------------- TM
+    // Installed apps, teachable, not running. Moved off MOVES into its own
+    // page (user request 2026-08-21); the pane scrolls, so all of them.
+    Component {
+        id: tmSec
+
+        Column {
+            spacing: 10
+
             Text {
-                text: "+ " + win.procMore + " BACKGROUND PROCESSES"
+                text: "INSTALLED — TEACHABLE, NOT RUNNING"
                 color: Skin.dim
                 font.family: "Silkscreen"
                 font.pixelSize: 10
-                font.letterSpacing: 10 * 0.12
+                font.letterSpacing: 10 * 0.18
             }
 
-            Rectangle {
+            Flow {
                 width: parent.width
-                height: tmCol.implicitHeight + 24
-                color: Skin.strip
-                border.width: 3
-                border.color: Skin.inner
+                spacing: 7
 
-                Column {
-                    id: tmCol
-                    x: 12
-                    y: 12
-                    width: parent.width - 24
-                    spacing: 8
+                Repeater {
+                    model: win.tmRows
 
-                    Text {
-                        text: "INSTALLED — TEACHABLE, NOT RUNNING"
-                        color: Skin.dim
-                        font.family: "Silkscreen"
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.18
-                    }
+                    Rectangle {
+                        required property var modelData
 
-                    Flow {
-                        width: parent.width
-                        spacing: 7
+                        width: tmRow.implicitWidth + 16
+                        height: tmRow.implicitHeight + 10
+                        color: Skin.cell
+                        border.width: 3
+                        border.color: Skin.inner
 
-                        Repeater {
-                            model: win.tmRows.rows
+                        Row {
+                            id: tmRow
+                            anchors.centerIn: parent
+                            spacing: 7
 
-                            Rectangle {
-                                required property var modelData
+                            Text {
+                                text: parent.parent.modelData.tag
+                                color: Skin.categoryColor(parent.parent.modelData.tag)
+                                font.family: "Silkscreen"
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.14
+                            }
 
-                                width: tmRow.implicitWidth + 16
-                                height: tmRow.implicitHeight + 10
-                                color: Skin.cell
-                                border.width: 3
-                                border.color: Skin.inner
-
-                                Row {
-                                    id: tmRow
-                                    anchors.centerIn: parent
-                                    spacing: 7
-
-                                    Text {
-                                        text: parent.parent.modelData.tag
-                                        color: Skin.categoryColor(parent.parent.modelData.tag)
-                                        font.family: "Silkscreen"
-                                        font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.14
-                                    }
-
-                                    Text {
-                                        text: parent.parent.modelData.name
-                                        color: Skin.body
-                                        font.family: "Silkscreen"
-                                        font.pixelSize: 10
-                                    }
-                                }
+                            Text {
+                                text: parent.parent.modelData.name
+                                color: Skin.body
+                                font.family: "Silkscreen"
+                                font.pixelSize: 10
                             }
                         }
-                    }
-
-                    Text {
-                        text: win.tmRows.more + " MORE INSTALLED — NOT RUNNING"
-                        color: Skin.dim
-                        font.family: "Silkscreen"
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.12
                     }
                 }
             }
         }
     }
 
-    // ---------------- TRAINABLE
+    // ---------------- TRAIN
     Component {
         id: trainSec
 
@@ -1939,6 +1859,72 @@ PanelWindow {
                     elide: Text.ElideRight
                 }
             }
+
+            Column {
+                width: parent.width
+                spacing: 9
+
+                Item {
+                    width: parent.width
+                    height: tzLabel.implicitHeight
+
+                    Text {
+                        id: tzLabel
+                        text: "TIMEZONE"
+                        color: win.mRow === 3 ? Skin.text : Skin.dim
+                        font.family: "Silkscreen"
+                        font.pixelSize: 10
+                        font.letterSpacing: 10 * 0.18
+                    }
+
+                    Text {
+                        anchors.right: parent.right
+                        text: win.timezone.toUpperCase()
+                        color: Skin.text
+                        font.family: "Silkscreen"
+                        font.pixelSize: 10
+                    }
+                }
+
+                Flow {
+                    width: parent.width
+                    spacing: 7
+
+                    Repeater {
+                        model: win.timezones
+
+                        Rectangle {
+                            required property string modelData
+
+                            readonly property bool active: win.timezone === modelData
+
+                            width: tzText.implicitWidth + 16
+                            height: tzText.implicitHeight + 10
+                            color: active ? Skin.accent : Skin.cell
+                            border.width: 3
+                            border.color: active ? Skin.accent
+                                : win.mRow === 3 ? Skin.outline : Skin.inner
+
+                            Text {
+                                id: tzText
+                                anchors.centerIn: parent
+                                // The city half is the name; the region is
+                                // noise at chip size.
+                                text: parent.modelData.split("/").pop()
+                                      .replace(/_/g, " ").toUpperCase()
+                                color: parent.active ? Skin.shadow : Skin.body
+                                font.family: "Silkscreen"
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.10
+                            }
+
+                            TapHandler {
+                                onTapped: win.setTimezone(parent.modelData)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1956,9 +1942,10 @@ PanelWindow {
                 width: parent.width
 
                 Repeater {
+                    // Only the two the lid and the keyboard don't already
+                    // cover (user request 2026-08-20) -- lock and sleep
+                    // live on SUPER+L and the lid.
                     model: [
-                        { name: "LOCK", key: "SUPER + L", danger: false },
-                        { name: "SLEEP", key: "CLOSE LID", danger: false },
                         { name: "RESTART", key: "SUPER + ESC", danger: false },
                         { name: "SHUT DOWN", key: "SUPER + ESC", danger: true }
                     ]
@@ -1974,8 +1961,12 @@ PanelWindow {
                         height: 62
                         color: Skin.cell
                         border.width: 3
-                        border.color: modelData.danger ? Skin.critical
-                            : active ? Skin.outline : Skin.inner
+                        // Danger reads in the red name; the border stays
+                        // normal until highlighted, then goes red -- same
+                        // grammar as the power menu's YES button.
+                        border.color: active
+                            ? (modelData.danger ? Skin.critical : Skin.outline)
+                            : Skin.inner
 
                         Rectangle {
                             z: -1

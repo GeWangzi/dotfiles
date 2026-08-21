@@ -103,21 +103,13 @@ WlSessionLock {
                 event.accepted = true;
             }
 
-            // ---------------- frame: drop shadow, halo, window, tab
-            Rectangle {
-                x: surf.frameX - 5
-                y: surf.frameY - 5 + 10
-                width: surf.frameW + 10
-                height: surf.frameH + 10
-                color: "#80000000"
-            }
-
-            Rectangle {
-                x: surf.frameX - 5
-                y: surf.frameY - 5
-                width: surf.frameW + 10
-                height: surf.frameH + 10
-                color: Skin.shadow
+            // ---------------- frame: soft shadow, window, tab
+            // (soft-shadows-only decision, 2026-08-20)
+            SoftShadow {
+                x: surf.frameX
+                y: surf.frameY
+                width: surf.frameW
+                height: surf.frameH
             }
 
             Rectangle {
@@ -130,18 +122,14 @@ WlSessionLock {
                 border.color: Skin.outer
             }
 
+            // Tab lost its hard shadow ring with the soft-shadows decision,
+            // and sits flush on the frame edge -- nothing pokes below it.
             Rectangle {
-                x: surf.frameX + 17
-                y: surf.frameY - 24
-                width: tabText.implicitWidth + 32
-                height: tabText.implicitHeight + 18
-                color: Skin.shadow
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 5
-                    color: Skin.outer
-                }
+                x: surf.frameX + 22
+                y: surf.frameY - height
+                width: tabText.implicitWidth + 22
+                height: tabText.implicitHeight + 8
+                color: Skin.outer
 
                 Text {
                     id: tabText
@@ -260,7 +248,7 @@ WlSessionLock {
                         Text {
                             x: cardName.implicitWidth + 14
                             anchors.baseline: cardName.baseline
-                            text: "LV " + Skin.level
+                            text: "LV " + SysState.level
                             color: Skin.dim
                             font.family: "Silkscreen"
                             font.pixelSize: 12

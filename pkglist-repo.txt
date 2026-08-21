@@ -91,7 +91,6 @@ spotify-launcher
 starship
 steam
 stow
-swaync
 thunderbird
 ttf-cascadia-code-nerd
 unzip

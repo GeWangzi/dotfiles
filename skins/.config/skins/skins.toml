@@ -345,7 +345,8 @@ nature       = "IMPISH"
 ball         = "POKE BALL"
 held_charge  = "LEFTOVERS"
 held_battery = "GANLON BERRY"
-note         = "Grins at nothing. Idles at 3% and never fully sleeps."
+# The real Red/Blue dex entry, at the user's request (2026-08-21).
+note         = "Under a full moon, this POKEMON likes to mimic the shadows of people and laugh at their fright."
 
 [[skins]]
 slug    = "wooper"
@@ -385,7 +386,8 @@ nature       = "JOLLY"
 ball         = "NET BALL"
 held_charge  = "LEFTOVERS"
 held_battery = "GANLON BERRY"
-note         = "Fresh install. Boots fast, forgets everything on restart."
+# The real Silver dex entry, at the user's request (2026-08-21).
+note         = "A slippery film covers its body, making it hard to grasp. It burrows into soft mud to sleep."
 
 [[skins]]
 slug    = "whimsicott"
@@ -425,4 +427,5 @@ nature       = "CALM"
 ball         = "LOVE BALL"
 held_charge  = "LEFTOVERS"
 held_battery = "GANLON BERRY"
-note         = "Drifts between workspaces. Two windows still unaccounted for."
+# The real Black dex entry, at the user's request (2026-08-21).
+note         = "Riding whirlwinds, they appear. These POKEMON sneak into homes and cause all sorts of mischief."

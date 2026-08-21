@@ -246,7 +246,7 @@ nvidia-suspend  nvidia-resume  nvidia-hibernate
 Enabled for the user:
 
 ```
-hyprpolkitagent  hyprsunset  swaync  wireplumber  pipewire-pulse
+hyprpolkitagent  hyprsunset  wireplumber  pipewire-pulse
 lowbattery.timer
 ```
 

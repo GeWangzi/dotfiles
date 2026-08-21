@@ -32,7 +32,7 @@ cd ~/dotfiles && stow -t ~ */              # everything
 | `hyprlock` | fallback locker, only reached when the shell is not running |
 | `hyprpaper` | retired — the shell draws the wallpaper; config kept for reverting |
 | `waybar` | retired — the shell draws the bar; config kept for reverting |
-| `swaync` | notification daemon, styled as battle-log toasts |
+| `swaync` | retired — the shell is the notification daemon; package removed |
 | `skins` | every palette and creature, and the templates they are rendered through |
 | `ember` | the hand-maintained Ember copies `skins` replaced, kept for reverting |
 | `hyprmocha` | the Catppuccin Mocha palette `ember` replaced, kept for reverting |
@@ -81,7 +81,6 @@ not a warning. `skinctl` renders those into every format that needs them:
 |---|---|
 | `~/.config/hypr/skin.conf` | hyprlang vars (tokens + `$cr_*` creature), sourced by `hyprlock.conf` |
 | `~/.config/waybar/skin.css` | GTK CSS, kept for the retired waybar config |
-| `~/.config/swaync/skin.css` | GTK CSS, imported by `swaync/style.css` |
 | `~/.config/kitty/skin.conf` | the 16-colour ANSI palette, included by `kitty.conf` |
 | `~/.config/wofi/style.css` | the whole stylesheet — wofi cannot `@import` |
 | `~/.local/state/skins/skin.lua` | window border colours, read by `hyprland.lua` |
@@ -95,7 +94,7 @@ straight into this repository and anything written there lands in the repo. **Th
 waybar responds to a missing `skin.css` by rendering with no colours at all
 rather than by failing, which is a confusing way to find out.
 
-The shell, Hyprland, swaync and running kitties pick a new skin up
+The shell, Hyprland and running kitties pick a new skin up
 immediately (`skin.json` is watched; kitty gets SIGUSR1). hyprlock reads its
 config when it starts, so the fallback locker changes at the next lock; wofi
 at its next launch.
@@ -135,7 +134,7 @@ machine is always the actor, never the collector.
 | `Launcher.qml` | move bar — **SUPER + space** — "What will GENGAR do?", typing searches |
 | `Osd.qml` | volume/brightness pop-up, hard fade frames |
 | `PowerMenu.qml` | **SUPER + ESC** — LOCK / SUSPEND / LOG OUT / SHUT DOWN, red confirm log line |
-| `DetailsMenu.qml` | **SUPER + D** — SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TRAINABLE / SESSION |
+| `DetailsMenu.qml` | **SUPER + D** — SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TM / TRAIN / SESSION |
 | `Apps.qml` `SysState.qml` | singletons: app search + running moves; battery, audio, wifi, brightness, foes |
 | `Skin.qml` | singleton reading `skin.json`, live-reloads on `skinctl set` |
 | `Frame.qml` `HpBar.qml` `Meter.qml` `StepMeter.qml` `Chip.qml` `Blink.qml` `PixelGlyph.qml` `DashedSlot.qml` `WidgetText.qml` | shared parts |

@@ -2,14 +2,12 @@
 // notification toast, the lock screen's save slot and the control center:
 //
 //     border: 5px solid <outer>;
-//     box-shadow: 0 0 0 5px <shadow>, 0 10px 0 5px rgba(0,0,0,0.5);
 //     border-radius: <radius>;
 //     background: <window>;
 //
-// CSS box-shadow with a spread and no blur is just a larger rectangle behind
-// the element, so each of the two shadows is one Rectangle here. They are
-// stacked in reverse: CSS paints the first shadow on top of the second, so the
-// halo is declared after the drop shadow and covers it where they overlap.
+// plus a soft drop shadow (SoftShadow.qml). The handoff's hard shadow-token
+// halo and hard offset drop were retired 2026-08-20: soft shadows only,
+// around every window border.
 //
 // The title tab overhangs the top-left corner and is the reason this is an
 // Item with unclipped children rather than a plain Rectangle.
@@ -30,8 +28,8 @@ Item {
     property int padBottom: 26
 
     readonly property int frameBorder: 5
-    readonly property int spread: 5
-    readonly property int dropOffset: 10
+    // The toast variant recolors the border for critical urgency.
+    property color borderColor: Skin.outer
 
     // childrenRect rather than implicitWidth/Height, because `body` is a plain
     // Item and a plain Item's implicit size is zero no matter what is inside
@@ -41,24 +39,10 @@ Item {
     implicitWidth: body.childrenRect.width + 2 * (frameBorder + padSide)
     implicitHeight: body.childrenRect.height + 2 * frameBorder + padTop + padBottom
 
-    // box-shadow 2: 0 10px 0 5px rgba(0,0,0,0.5)
-    Rectangle {
-        x: -root.spread
-        y: -root.spread + root.dropOffset
-        width: root.width + 2 * root.spread
-        height: root.height + 2 * root.spread
-        radius: Skin.radius
-        color: "#80000000"
-    }
-
-    // box-shadow 1: 0 0 0 5px <shadow>
-    Rectangle {
-        x: -root.spread
-        y: -root.spread
-        width: root.width + 2 * root.spread
-        height: root.height + 2 * root.spread
-        radius: Skin.radius
-        color: Skin.shadow
+    // Soft shadows only around window borders (design decision 2026-08-20);
+    // the hard halo + hard drop this replaced live in git history.
+    SoftShadow {
+        anchors.fill: parent
     }
 
     Rectangle {
@@ -66,7 +50,7 @@ Item {
         color: Skin.window
         radius: Skin.radius
         border.width: root.frameBorder
-        border.color: Skin.outer
+        border.color: root.borderColor
     }
 
     Item {
@@ -80,25 +64,17 @@ Item {
         height: childrenRect.height
     }
 
-    // Title tab: top -19px, left 22px, filled in `outer` with `window` text,
-    // and its own 5px shadow ring.
+    // Title tab: left 22px, sitting flush ON the frame's top edge like a
+    // folder tab -- nothing pokes down past the border (user call,
+    // 2026-08-20). Its hard shadow ring went with the halo.
     Item {
         visible: root.title !== ""
         x: 22
-        y: -19
+        y: -height
         implicitWidth: tabText.implicitWidth + 2 * 12
         implicitHeight: tabText.implicitHeight + 2 * 5
         width: implicitWidth
         height: implicitHeight
-
-        Rectangle {
-            x: -root.spread
-            y: -root.spread
-            width: parent.width + 2 * root.spread
-            height: parent.height + 2 * root.spread
-            radius: Skin.radius
-            color: Skin.shadow
-        }
 
         Rectangle {
             anchors.fill: parent

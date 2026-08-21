@@ -15,17 +15,21 @@
 //
 // Sprites are personal-use art in the gitignored assets/ folder:
 //
-//   assets/ally-front.png   the machine's creature, shown at rest
-//   assets/ally-back.gif    animated battle view. Plays ONLY while the
-//                           focused workspace is bare AND the machine is on
-//                           wall power -- an animation nobody can see, or one
+//   assets/ally-back.gif    the machine's creature, always the wallpaper
+//                           sprite (paused frame when covered or on
+//                           battery). Plays ONLY while the focused
+//                           workspace is bare AND the machine is on wall
+//                           power -- an animation nobody can see, or one
 //                           that spends battery, is exactly the wakeup this
 //                           shell exists to avoid.
+//   assets/ally-front.png   still fallback if the gif is missing; also the
+//                           details-menu portrait.
 //
 // Missing files degrade to the design's dashed placeholder slots.
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 
@@ -45,14 +49,17 @@ PanelWindow {
     WlrLayershell.namespace: "rpg-field"
 
     // Bare desktop: no window on the focused workspace. Event-driven from
-    // the compositor.
+    // the compositor. This must read the toplevel's `workspace` property,
+    // not lastIpcObject.workspace: lastIpcObject only updates on a full
+    // client refetch, so SUPER+SHIFT+number (movetoworkspace) left the old
+    // workspace id behind and the animations kept judging stale data.
     readonly property bool bare: {
         const ws = Hyprland.focusedMonitor && Hyprland.focusedMonitor.activeWorkspace
             ? Hyprland.focusedMonitor.activeWorkspace.id : -1;
         const tops = Hyprland.toplevels.values;
         for (let i = 0; i < tops.length; i++) {
-            const ipc = tops[i].lastIpcObject;
-            if (ipc && ipc.workspace && ipc.workspace.id === ws) return false;
+            const tws = tops[i].workspace;
+            if (tws && tws.id === ws) return false;
         }
         return true;
     }
@@ -63,6 +70,24 @@ PanelWindow {
     readonly property int wsId: Hyprland.focusedMonitor && Hyprland.focusedMonitor.activeWorkspace
         ? Hyprland.focusedMonitor.activeWorkspace.id : 1
     readonly property int route: ((wsId - 1) % 10 + 10) % 10 + 1
+
+    // The opponent's sprite is random: any foe-<n>.gif in assets (Showdown
+    // gen5ani, same style as ally-back.gif), counted once at startup. Each
+    // route keeps its own opponent for the session (seeded per boot), so
+    // switching workspaces changes the encounter without the sprite
+    // rerolling on every switch.
+    property int foeSpriteCount: 0
+    readonly property int foeSeed: Math.floor(Math.random() * 997)
+    readonly property int foePick: foeSpriteCount > 0
+        ? ((route * 31 + foeSeed) % foeSpriteCount) + 1 : 0
+
+    Process {
+        command: ["sh", "-c", "ls " + assetDir + "foe-*.gif 2>/dev/null | wc -l"]
+        running: true
+        stdout: StdioCollector {
+            onStreamFinished: wall.foeSpriteCount = parseInt(text.trim(), 10) || 0
+        }
+    }
 
     // ---------------------------------------------------------------- field
 
@@ -93,13 +118,10 @@ PanelWindow {
         border.color: Skin.inner
         visible: SysState.foe !== null
 
-        // hard drop shadow 0 6px 0 0 shadow
-        Rectangle {
+        // soft drop shadow (soft-shadows-only decision, 2026-08-20)
+        SoftShadow {
             z: -1
-            y: 6
-            width: parent.width
-            height: parent.height
-            color: Skin.shadow
+            anchors.fill: parent
         }
 
         Column {
@@ -203,13 +225,21 @@ PanelWindow {
                 visible: !foeSprite.visible
             }
 
-            Image {
+            AnimatedImage {
                 id: foeSprite
                 anchors.fill: parent
-                source: wall.assetDir + "foe-front.png"
+                // Empty until the count lands -- pointing at a file that may
+                // not exist logged a warning every startup.
+                source: wall.foePick > 0
+                    ? wall.assetDir + "foe-" + wall.foePick + ".gif" : ""
                 fillMode: Image.PreserveAspectFit
                 smooth: false
-                visible: status === Image.Ready
+                // Same battery rule as the ally's animation: it plays only
+                // when someone can see it and the wire is paying for it.
+                // Paused, it still shows a frame.
+                playing: wall.bare && !SysState.onBattery
+                         && status === AnimatedImage.Ready
+                visible: status === AnimatedImage.Ready
                 asynchronous: true
             }
         }
@@ -220,12 +250,15 @@ PanelWindow {
 
     Column {
         x: 78
-        y: parent.height - 135 - 178
+        // 240, up from the design's 178: the sprites read too small against
+        // the full-panel field (user request 2026-08-21). Bottom edge stays
+        // where the 178 slot put it.
+        y: parent.height - 135 - 240
 
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 178
-            height: 178
+            width: 240
+            height: 240
 
             DashedSlot {
                 anchors.fill: parent
@@ -249,11 +282,14 @@ PanelWindow {
                 source: wall.assetDir + "ally-back.gif"
                 fillMode: Image.PreserveAspectFit
                 smooth: false
-                // Bare desktop, on the wire, and actually loaded -- otherwise
-                // this item does not even paint.
-                readonly property bool wanted: wall.bare && !SysState.onBattery
-                playing: wanted && status === AnimatedImage.Ready
-                visible: wanted && status === AnimatedImage.Ready
+                // Same rule as the foe: the gif is the sprite whenever it
+                // loads -- covered or on battery it holds a paused frame
+                // rather than swapping to the front sprite (user request
+                // 2026-08-20). It only PLAYS when someone can see it and
+                // the wire is paying for it.
+                playing: wall.bare && !SysState.onBattery
+                         && status === AnimatedImage.Ready
+                visible: status === AnimatedImage.Ready
                 asynchronous: true
             }
         }
@@ -263,6 +299,7 @@ PanelWindow {
     // ---------------------------------------------------------------- ally plate (bottom right)
 
     Rectangle {
+        id: allyPlate
         x: parent.width - 26 - 400
         y: parent.height - 34 - height
         width: 400
@@ -271,12 +308,9 @@ PanelWindow {
         border.width: 4
         border.color: Skin.inner
 
-        Rectangle {
+        SoftShadow {
             z: -1
-            y: 6
-            width: parent.width
-            height: parent.height
-            color: Skin.shadow
+            anchors.fill: parent
         }
 
         Column {
@@ -333,7 +367,7 @@ PanelWindow {
                     id: allyLv
                     anchors.right: parent.right
                     anchors.baseline: allyName.baseline
-                    text: "LV " + Skin.level
+                    text: "LV " + SysState.level
                     color: Skin.dim
                     font.family: "Silkscreen"
                     font.pixelSize: 10
@@ -417,10 +451,12 @@ PanelWindow {
         }
     }
 
-    // accent slash above the ally plate
+    // accent slash above the ally plate: anchored to the plate's actual top
+    // rather than a fixed offset, which floated it too high above the
+    // nameplate (user request 2026-08-21). 6px gap, same as the foe slash.
     Rectangle {
         x: parent.width - 42 - 230
-        y: parent.height - 156
+        y: allyPlate.y - 11
         width: 230
         height: 5
         color: Skin.accent

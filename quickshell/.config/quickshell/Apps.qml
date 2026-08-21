@@ -180,10 +180,11 @@ Singleton {
 
     // ---------------------------------------------------------------- live figures
 
-    // Resident set size per process name, in kilobytes, summed across every
-    // process sharing a name -- which is what makes the browser figure mean
-    // anything, since it is thirty processes.
+    // Resident set size (kilobytes) and CPU (percent) per process name,
+    // summed across every process sharing a name -- which is what makes the
+    // browser figure mean anything, since it is thirty processes.
     property var memByName: ({})
+    property var cpuByName: ({})
 
     // Total RAM, so the ten blocks measure something absolute rather than
     // being scaled against whichever app happens to be largest.
@@ -202,20 +203,24 @@ Singleton {
 
     Process {
         id: ps
-        command: ["ps", "-eo", "comm=,rss="]
+        command: ["ps", "-eo", "comm=,pcpu=,rss="]
         stdout: StdioCollector {
             onStreamFinished: {
-                const totals = {};
+                const mem = {};
+                const cpu = {};
                 const lines = text.split("\n");
                 for (let i = 0; i < lines.length; i++) {
                     const parts = lines[i].trim().split(/\s+/);
-                    if (parts.length < 2) continue;
-                    const name = parts[0].toLowerCase();
-                    const rss = parseInt(parts[1], 10);
+                    if (parts.length < 3) continue;
+                    const rss = parseInt(parts[parts.length - 1], 10);
+                    const pct = parseFloat(parts[parts.length - 2]);
+                    const name = parts.slice(0, parts.length - 2).join(" ").toLowerCase();
                     if (isNaN(rss)) continue;
-                    totals[name] = (totals[name] || 0) + rss;
+                    mem[name] = (mem[name] || 0) + rss;
+                    cpu[name] = (cpu[name] || 0) + (isNaN(pct) ? 0 : pct);
                 }
-                root.memByName = totals;
+                root.memByName = mem;
+                root.cpuByName = cpu;
             }
         }
     }
@@ -301,14 +306,31 @@ Singleton {
         });
     }
 
-    // PP for a move: the machine's RAM not spent on this app, out of its
-    // total in whole GB. The total is an IV -- hardware, fixed at birth --
-    // which is what makes the denominator mean something. A move that is not
-    // running has full PP. The design left PP unmapped; this is the mapping.
+    // PP for a move: how hard the move is being used RIGHT NOW. 20 PP when
+    // the app idles, draining with its CPU use -- flat out on one core costs
+    // all 20. Two earlier RAM-based mappings both read as fake (whole-GB
+    // granularity pinned everything at full; share-of-RAM barely moved), and
+    // "using the move spends PP" is the one reading that matches the games:
+    // it drains while the app works and refills when it rests.
+    function ppForCpu(pct) {
+        const max = 20;
+        const spent = Math.round(Math.min(1, pct / 100) * max);
+        return "PP " + (max - spent) + "/" + max;
+    }
+
+    function cpuPctFor(match) {
+        if (!match) return 0;
+        const key = match.slice(0, 15);
+        const names = Object.keys(root.cpuByName);
+        let total = 0;
+        for (let i = 0; i < names.length; i++) {
+            if (nameMatches(names[i], key)) total += root.cpuByName[names[i]];
+        }
+        return Math.min(100, total);
+    }
+
     function ppFor(match) {
-        const max = Math.round(root.totalMemKb / 1024 / 1024);
-        const spent = Math.ceil(memKbFor(match) / 1024 / 1024);
-        return "PP " + Math.max(0, max - spent) + "/" + max;
+        return ppForCpu(cpuPctFor(match));
     }
 
     // Window count from the compositor. Event-driven, so this is free.

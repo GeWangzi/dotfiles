@@ -44,6 +44,29 @@ PanelWindow {
         }
     ]
 
+    // Reachable only through `qs ipc call power confirm RESTART` (the
+    // details menu's SESSION row): not on the grid, but it confirms and
+    // runs through the same flow.
+    readonly property var extraActions: [
+        {
+            name: "RESTART", key: "", danger: false, confirm: true,
+            note: "", run: ["systemctl", "reboot"]
+        }
+    ]
+
+    // Open straight onto the confirm line for a named action. Unknown
+    // names leave the plain grid up.
+    function openConfirm(name) {
+        const all = actions.concat(extraActions);
+        for (let i = 0; i < all.length; i++) {
+            if (all[i].name === name && all[i].confirm) {
+                confirming = all[i];
+                confirmYes = false;
+                return;
+            }
+        }
+    }
+
     anchors {
         top: true
         bottom: true
@@ -80,8 +103,16 @@ PanelWindow {
         anchors.fill: parent
         focus: true
 
+        // Dismiss only on a click OUTSIDE the frame -- the empty TapHandler
+        // on the frame never actually swallowed taps (no exclusive grab), so
+        // clicking a cell both activated it and closed the menu.
         TapHandler {
-            onTapped: win.dismissed()
+            onTapped: eventPoint => {
+                const p = powerFrame.mapFromItem(keys,
+                    eventPoint.position.x, eventPoint.position.y);
+                if (p.x < 0 || p.y < 0 || p.x > powerFrame.width || p.y > powerFrame.height)
+                    win.dismissed();
+            }
         }
 
         Keys.onPressed: event => {
@@ -120,6 +151,7 @@ PanelWindow {
         }
 
         Frame {
+            id: powerFrame
             width: 640
             anchors.centerIn: parent
             title: Skin.ballWord
@@ -127,10 +159,6 @@ PanelWindow {
             padTop: 24
             padSide: 18
             padBottom: 18
-
-            TapHandler {
-                onTapped: {}
-            }
 
             Column {
                 width: parent.width
@@ -185,8 +213,13 @@ PanelWindow {
                             height: 96
                             color: Skin.cell
                             border.width: 3
-                            border.color: modelData.danger ? Skin.critical
-                                : active ? Skin.outer : Skin.inner
+                            // Danger reads in the red name; the border only
+                            // goes red when the cell is highlighted, like the
+                            // YES button below -- a permanently red border
+                            // meant SHUT DOWN never showed selection at all.
+                            border.color: active
+                                ? (modelData.danger ? Skin.critical : Skin.outer)
+                                : Skin.inner
 
                             Column {
                                 x: 14
@@ -250,6 +283,8 @@ PanelWindow {
                             text: win.confirming
                                 ? (win.confirming.name === "SHUT DOWN"
                                     ? "Shut down " + Skin.species + "? Everything running is released."
+                                    : win.confirming.name === "RESTART"
+                                    ? "Restart " + Skin.species + "? Everything is released, then it comes back."
                                     : "End the session? Every move loses its PP.")
                                 : ""
                             color: Skin.text

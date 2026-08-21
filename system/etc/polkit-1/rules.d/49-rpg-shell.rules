@@ -1,0 +1,18 @@
+// Timezone changes without a password prompt, for the desktop shell.
+//
+// The details menu (TRAIN -> TIMEZONE) runs `timedatectl set-timezone`.
+// systemd's default policy for that action is auth_admin_keep even for
+// active local sessions, so polkit raises an authentication dialog -- and
+// that dialog (hyprpolkitagent, a regular window) opens BEHIND the menu,
+// which draws on the layer-shell Overlay layer that no regular window can
+// stack above. The menu appears to silently do nothing.
+//
+// Scope is deliberately narrow: exactly this one action, and only for an
+// active, local, wheel-group session -- the same person who could run
+// `sudo timedatectl` anyway, minus the typing. Nothing else is loosened.
+polkit.addRule(function (action, subject) {
+    if (action.id == "org.freedesktop.timedate1.set-timezone" &&
+        subject.isInGroup("wheel") && subject.local && subject.active) {
+        return polkit.Result.YES;
+    }
+});

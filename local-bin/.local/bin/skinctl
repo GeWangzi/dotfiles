@@ -484,7 +484,6 @@ def render_kitty(skin: Skin) -> str:
 TARGETS = [
     (HOME / ".config" / "hypr" / "skin.conf", render_hyprlang),
     (HOME / ".config" / "waybar" / "skin.css", render_gtk_css),
-    (HOME / ".config" / "swaync" / "skin.css", render_gtk_css),
     (HOME / ".config" / "wofi" / "style.css", render_wofi),
     (HOME / ".config" / "kitty" / "skin.conf", render_kitty),
     (STATE_DIR / "skin.lua", render_lua),
@@ -547,12 +546,6 @@ def reload_consumers() -> list[str]:
             ["pkill", "-0", "-x", "waybar"], capture_output=True).returncode == 0:
         subprocess.run(["pkill", "-SIGUSR2", "-x", "waybar"], check=False)
         done.append("waybar")
-
-    if shutil.which("swaync-client") and subprocess.run(
-            ["pkill", "-0", "-x", "swaync"], capture_output=True).returncode == 0:
-        subprocess.run(["swaync-client", "-rs"], check=False,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        done.append("swaync")
 
     if shutil.which("pkill") and subprocess.run(
             ["pkill", "-0", "-x", "kitty"], capture_output=True).returncode == 0:

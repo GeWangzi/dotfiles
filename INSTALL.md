@@ -74,7 +74,7 @@ under `$HOME`, so `stow -t ~ waybar` links `waybar/.config/waybar/*` into
 ```bash
 cd ~/dotfiles
 stow -t ~ backgrounds chrome ember fontconfig fonts hyprland hyprlock hyprmocha \
-          hyprpaper kitty local-bin quickshell skins spotify starship swaync \
+          hyprpaper kitty local-bin quickshell skins spotify starship \
           systemd-user tmux waybar wireplumber zshrc
 chsh -s /usr/bin/zsh
 fc-cache -f
@@ -95,7 +95,7 @@ and DotGothic16, which nothing can see until the cache is rebuilt. README's
 *Theme* section has the details.
 
 `skinctl generate` is not optional either. The Quickshell shell reads
-`skin.json`, kitty includes `skin.conf`, swaync imports `skin.css`, the
+`skin.json`, kitty includes `skin.conf`, the
 fallback hyprlock sources the hyprlang `skin.conf` and wofi reads a generated
 `style.css` — none of which exist until skinctl has run once. The waybar and
 hyprpaper packages are stowed for reverting but nothing starts them: the
@@ -170,7 +170,7 @@ sudo systemctl enable sing-box        # only after step 7
 User level:
 
 ```bash
-systemctl --user enable hyprpolkitagent hyprsunset swaync lowbattery.timer
+systemctl --user enable hyprpolkitagent hyprsunset lowbattery.timer
 systemctl --user enable wireplumber pipewire-pulse
 ```
 

@@ -42,15 +42,29 @@ ShellRoot {
         target: "launcher"
 
         function toggle(): void {
+            launcher.openAs("apps");
             root.launcherOpen = !root.launcherOpen;
         }
 
         function open(): void {
+            launcher.openAs("apps");
             root.launcherOpen = true;
         }
 
         function close(): void {
             root.launcherOpen = false;
+        }
+
+        // The list modes from turn 25d/25e ride the same surface: the
+        // clipboard history (SUPER + V) and the glyph picker (SUPER + G).
+        function clipboard(): void {
+            launcher.openAs("clip");
+            root.launcherOpen = true;
+        }
+
+        function glyphs(): void {
+            launcher.openAs("glyphs");
+            root.launcherOpen = true;
         }
     }
 
@@ -95,6 +109,38 @@ ShellRoot {
         }
     }
 
+    property bool notifHistoryOpen: false
+
+    IpcHandler {
+        target: "notifs"
+
+        function history(): void {
+            root.notifHistoryOpen = !root.notifHistoryOpen;
+        }
+
+        function dnd(): void {
+            Notifs.toggleDnd();
+        }
+
+        function dismiss(): void {
+            Notifs.dismissAll();
+        }
+    }
+
+    property bool connectOpen: false
+
+    IpcHandler {
+        target: "connect"
+
+        function toggle(): void {
+            root.connectOpen = !root.connectOpen;
+        }
+
+        function close(): void {
+            root.connectOpen = false;
+        }
+    }
+
     property bool powerOpen: false
 
     IpcHandler {
@@ -107,9 +153,18 @@ ShellRoot {
         function close(): void {
             root.powerOpen = false;
         }
+
+        // The details menu's SESSION rows land here: open straight onto
+        // the red confirm line for one named action (RESTART is not on the
+        // menu's grid at all, so opening the plain menu would dead-end).
+        function confirm(name: string): void {
+            root.powerOpen = true;
+            powerMenu.openConfirm(name);
+        }
     }
 
     Launcher {
+        id: launcher
         visible: root.launcherOpen
         onDismissed: root.launcherOpen = false
     }
@@ -126,6 +181,7 @@ ShellRoot {
 
     // The power menu from turn 19a (SUPER + ESC).
     PowerMenu {
+        id: powerMenu
         visible: root.powerOpen
         onDismissed: root.powerOpen = false
     }
@@ -134,5 +190,23 @@ ShellRoot {
     DetailsMenu {
         visible: root.detailsOpen
         onDismissed: root.detailsOpen = false
+    }
+
+    // Notification toasts from turn 25a. Always alive; shows itself while
+    // Notifs presents something. The daemon itself is the Notifs singleton.
+    Toasts {}
+
+    // The BATTLE LOG from turn 25c (SUPER + N).
+    NotifHistory {
+        visible: root.notifHistoryOpen
+        onDismissed: root.notifHistoryOpen = false
+    }
+
+    // The CONNECT panel from turns 25f-25j (SUPER + C). requestOpen is the
+    // TRY AGAIN path back in from an outcome toast.
+    Connect {
+        visible: root.connectOpen
+        onDismissed: root.connectOpen = false
+        onRequestOpen: root.connectOpen = true
     }
 }

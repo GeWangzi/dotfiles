@@ -1,0 +1,8 @@
+lvl starts at 50, increases by 1 when xp resets (1 day)
+pp is goofy and unintuitive, think of some better uses
+timezone needs to include a chicago entry
+control panel disappears on any click which is annoying
+checkerboard can still be seen on gengar sprite at edges, also the gengar sprite itself needs to be recolored to match the theme
+enemy sprite should be same as the gengar back sprite (gen 5 animated). download from pokemon showdown
+just give windows a simple border, and make it not have gaps.
+what does Super Shift R do?

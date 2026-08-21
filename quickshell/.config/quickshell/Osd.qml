@@ -33,10 +33,10 @@ PanelWindow {
 
     anchors.bottom: true
     margins.bottom: 64
-    // content + (20px pad + 5px border + 5px halo) each side; 12px pad
-    // vertically.
-    implicitWidth: content.implicitWidth + 60
-    implicitHeight: content.implicitHeight + 44
+    // content + (20px pad + 5px border) each side + 12px of soft shadow;
+    // 8px above and 18px below for the shadow's downward offset.
+    implicitWidth: content.implicitWidth + 74
+    implicitHeight: content.implicitHeight + 60
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
 
@@ -106,23 +106,19 @@ PanelWindow {
         anchors.fill: parent
         opacity: osd.opacities[Math.min(osd.frame, osd.opacities.length - 1)]
 
-        // 0 0 0 5px shadow halo, then the framed window.
+        // Soft shadow, then the framed window (soft-shadows-only decision).
         Rectangle {
-            x: 5
-            y: 5
-            width: parent.width - 10
-            height: parent.height - 10
+            x: 12
+            y: 8
+            width: parent.width - 24
+            height: parent.height - 26
             color: Skin.window
             border.width: 5
             border.color: Skin.outer
 
-            Rectangle {
+            SoftShadow {
                 z: -1
-                x: -5
-                y: -5
-                width: parent.width + 10
-                height: parent.height + 10
-                color: Skin.shadow
+                anchors.fill: parent
             }
 
             Column {

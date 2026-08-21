@@ -1,8 +1,9 @@
 // The status bar, from turn 13b of the creature-shell handoff: a 34px HP/PP
 // header, not a tray.
 //
-//   creature name, LV, HP bar + figure, status chips (only when the
-//   condition is real), then wifi, volume and the time.
+//   creature name, HP bar + figure, status chips (only when the condition
+//   is real), then wifi, volume and the time. LV lives on the wallpaper
+//   plate and the menus, not here (user request 2026-08-20).
 //
 //   The design's in-combat foe segment (`VS <FOE>`) was built and removed at
 //   the user's request (2026-08-19) -- the bar holds one state. The foe
@@ -55,15 +56,6 @@ PanelWindow {
                 color: Skin.text
                 font.family: "Silkscreen"
                 font.pixelSize: 12
-            }
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: "LV " + Skin.level
-                color: Skin.dim
-                font.family: "Silkscreen"
-                font.pixelSize: 10
-                font.letterSpacing: 10 * 0.14
             }
 
             HpBar {
