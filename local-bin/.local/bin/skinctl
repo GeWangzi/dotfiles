@@ -20,6 +20,8 @@ repository, and none of them should be edited by hand):
     ~/.config/hypr/skin.conf         hyprlang $vars, sourced by hyprlock.conf
     ~/.config/waybar/skin.css        GTK @define-color, imported by waybar
     ~/.config/wofi/style.css         full stylesheet; wofi cannot @import
+    ~/.config/gtk-3.0/gtk.css        GTK application theming, via adw-gtk3-dark
+    ~/.config/gtk-4.0/gtk.css        the same stylesheet, for libadwaita apps
     ~/.local/state/skins/skin.lua    Lua table, read by hyprland.lua
     ~/.local/state/skins/skin.json   everything, for the shell surfaces
     ~/.local/state/skins/active      the active slug, so the choice survives logout
@@ -327,6 +329,112 @@ def render_gtk_css(skin: Skin) -> str:
     return "\n".join(out)
 
 
+# How libadwaita's named colours are built from the design tokens. GTK4 apps
+# read these directly; GTK3 apps read them through `adw-gtk3-dark`, which is
+# the reason that theme is installed rather than stock Adwaita -- Adwaita's
+# GTK3 stylesheet carries its colours as literals compiled out of SCSS, so
+# redefining a name reaches a handful of widgets and leaves the rest of every
+# file dialog grey.
+#
+# The mapping follows the shell's own grammar: `window` is a pane, `cell` is
+# anything that scrolls its own content, `strip` is chrome, `inner` is the
+# keyline, and the darkest text sits on an accent fill rather than white,
+# because `accent` is a light colour in every skin.
+ADW_FROM_TOKEN = {
+    "window_bg_color": "window",
+    "window_fg_color": "text",
+    "view_bg_color": "cell",
+    "view_fg_color": "text",
+    "headerbar_bg_color": "strip",
+    "headerbar_fg_color": "text",
+    "headerbar_border_color": "inner",
+    "headerbar_backdrop_color": "bg",
+    "headerbar_shade_color": "shadow",
+    "sidebar_bg_color": "strip",
+    "sidebar_fg_color": "body",
+    "sidebar_backdrop_color": "bg",
+    "sidebar_shade_color": "shadow",
+    "secondary_sidebar_bg_color": "strip",
+    "secondary_sidebar_fg_color": "body",
+    "secondary_sidebar_backdrop_color": "bg",
+    "secondary_sidebar_shade_color": "shadow",
+    "card_bg_color": "cell",
+    "card_fg_color": "text",
+    "card_shade_color": "shadow",
+    "dialog_bg_color": "window",
+    "dialog_fg_color": "text",
+    "popover_bg_color": "cell",
+    "popover_fg_color": "text",
+    "popover_shade_color": "shadow",
+    "thumbnail_bg_color": "cell",
+    "thumbnail_fg_color": "text",
+    "shade_color": "shadow",
+    "scrollbar_outline_color": "inner",
+    "accent_bg_color": "accent",
+    "accent_color": "accent",
+    "accent_fg_color": "bg",
+}
+
+# The status roles keep the fixed thresholds, not skin colours -- same rule as
+# waybar's critical block. `*_fg_color` is the darkest background so that text
+# on a filled warning stays legible.
+ADW_FROM_THRESHOLD = {
+    "destructive_bg_color": "critical",
+    "destructive_color": "critical",
+    "error_bg_color": "critical",
+    "error_color": "critical",
+    "warning_bg_color": "warn",
+    "warning_color": "warn",
+    "success_bg_color": "ok",
+    "success_color": "ok",
+}
+ADW_FG_ON_FILL = ["destructive_fg_color", "error_fg_color",
+                  "warning_fg_color", "success_fg_color"]
+
+# The GTK3 names that predate libadwaita. adw-gtk3 defines these itself, but
+# a GTK3 app that hardcodes one (and several do) would otherwise pick up the
+# stock value, so they are restated here.
+GTK3_FROM_TOKEN = {
+    "theme_bg_color": "window",
+    "theme_fg_color": "text",
+    "theme_base_color": "cell",
+    "theme_text_color": "text",
+    "theme_selected_bg_color": "accent",
+    "theme_selected_fg_color": "bg",
+    "insensitive_bg_color": "window",
+    "insensitive_fg_color": "dim",
+    "insensitive_base_color": "cell",
+    "borders": "inner",
+    "unfocused_borders": "inner",
+}
+
+
+def render_gtk_app_css(skin: Skin) -> str:
+    """The stylesheet GTK applications read, written to both toolkits'
+    config directories. Design tokens, then the libadwaita and legacy GTK3
+    names built from them, then the shared rules file."""
+    rules = TEMPLATES / "gtk.rules.css"
+    if not rules.exists():
+        die(f"{rules} not found -- is the `skins` stow package installed?")
+
+    names = {}
+    for name, token in ADW_FROM_TOKEN.items():
+        names[name] = skin.tokens[token]
+    for name, threshold in ADW_FROM_THRESHOLD.items():
+        names[name] = skin.thresholds[threshold]
+    for name in ADW_FG_ON_FILL:
+        names[name] = skin.tokens["bg"]
+    for name, token in GTK3_FROM_TOKEN.items():
+        names[name] = skin.tokens[token]
+
+    width = max(len(n) for n in names)
+    block = ["/* libadwaita and legacy GTK3 names, built from the tokens. */"]
+    block += [f"@define-color {n.ljust(width)} {v};" for n, v in names.items()]
+    block += ["", ""]
+
+    return render_gtk_css(skin) + "\n".join(block) + rules.read_text()
+
+
 def render_wofi(skin: Skin) -> str:
     rules = TEMPLATES / "wofi.rules.css"
     if not rules.exists():
@@ -485,6 +593,8 @@ TARGETS = [
     (HOME / ".config" / "hypr" / "skin.conf", render_hyprlang),
     (HOME / ".config" / "waybar" / "skin.css", render_gtk_css),
     (HOME / ".config" / "wofi" / "style.css", render_wofi),
+    (HOME / ".config" / "gtk-3.0" / "gtk.css", render_gtk_app_css),
+    (HOME / ".config" / "gtk-4.0" / "gtk.css", render_gtk_app_css),
     (HOME / ".config" / "kitty" / "skin.conf", render_kitty),
     (STATE_DIR / "skin.lua", render_lua),
     (STATE_DIR / "skin.json", render_json),

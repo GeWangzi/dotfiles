@@ -1,0 +1,275 @@
+/* GTK application rules. Not a stylesheet on its own -- skinctl concatenates
+   the active skin's colour blocks in front of this file and writes the result
+   to BOTH ~/.config/gtk-3.0/gtk.css and ~/.config/gtk-4.0/gtk.css, which are
+   generated files rather than symlinks into this repository. Edit the rules
+   here; never edit the generated copies.
+
+   One file serves both toolkits because the GTK3 side runs `adw-gtk3-dark`,
+   which reads the same libadwaita colour names that GTK4 does. That is the
+   whole reason the package is installed: without it, Adwaita's GTK3 theme
+   carries its colours as literals compiled out of SCSS, redefining
+   @define-color reaches only a handful of widgets, and the rest of every file
+   dialog stays grey.
+
+   Both toolkits reload the user stylesheet when it changes on disk, so
+   `skinctl set` recolours already-open GTK windows without restarting them.
+   Selectors one toolkit does not know are ignored by it; a property neither
+   knows produces a parser warning on stderr and nothing worse, which is why a
+   few GTK3-only and GTK4-only rules can live side by side below.
+
+   These rules use the design tokens (@window, @cell, @accent, ...) rather
+   than the legacy Ember names -- they were written after the token set. */
+
+/* Square everything. The design has no rounded corners anywhere, and going
+   through `*` is what catches the widgets whose radius is set in a theme rule
+   too specific to name here. Only corners are affected; nothing else on a
+   widget reads border-radius. */
+* {
+    border-radius: 0;
+}
+
+/* Chrome. Header bars read as the bar does -- the darkest strip, ruled off
+   from the pane below with the same 2px inner keyline the shell uses. */
+headerbar,
+.titlebar {
+    background-color: @strip;
+    background-image: none;
+    color: @text;
+    border-bottom: 2px solid @inner;
+    box-shadow: none;
+}
+
+headerbar:backdrop,
+.titlebar:backdrop {
+    background-color: @bg;
+    color: @dim;
+}
+
+/* Sidebars and their GTK4 spellings. */
+.sidebar,
+placessidebar,
+stacksidebar,
+navigation-sidebar,
+.navigation-sidebar {
+    background-color: @strip;
+    color: @body;
+    border-right: 2px solid @inner;
+}
+
+/* Content panes vs. text/list views: the pane is the window colour, anything
+   that scrolls its own content sits a step darker, same as the shell's cells. */
+window,
+dialog,
+.background {
+    background-color: @window;
+    color: @text;
+}
+
+textview,
+textview text,
+treeview.view,
+columnview,
+listview,
+iconview,
+gridview,
+entry,
+spinbutton {
+    background-color: @cell;
+    color: @text;
+}
+
+/* Selection is a filled accent block with the darkest text on it, never a
+   tint -- the same grammar as a highlighted row in the launcher. */
+*:selected,
+*:selected:focus,
+row:selected,
+treeview.view:selected,
+textview text selection,
+label selection,
+entry selection {
+    background-color: @accent;
+    color: @bg;
+}
+
+/* Controls. Flat fills, 2px keylines, accent only on the active state. */
+button,
+entry,
+spinbutton,
+combobox button,
+.linked > button {
+    background-color: @cell;
+    background-image: none;
+    color: @text;
+    border: 2px solid @inner;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+button:hover {
+    background-color: @inner;
+    color: @text;
+}
+
+button:active,
+button:checked {
+    background-color: @accent;
+    color: @bg;
+    border-color: @accent;
+}
+
+button.suggested-action {
+    background-color: @accent;
+    color: @bg;
+    border-color: @accent;
+}
+
+button.destructive-action {
+    background-color: @critical;
+    color: @bg;
+    border-color: @critical;
+}
+
+button:disabled,
+entry:disabled,
+label:disabled,
+*:disabled {
+    color: @dim;
+}
+
+entry:focus,
+entry:focus-within,
+spinbutton:focus-within {
+    border-color: @accent;
+    box-shadow: none;
+}
+
+/* Keyboard focus is a hard accent ring, not the theme's soft glow. */
+*:focus-visible,
+*:focus:focus-visible {
+    outline: 2px solid @accent;
+    outline-offset: -2px;
+}
+
+/* Menus, popovers and tooltips are cells inside the inner keyline. */
+menu,
+.menu,
+popover > contents,
+popover > arrow,
+tooltip,
+tooltip.background {
+    background-color: @cell;
+    color: @text;
+    border: 2px solid @inner;
+}
+
+menuitem:hover,
+modelbutton:hover {
+    background-color: @accent;
+    color: @bg;
+}
+
+/* Notebook/stack tabs echo the details menu's rail: the active one is a
+   filled accent tab, the rest are flat cells. */
+notebook > header {
+    background-color: @strip;
+    border-color: @inner;
+}
+
+notebook > header tab {
+    background-color: @cell;
+    color: @dim;
+    border: 2px solid transparent;
+}
+
+notebook > header tab:checked {
+    background-color: @accent;
+    color: @bg;
+}
+
+/* Scrollbars: no trough gradient, a solid accent slider. */
+scrollbar {
+    background-color: @strip;
+    border: none;
+}
+
+scrollbar slider {
+    background-color: @inner;
+    border: none;
+    min-width: 8px;
+    min-height: 8px;
+}
+
+scrollbar slider:hover {
+    background-color: @accent;
+}
+
+/* Indicators. Progress, level and switch all fill with accent; the trough is
+   the cell colour so an empty bar reads as an empty slot. */
+progressbar > trough,
+levelbar > trough,
+scale > trough,
+switch {
+    background-color: @cell;
+    border: 2px solid @inner;
+}
+
+progressbar > trough > progress,
+levelbar > trough > block.filled,
+scale > trough > highlight,
+switch:checked {
+    background-color: @accent;
+    border-color: @accent;
+}
+
+switch > slider,
+scale > trough > slider {
+    background-color: @outer;
+    border: none;
+}
+
+check,
+radio {
+    background-color: @cell;
+    border: 2px solid @inner;
+}
+
+check:checked,
+radio:checked {
+    background-color: @accent;
+    border-color: @accent;
+    color: @bg;
+}
+
+/* Status colours stay pinned to the thresholds for the same reason the bar's
+   do: a warning that changes colour with the theme is not a warning. */
+.error,
+label.error {
+    color: @critical;
+}
+
+.warning,
+label.warning {
+    color: @warn;
+}
+
+.success,
+label.success {
+    color: @ok;
+}
+
+/* Separators and frames use the one keyline colour rather than each widget's
+   own idea of a border. */
+separator,
+frame > border,
+.frame {
+    background-color: @inner;
+    border-color: @inner;
+}
+
+/* GTK4 apps that opt into libadwaita's flat window still draw a 1px shade
+   line at the top of the content area; the design has no such line. */
+.top-bar,
+banner > revealer > widget {
+    background-color: @strip;
+    color: @text;
+}

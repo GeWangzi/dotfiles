@@ -1,0 +1,45 @@
+#!/bin/sh
+# paste-to-focus -- press the paste shortcut in whatever window has focus.
+#
+# The launcher's clipboard and glyph modes (25d/25e) used to only fill the
+# clipboard and leave the pasting to the user. Pressing enter on a row now
+# means "put this here", so the shell copies and then this script sends the
+# keystroke on the copy's behalf.
+#
+# Two things have to be true before the keystroke lands, hence the wait: the
+# launcher's layer surface has to give the keyboard back (it holds an
+# exclusive grab while open, so a shortcut sent too early goes nowhere), and
+# wl-copy has to have taken ownership of the selection. 150ms covers both on
+# this machine; the caller can pass a different delay as $1.
+#
+# Terminals take CTRL+SHIFT+V, everything else CTRL+V. Sending the wrong one
+# is not harmless -- CTRL+V in a terminal is a literal-next escape.
+
+sleep "${1:-0.15}"
+
+# The window is identified by its process, not its class: a terminal started
+# with `--class` (SUPER+C's nmtui window is one) reports whatever class it was
+# given, so class matching would send CTRL+V to a shell. The pid is the one
+# thing an app cannot rename.
+win=$(hyprctl activewindow -j 2>/dev/null)
+[ -n "$win" ] || exit 0
+
+pid=$(printf '%s' "$win" | grep -m1 '"pid"' | tr -dc '0-9')
+[ -n "$pid" ] || exit 0            # nothing focused; the clipboard is set
+
+comm=$(ps -p "$pid" -o comm= 2>/dev/null)
+
+case "$comm" in
+    kitty|foot|alacritty|wezterm-gui|ghostty|xterm|urxvt|st|konsole|gnome-terminal-server)
+        mods="CTRL SHIFT" ;;
+    *)
+        mods="CTRL" ;;
+esac
+
+# The config is Lua, so `hyprctl dispatch <name> <args>` does not work from a
+# shell -- hyprctl hands the whole line to the Lua interpreter and it fails to
+# parse (the same trap as `hyprctl dispatch exec`). The dispatcher has to be
+# written as the Lua call it really is, with a named-field table.
+hyprctl dispatch \
+    "hl.dsp.send_shortcut({ mods = '$mods', key = 'V', window = 'activewindow' })" \
+    >/dev/null

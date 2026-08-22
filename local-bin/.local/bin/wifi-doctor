@@ -1,0 +1,386 @@
+#!/bin/sh
+# wifi-doctor -- find out which layer of the wifi stack is actually broken.
+#
+# Every wifi failure feels identical from a browser, but the fixes are not even
+# related. This walks the stack bottom-up and stops at the first rung that is
+# actually broken, so the answer is one layer rather than a shrug and a reboot.
+#
+#   0  rfkill / driver / interface exists
+#   1  iwd and NetworkManager running
+#   2  associated to an AP, with usable signal
+#   3  DHCP gave us an address and a default route
+#   4  gateway reachable        (LAN works)
+#   5  internet reachable       (upstream/ISP works)
+#
+# Layers 4 and 5 ping with -I so they leave through wlan0 rather than tun0.
+# Without that, sing-box's auto_route makes a dead tunnel look like dead wifi,
+# which is the single most common misdiagnosis on this laptop. Anything above
+# layer 5 is not a wifi problem and gets handed to netcheck.sh.
+#
+# On 2026-08-21 wifi "stopped working" for 1h32m and a reboot appeared to fix
+# it. wlan0 had stayed associated and held its lease the whole time; only
+# NetworkManager's connectivity state had fallen to CONNECTED_SITE. That is
+# layers 0-4 healthy and layer 5 dead: the router's uplink, nothing local. The
+# reboot fixed nothing and destroyed the live state. Hence also --log, which
+# reads that verdict back out of a previous boot's journal.
+#
+# Usage:
+#   wifi-doctor              walk the ladder against the live system
+#   wifi-doctor --log        scan this boot's journal for known failures
+#   wifi-doctor --log -1     same, but the previous boot (survives a reboot)
+#   wifi-doctor --watch      follow wifi logs live while it breaks
+#
+# Runs unprivileged and from a bare TTY, which matters because this machine has
+# no ethernet port and a text console is the only fallback when wifi is down.
+
+set -u
+
+# --- output ----------------------------------------------------------------
+
+if [ -t 1 ] && [ "${NO_COLOR:-}" = "" ]; then
+    C_OK=$(printf '\033[32m'); C_WARN=$(printf '\033[33m')
+    C_BAD=$(printf '\033[31m'); C_DIM=$(printf '\033[2m'); C_OFF=$(printf '\033[0m')
+else
+    C_OK=''; C_WARN=''; C_BAD=''; C_DIM=''; C_OFF=''
+fi
+
+ok()   { printf '%sok  %s  %s\n'   "$C_OK"   "$C_OFF" "$1"; }
+warn() { printf '%sWARN%s  %s\n'   "$C_WARN" "$C_OFF" "$1"; }
+bad()  { printf '%sFAIL%s  %s\n'   "$C_BAD"  "$C_OFF" "$1"; }
+note() { printf '        %s%s%s\n' "$C_DIM"  "$1"     "$C_OFF"; }
+head_() { printf '\n%s--- %s %s\n' "$C_DIM" "$1" "$C_OFF"; }
+
+# A failed rung ends the run. Everything above it would report garbage: a
+# gateway ping without an IP address fails for reasons that say nothing.
+die() {
+    bad "$1"
+    shift
+    printf '\n  fix, in escalating order:\n'
+    for f in "$@"; do printf '    %s\n' "$f"; done
+    printf '\n'
+    exit 1
+}
+
+# --- which interface -------------------------------------------------------
+
+# Not hardcoded to wlan0: a udev rule or a swapped card renames it, and a tool
+# that reports "no wifi" because it looked at the wrong name is worse than none.
+IFACE="${WIFI_DOCTOR_IFACE:-}"
+if [ -z "$IFACE" ]; then
+    for d in /sys/class/net/*/wireless; do
+        [ -e "$d" ] || continue
+        IFACE=$(basename "$(dirname "$d")")
+        break
+    done
+fi
+
+# --- forensic mode ---------------------------------------------------------
+
+# Known journal signatures, most decisive first. The point is that each of
+# these means something specific and actionable; "wifi broke" does not.
+scan_logs() {
+    boot="${1:-0}"
+    printf '\nreading journal for boot %s' "$boot"
+    [ "$boot" = "-1" ] && printf ' (the one before the last reboot)'
+    printf '\n'
+
+    # One read, many greps. Kernel and the three relevant units get merged and
+    # re-sorted by timestamp; journalctl cannot express that OR in a single
+    # call without -k and -u cancelling each other out into an empty set.
+    snap=$(mktemp) || exit 1
+    trap 'rm -f "$snap"' EXIT INT TERM
+    { journalctl -b "$boot" --no-pager -o short-unix -k
+      journalctl -b "$boot" --no-pager -o short-unix \
+                 -u NetworkManager -u iwd -u systemd-timesyncd
+    } 2>/dev/null | sort -n -k1,1 > "$snap"
+
+    if [ ! -s "$snap" ]; then
+        bad "no journal for boot $boot"
+        note "journalctl --list-boots     # see which boots are kept"
+        exit 1
+    fi
+
+    # A past boot ended when its journal ended. Without this the final state
+    # would be measured against the current clock and claim to still be held.
+    last_ts=$(tail -1 "$snap" | cut -d. -f1)
+
+    head_ "connectivity state timeline"
+    # This is the timeline that settles "was it my laptop or the router".
+    # CONNECTED_SITE means the LAN answered and the internet did not, so a long
+    # stretch of it is an upstream outage no local command can fix.
+    sed -n 's/^\([0-9]*\)\.[0-9]* .*NetworkManager state is now \([A-Z_]*\).*/\1 \2/p' "$snap" \
+      | awk -v ok="$C_OK" -v warn="$C_WARN" -v bad="$C_BAD" -v off="$C_OFF" -v last="$last_ts" '
+        function hms(s) { return strftime("%H:%M:%S", s) }
+        function dur(s,  h, m) { h = int(s/3600); m = int((s%3600)/60)
+                                 return (h ? h "h" m "m" : (m ? m "m" : s "s")) }
+        function flush_(now,  c, d) {
+            if (!prev) return
+            d = now - pt
+            c = (prev == "CONNECTED_GLOBAL") ? ok : (prev == "CONNECTED_SITE" ? bad : warn)
+            printf "        %s  %s%-17s%s  held %s%s\n", hms(pt), c, prev, off, dur(d), tail
+        }
+        { flush_($1); prev = $2; pt = $1 }
+        END { tail = " (until the journal ends)"; flush_(last) }'
+    printf '        %sCONNECTED_GLOBAL = working.  SITE/LOCAL = LAN up, internet down.%s\n' "$C_DIM" "$C_OFF"
+
+    head_ "failure signatures"
+    found=0
+    sig() {
+        pattern="$1"; meaning="$2"
+        hits=$(grep -cE "$pattern" "$snap")
+        [ "$hits" -eq 0 ] && return
+        found=1
+        last=$(grep -E "$pattern" "$snap" | tail -1 | cut -d. -f1)
+        printf '  %s%3dx%s  %-34s  last %s\n' "$C_WARN" "$hits" "$C_OFF" "$meaning" \
+               "$(date -d "@$last" '+%b %d %H:%M:%S' 2>/dev/null)"
+    }
+    sig 'firmware error|HW reset|hardware error|Microcode SW error' \
+        'DRIVER CRASH -- reload mt7921e'
+    sig 'state changed no lease' \
+        'DHCP got no answer from router'
+    sig "reason 'ip-config-unavailable'" \
+        'DHCP gave up after 45s'
+    sig 'Reason: 15|4-way handshake|handshake failed' \
+        'PSK rejected -- wrong password'
+    sig 'beacon loss|Connection to AP .* lost' \
+        'signal died -- range/interference'
+    sig 'deauthenticated from|deauthenticating from .*by AP' \
+        'the AP kicked us off'
+    sig 'disconnect from AP .* for new auth' \
+        'roamed between APs (breaks DHCP)'
+    sig 'Timed out waiting for reply from .*:123' \
+        'NTP timeouts -- upstream warning'
+    sig 'deauthenticating from .* by local choice' \
+        'we left (suspend, reboot, manual)'
+    [ "$found" -eq 0 ] && ok "no known failure signature in this boot"
+    printf '        %siwd "invalid HE capabilities" lines are neighbours%s\n' "$C_DIM" "$C_OFF"
+    printf '        %swith broken beacons. Cosmetic. Ignored on purpose.%s\n' "$C_DIM" "$C_OFF"
+    printf '\n  full detail:  journalctl -b %s -o short-precise -g '"'"'wlan0|NetworkManager|iwd'"'"'\n\n' "$boot"
+}
+
+# --- argument handling -----------------------------------------------------
+
+case "${1:-}" in
+    --log|-l)
+        [ -z "$IFACE" ] && { bad "no wireless interface found"; exit 1; }
+        scan_logs "${2:-0}"
+        exit 0 ;;
+    --watch|-w)
+        printf 'following wifi logs -- reproduce the failure now, Ctrl-C to stop\n\n'
+        exec journalctl -f -o short-precise -k -u NetworkManager -u iwd
+        ;;
+    --help|-h)
+        sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0 ;;
+    "") ;;
+    *)  printf 'unknown option: %s (try --help)\n' "$1" >&2; exit 2 ;;
+esac
+
+# --- layer 0: the radio exists and is not blocked --------------------------
+
+head_ "layer 0: radio"
+
+[ -n "$IFACE" ] || die "no wireless interface in /sys/class/net" \
+    "lsmod | grep mt7921            # is the driver even loaded" \
+    "sudo modprobe mt7921e" \
+    "lspci -k | grep -A3 Network    # does the card still show on the bus"
+ok "interface $IFACE present"
+
+if command -v rfkill >/dev/null 2>&1; then
+    blocked=$(rfkill list wifi 2>/dev/null | grep -c 'yes')
+    hard=$(rfkill list wifi 2>/dev/null | grep -c 'Hard blocked: yes')
+    if [ "$blocked" -gt 0 ]; then
+        if [ "$hard" -gt 0 ]; then
+            die "wifi is HARD blocked -- a physical switch or Fn key, not software" \
+                "find the wifi key on the keyboard and toggle it" \
+                "some machines need a full power-off, not a reboot, to clear it"
+        fi
+        die "wifi is soft blocked in software" "rfkill unblock wifi"
+    fi
+    ok "not rfkill blocked"
+fi
+
+state=$(cat "/sys/class/net/$IFACE/operstate" 2>/dev/null)
+if [ "$state" = "down" ]; then
+    die "$IFACE is administratively DOWN" "sudo ip link set $IFACE up"
+fi
+ok "link state $state"
+
+# The driver keeps its own error counter. A card that reset itself will still
+# happily associate afterwards, so this is worth reading even when things look
+# fine -- it is the difference between "flaky router" and "flaky card".
+if dmesg 2>/dev/null | grep -qE 'mt7921|iwlwifi' ; then
+    if dmesg 2>/dev/null | grep -qiE '(mt7921|iwlwifi).*(firmware error|HW reset|hardware error)'; then
+        warn "driver logged a firmware error or reset this boot"
+        note "this is the one case where reloading the module actually helps:"
+        note "sudo modprobe -r mt7921e && sudo modprobe mt7921e"
+    else
+        ok "no driver firmware error this boot"
+    fi
+fi
+
+# --- layer 1: the daemons ---------------------------------------------------
+
+head_ "layer 1: daemons"
+
+for unit in iwd NetworkManager; do
+    if systemctl is-active --quiet "$unit" 2>/dev/null; then
+        ok "$unit running"
+    else
+        die "$unit is not running" "sudo systemctl start $unit" \
+            "systemctl status $unit --no-pager"
+    fi
+done
+
+# wpa_supplicant and iwd both claim the card and neither wins cleanly. This
+# machine is set to iwd in conf.d, over a stale wpa_supplicant line still
+# sitting in the main NetworkManager.conf, so a both-running state is a real
+# possibility worth catching rather than a theoretical one.
+if systemctl is-active --quiet wpa_supplicant 2>/dev/null; then
+    warn "wpa_supplicant is running alongside iwd -- they fight over $IFACE"
+    note "sudo systemctl disable --now wpa_supplicant"
+fi
+
+# --- layer 2: association ---------------------------------------------------
+
+head_ "layer 2: association"
+
+link=$(iw dev "$IFACE" link 2>/dev/null)
+case "$link" in
+    *"Not connected"*|"")
+        nearby=$(iw dev "$IFACE" scan 2>/dev/null | grep -c '^BSS')
+        if [ "${nearby:-0}" -eq 0 ]; then
+            die "not associated, and the scan found no APs at all" \
+                "iw dev $IFACE scan | grep SSID     # confirm by hand" \
+                "sudo systemctl restart iwd         # supplicant may be wedged" \
+                "sudo modprobe -r mt7921e && sudo modprobe mt7921e"
+        fi
+        die "not associated to any AP (but $nearby APs are in range)" \
+            "nmcli device wifi list" \
+            "nmcli device connect $IFACE" \
+            "journalctl -u iwd -b | tail -30    # look for a rejected PSK"
+        ;;
+esac
+
+ssid=$(printf '%s' "$link" | sed -n 's/.*SSID: \(.*\)/\1/p')
+bssid=$(printf '%s' "$link" | sed -n 's/^Connected to \([0-9a-f:]*\).*/\1/p')
+freq=$(printf '%s' "$link" | sed -n 's/.*freq: \([0-9]*\).*/\1/p')
+ok "associated to '${ssid:-?}' via ${bssid:-?} on ${freq:-?} MHz"
+
+# Signal is the one number that explains "it works next to the router and not
+# in the bedroom", and it is invisible from every GUI indicator worth trusting.
+sig_dbm=$(printf '%s' "$link" | sed -n 's/.*signal: \(-\?[0-9]*\) dBm.*/\1/p')
+if [ -n "$sig_dbm" ]; then
+    if   [ "$sig_dbm" -ge -60 ]; then ok   "signal ${sig_dbm} dBm (strong)"
+    elif [ "$sig_dbm" -ge -70 ]; then ok   "signal ${sig_dbm} dBm (fine)"
+    elif [ "$sig_dbm" -ge -78 ]; then warn "signal ${sig_dbm} dBm (weak -- expect stalls and drops)"
+    else                              warn "signal ${sig_dbm} dBm (barely connected -- move closer)"
+    fi
+fi
+
+# High retries with a strong signal is the fingerprint of a congested channel
+# or a microwave-grade neighbour, not of a broken card. Without this number the
+# two are indistinguishable, and people replace hardware over it.
+retries=$(iw dev "$IFACE" station dump 2>/dev/null | sed -n 's/.*tx retries:[ \t]*\([0-9]*\).*/\1/p' | head -1)
+failed=$(iw dev "$IFACE" station dump 2>/dev/null | sed -n 's/.*tx failed:[ \t]*\([0-9]*\).*/\1/p' | head -1)
+if [ -n "${failed:-}" ] && [ "${failed:-0}" -gt 100 ]; then
+    warn "tx failed ${failed}, tx retries ${retries:-?} -- interference or a struggling AP"
+    note "try the other band: this network has APs on both 2.4 and 5 GHz"
+elif [ -n "${retries:-}" ]; then
+    ok "tx retries ${retries}, tx failed ${failed:-0}"
+fi
+
+# Powersave parks the radio between beacons and is the classic cause of "wifi
+# dies when idle and comes back the moment I ping something". Kept off on this
+# machine by wifi-powersave.conf; check it rather than assume it held.
+ps=$(iw dev "$IFACE" get power_save 2>/dev/null | sed -n 's/.*Power save: \(.*\)/\1/p')
+if [ "$ps" = "on" ]; then
+    warn "power save is ON -- known cause of idle disconnects"
+    note "expected off here; check /etc/NetworkManager/conf.d/wifi-powersave.conf"
+else
+    ok "power save off"
+fi
+
+# --- layer 3: addressing ----------------------------------------------------
+
+head_ "layer 3: address and route"
+
+addr=$(ip -4 -o addr show "$IFACE" 2>/dev/null | awk '{print $4}' | head -1)
+if [ -z "$addr" ]; then
+    die "associated but no IPv4 address -- DHCP never completed" \
+        "nmcli device reconnect $IFACE" \
+        "sudo nmcli device reapply $IFACE" \
+        "journalctl -u NetworkManager -b -g dhcp4 | tail -20" \
+        "power-cycle the router if this repeats -- its DHCP server is dropping requests"
+fi
+ok "address $addr"
+
+gw=$(ip route show default dev "$IFACE" 2>/dev/null | awk '{print $3; exit}')
+if [ -z "$gw" ]; then
+    die "have an address but no default route via $IFACE" \
+        "ip route                            # is something else holding the default" \
+        "nmcli device reconnect $IFACE"
+fi
+ok "default route via $gw"
+
+# --- layer 4: the LAN -------------------------------------------------------
+
+head_ "layer 4: LAN"
+
+# -I pins the packet to the wifi interface. Without it a sing-box tun0 default
+# route swallows the test and a dead tunnel reads as dead wifi.
+if ping -c2 -W2 -I "$IFACE" "$gw" >/dev/null 2>&1; then
+    rtt=$(ping -c3 -W2 -I "$IFACE" "$gw" 2>/dev/null | sed -n 's|.*= [0-9.]*/\([0-9.]*\)/.*|\1|p')
+    ok "gateway $gw replies (${rtt:-?} ms average)"
+else
+    die "gateway $gw does not reply -- associated to the AP but no working LAN" \
+        "nmcli device reconnect $IFACE" \
+        "sudo systemctl restart NetworkManager" \
+        "power-cycle the router" \
+        "if another device on the same network works, it is this laptop; if not, it is the router"
+fi
+
+# --- layer 5: the internet --------------------------------------------------
+
+head_ "layer 5: internet"
+
+if ping -c2 -W3 -I "$IFACE" 1.1.1.1 >/dev/null 2>&1; then
+    ok "1.1.1.1 reachable directly over $IFACE"
+else
+    # This is the 2026-08-21 failure exactly. Say plainly that no local fix
+    # applies, because the instinct at this point is to reboot, and rebooting
+    # is what wasted 90 minutes that day.
+    bad "no internet over $IFACE, though the router itself answers"
+    printf '\n'
+    printf '  Layers 0-4 are healthy. The link, the lease and the LAN all work.\n'
+    printf '  What is broken is upstream of your router: its WAN link or the ISP.\n'
+    printf '\n'
+    printf '  %sNothing on this laptop will fix it. Do not reboot -- it did not help\n' "$C_WARN"
+    printf '  on 2026-08-21 and it erases the evidence.%s\n' "$C_OFF"
+    printf '\n'
+    printf '  power-cycle the router, wait 60s, run this again\n'
+    printf '  check another device on the same wifi -- it will be broken too\n'
+    printf '  mtr 1.1.1.1        # shows which hop drops (pacman -S mtr)\n'
+    printf '\n'
+    exit 1
+fi
+
+nm_conn=$(nmcli -t -f CONNECTIVITY general 2>/dev/null)
+case "$nm_conn" in
+    full)    ok "NetworkManager connectivity check: full" ;;
+    portal)  warn "captive portal detected -- open a browser and log in" ;;
+    limited) warn "NetworkManager says limited, though the ping passed (transient, or its check host is blocked)" ;;
+    *)       warn "NetworkManager connectivity: ${nm_conn:-unknown}" ;;
+esac
+
+# --- verdict ----------------------------------------------------------------
+
+printf '\n'
+ok "wifi is healthy end to end: radio, association, lease, LAN, internet"
+printf '\n'
+printf '  If something still feels broken, it is above the wifi layer -- most\n'
+printf '  likely the sing-box tunnel, which stays "active" while passing no\n'
+printf '  traffic and so cannot be judged by systemctl. Test the path:\n'
+printf '\n'
+printf '    bash ~/.local/bin/netcheck.sh\n'
+printf '\n'

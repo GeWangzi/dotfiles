@@ -97,3 +97,22 @@ alias grep='grep --color=auto'
 # fzf is not installed yet; this stays guarded so it simply does nothing until
 # it is. Install with `pacman -S fzf`, which ships its own zsh key bindings.
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+# ---- the command block ----
+# The W4 gutter spine: a status-coloured row that closes each command block,
+# with the exit code and the duration. Hooks only, no ZLE wrapping, so it is
+# safe after the syntax highlighter. Read the file for why the spine closes the
+# block instead of opening it.
+[ -f ~/.config/zsh/rpg-spine.zsh ] && source ~/.config/zsh/rpg-spine.zsh
+
+# ---- greeting ----
+# The Battle Terminal greeting from the design handoff: the creature, the stat
+# block, HP (battery) and EXP (uptime). Last in the file so it prints below
+# anything the lines above have to say.
+#
+# COLUMNS and ZSH_VERSION are passed in rather than looked up: neither is
+# exported, so without this the script forks `tput` for the width and has no
+# way at all to name the shell version. Set RPG_GREET=0 to skip it.
+if [[ -o interactive ]] && [[ ${RPG_GREET:-1} == 1 ]] && (( $+commands[rpg-greet] )); then
+    COLUMNS=$COLUMNS RPG_SHELL="zsh $ZSH_VERSION" rpg-greet
+fi

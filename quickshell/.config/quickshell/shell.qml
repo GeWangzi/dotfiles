@@ -127,20 +127,6 @@ ShellRoot {
         }
     }
 
-    property bool connectOpen: false
-
-    IpcHandler {
-        target: "connect"
-
-        function toggle(): void {
-            root.connectOpen = !root.connectOpen;
-        }
-
-        function close(): void {
-            root.connectOpen = false;
-        }
-    }
-
     property bool powerOpen: false
 
     IpcHandler {
@@ -200,13 +186,5 @@ ShellRoot {
     NotifHistory {
         visible: root.notifHistoryOpen
         onDismissed: root.notifHistoryOpen = false
-    }
-
-    // The CONNECT panel from turns 25f-25j (SUPER + C). requestOpen is the
-    // TRY AGAIN path back in from an outcome toast.
-    Connect {
-        visible: root.connectOpen
-        onDismissed: root.connectOpen = false
-        onRequestOpen: root.connectOpen = true
     }
 }

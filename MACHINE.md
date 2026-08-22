@@ -448,6 +448,33 @@ link, then pings the gateway and 1.1.1.1 with `-I wlan0` to bypass `tun0`, then
 makes a real HTTPS request through the tunnel. Layers 0-2 passing with layer 3
 failing means `sudo systemctl restart sing-box`, not a reboot.
 
+**When it really is the network, `wifi-doctor` says which layer.** `netcheck.sh`
+answers one question — link or tunnel — and answers it well. `wifi-doctor` covers
+the six rungs below the tunnel: rfkill and driver, iwd and NetworkManager running,
+association and signal quality, the DHCP lease and default route, the gateway, and
+the internet. It stops at the first broken rung and prints the fix for that rung
+only, and like `netcheck.sh` it pings with `-I wlan0` so a dead `tun0` cannot
+masquerade as dead wifi. When all six pass it hands off to `netcheck.sh`.
+
+`wifi-doctor --log` is the half that matters after the fact, since a reboot erases
+the live state that would have explained the failure. It reads a boot's journal and
+prints the NetworkManager connectivity timeline with a duration against each state,
+plus a count of known failure signatures — DHCP getting no answer, a rejected PSK,
+beacon loss, a driver firmware reset, AP roams, NTP timeouts. `wifi-doctor --log -1`
+reads the boot before the last reboot, which is the only way to diagnose anything
+that was already "fixed" by rebooting.
+
+**Wifi that is associated but has no internet is the router, not the laptop.** On
+2026-08-21 wifi appeared dead for 1h32m and was rebooted away. `wlan0` never
+deauthenticated, never roamed and held `10.0.0.234` throughout; NetworkManager had
+simply dropped from `CONNECTED_GLOBAL` to `CONNECTED_SITE` at 10:29:08, with
+timesyncd already timing out against four NTP servers from 10:25:57. That state
+means the LAN answers and the internet does not, so it is the router's WAN or the
+ISP and no local command reaches it. `nmcli general` reports it in one line;
+`CONNECTED_SITE` or `limited` means power-cycle the router rather than the laptop.
+A DHCP failure the same night at 03:40:27 — `no lease` after a roam, then
+`ip-config-unavailable` — points at the same router.
+
 **sing-box loses a race with the uplink on every boot.** Journal signature, unchanged
 across every boot checked between 2026-08-15 and 2026-08-17:
 

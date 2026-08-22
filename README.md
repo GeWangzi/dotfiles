@@ -39,7 +39,7 @@ cd ~/dotfiles && stow -t ~ */              # everything
 | `kitty` `tmux` `starship` `zshrc` | terminal and shell |
 | `chrome` `spotify` | Wayland flags for two stubborn apps |
 | `fontconfig` | one rule, without which kitty refuses the theme's font |
-| `fonts` | Silkscreen and DotGothic16, self-hosted |
+| `fonts` | Silkscreen and DotGothic16, self-hosted; the terminal's DejaVu Sans Mono is packaged |
 | `backgrounds` | wallpapers |
 | `local-bin` | scripts in `~/.local/bin` |
 | `systemd-user` | user units |
@@ -83,6 +83,8 @@ not a warning. `skinctl` renders those into every format that needs them:
 | `~/.config/waybar/skin.css` | GTK CSS, kept for the retired waybar config |
 | `~/.config/kitty/skin.conf` | the 16-colour ANSI palette, included by `kitty.conf` |
 | `~/.config/wofi/style.css` | the whole stylesheet — wofi cannot `@import` |
+| `~/.config/gtk-3.0/gtk.css` | GTK application theming, read through `adw-gtk3-dark` |
+| `~/.config/gtk-4.0/gtk.css` | the same stylesheet again, for libadwaita apps |
 | `~/.local/state/skins/skin.lua` | window border colours, read by `hyprland.lua` |
 | `~/.local/state/skins/skin.json` | everything, for the Quickshell surfaces |
 | `~/.local/state/skins/ball.png` | the capture device, recoloured into the active palette |
@@ -169,6 +171,24 @@ Two rules worth keeping when adding surfaces here:
   figures, network rates — belongs to a surface that is usually closed. The
   always-on ones stay event-driven.
 
+**GTK applications** follow the skin as of 2026-08-21. Both toolkits read the
+same generated stylesheet — the design tokens, then the libadwaita colour
+names built from them, then the shared rules in
+`skins/.config/skins/templates/gtk.rules.css`. The GTK3 half only works
+because `adw-gtk-theme` is installed and `gtk-theme-name` is `adw-gtk3-dark`:
+Adwaita's own GTK3 theme compiles its colours in as literals, so redefining a
+name reaches a few widgets and leaves the rest of a file dialog grey.
+The theme reads the libadwaita names instead, which is the whole reason it is
+in `pkglist-repo.txt` (and why `catppuccin-gtk-theme-mocha`, the previous
+theme, no longer is). Both toolkits watch the user stylesheet, so `skinctl
+set` recolours GTK windows that are already open.
+
+`~/.config/gtk-3.0/settings.ini` is **not stowed** — it is a plain file, edited
+in place, and it carries the theme name, the icon theme, the cursor and the
+font (`DejaVu Sans 10`; the pixel faces are for the shell's own surfaces,
+where the sizes are chosen, not for file dialogs). `nwg-look` rewrites this
+file if it is ever run.
+
 **Not yet skinned:** starship and tmux. kitty now includes the generated
 `skin.conf` — the creature-shell handoff added a 16-colour ANSI derivation,
 so the terminal follows the skin. Colours for the other two still live inline
@@ -190,17 +210,14 @@ font until they are restarted.
 Waybar and wofi additionally list CaskaydiaCove behind Cozette in their font
 stacks, so a missing font degrades there rather than breaking.
 
-The cursor is pixel art too: `make-cursors` (in `local-bin`) draws eleven
-12px shapes in code — warm-white fill, crust outline, ember red for the
-wait-cursor sand and the not-allowed ring — and writes them straight into
-Xcursor binary format under `~/.local/share/icons/rpg-cursors`, upscaled
-nearest-neighbour to 24/36/48. Missing shapes inherit from Adwaita. Set for
-Hyprland in `hyprland.lua` (`XCURSOR_THEME`) and for GTK apps in
-`gtk-3.0/settings.ini` plus the gsettings key.
+The cursor is stock Adwaita at size 24, set for Hyprland in `hyprland.lua`
+(`XCURSOR_THEME`) and for GTK apps in `gtk-3.0/settings.ini` plus the
+gsettings key.
 
 The `fonts` package adds **Silkscreen** and **DotGothic16**, the two faces the
-RPG design specifies, self-hosted rather than pulled from a package; every
-shell surface uses them. Silkscreen is a pixel face and the panel runs at scale 1.5, so
+RPG design specifies, self-hosted rather than pulled from a package. Silkscreen
+labels every surface, the QML shell sets its body copy in DotGothic16, and the
+terminal sets its own in DejaVu Sans Mono — see *The terminal* below. Silkscreen is a pixel face and the panel runs at scale 1.5, so
 only even logical sizes land on whole physical pixels — see `fonts/README.md`.
 
 To go back to Catppuccin Mocha: point `hyprlock.conf` at `mocha.conf`,
@@ -212,6 +229,158 @@ machinery, point `hyprlock.conf` at `ember.conf` and `waybar/style.css` at
 palette inlined again, and drop the `skin` block at the top of `hyprland.lua`.
 The geometry (`rounding`, `border_size`, `gaps_*` in `hyprland.lua`) is
 separate from the colours and reverts on its own.
+
+## The terminal
+
+kitty, starship, a pair of zsh hooks and the shell greeting are one design: the
+*W4 — spine + full greeting* handoff. The machine is the creature. Battery is
+HP, uptime is EXP, and there is deliberately no separate battery indicator and
+no uptime row, because HP and EXP already are those things.
+
+| | |
+|---|---|
+| `kitty/.config/kitty/kitty.conf` | the two faces, the block cursor, the blink |
+| `starship/.config/starship.toml` | the live prompt — spine, directory, branch, dirty counts |
+| `starship/.config/starship-ember.toml` | the previous Ember prompt, kept for reverting |
+| `zshrc/.config/zsh/rpg-spine.zsh` | the row that closes each command block, with exit code and duration |
+| `local-bin/.local/bin/rpg-greet` | the shell-start greeting — art, stat block, HP and EXP meters |
+
+### The font
+
+Body text is **DejaVu Sans Mono**, which is what the handoff's mock sets its
+terminal output in. It is the one font here that is packaged rather than
+self-hosted, and the one whose absence is fatal rather than cosmetic: see
+INSTALL.md.
+
+The handoff also sets every label in **Silkscreen**. That was tried and
+reverted. kitty cannot switch face per prompt segment, but it can per SGR
+attribute, so `bold_font Silkscreen` put every bold run in Silkscreen — which
+is what `rpg-greet` and `rpg-spine.zsh` emit their labels as. Two things came
+out of it worth recording:
+
+- kitty only accepts a `bold_font` that fontconfig reports as monospaced, and
+  Silkscreen declares no spacing property, so the line was **silently dropped**
+  and DejaVuSansMono-Bold loaded instead. No warning of any kind; kitty's debug
+  font fallback flag is what shows it. A fontconfig `spacing=100` rule at scan
+  time fixed that, exactly as the CozetteVector rule next to it does.
+- With it rendering, it looked wrong. Silkscreen is genuinely proportional —
+  five advance widths across ASCII, 0.375em to 0.875em — so kitty scales
+  anything wider than the 0.602em cell down to fit. `M`, `N`, `W` and `%`
+  shrink visibly while narrow letters do not, and `GENGAR` comes out reading
+  `GEnGAR`. A pixel face on a fixed grid is not the same face.
+
+So bold is DejaVu's own bold. Labels still read as labels, and the design's
+pixel type lives in the QML shell, which has real proportional layout and can
+use Silkscreen properly. `kitty.conf` says how to try the mapping again.
+
+Silkscreen carries no braille, no box drawing and no Nerd glyphs, so it could
+not have been the body face in any case — the greeting's art is braille.
+
+### The command block
+
+Each command in the design is a block with a 4px spine down its whole left
+edge, coloured by the exit status. A terminal cannot draw that, and it is worth
+saying exactly why, because three separate routes were tried:
+
+- **Filter the output.** Piping each command's stdout makes `isatty` false, so
+  every program drops its colour and its pager and full-screen ones break
+  outright. Running each command under a pty keeps `isatty` but a two-column
+  prefix then corrupts every cursor address a full-screen program emits.
+- **Paint column 1 afterwards.** Ask the terminal for the cursor row before and
+  after the command, then go back and draw the spine on those rows. It works,
+  and it overwrites the first character of every output line, because output
+  starts in column 1.
+- **Move output out of column 1.** DECSLRM left/right margins would do exactly
+  that at the emulator level, with no interception at all. kitty does not
+  implement them: with `\033[?69h\033[5;40s` set, text still starts in column 1
+  and still runs the full width.
+
+The handoff anticipates this and names its own fallback — *a neutral gutter
+with a status-coloured first line*. So the spine renders on the lines the shell
+itself owns, and the status row closes the block instead of opening it, which
+is the one reordering the shell forces:
+
+```
+▌ …/dotfiles ⑂ master !2 ?1 cargo build --release
+error[E0308]: mismatched types
+  --> src/session/pair.rs:142:23
+▌                                                                    101  12.8s
+```
+
+`add_newline` is off in `starship.toml` so the shell-owned lines stack directly
+against each other: back-to-back commands give one unbroken column rather than
+detached stubs.
+
+The prompt line is starship: the live spine in `#9C6BFF`, then the directory,
+the branch and the dirty counts, then the block cursor sitting where you type.
+There is no caret glyph, because in the design the cursor *is* the end of the
+prompt. There is no clock and no battery either — the handoff puts HP in the
+greeting and says there is no separate battery indicator anywhere. The comment
+at the top of `starship.toml` says how to put them back.
+
+The closing row is `rpg-spine.zsh`, a `preexec`/`precmd` pair, and it follows
+the handoff's two cases exactly. Success is one dim `#6A5A8C` string —
+`…/dotfiles ⑂ master · 0.4s`. Failure is the exit code as a Silkscreen mark in
+`#FF4A1F` and then the duration, with no context. A duration renders only above
+100ms, and it is written as `0.4s` and `12.8s`, one decimal under a minute,
+which is finer than starship's own `cmd_duration` can render. The branch comes
+from reading `.git/HEAD` directly rather than running git, so the row costs no
+forks: starship is already paying for a full `git status` one line above.
+
+The cursor is pinned in `kitty.conf` rather than left to the skin, because the
+handoff makes it a design element: a block in `#F4EDFF` blinking at 0.55s. The
+blink is `steps(1)` in the design and kitty always animates it, so `linear` is
+as square as it gets.
+
+### The greeting
+
+`rpg-greet` runs once per interactive shell from the end of `.zshrc`. It reads
+sysfs and `/proc` and forks three times, so it costs nothing measurable at
+shell start; `COLUMNS` and `ZSH_VERSION` are passed in because neither is
+exported. `RPG_GREET=0` skips it.
+
+The stat rows are spaced a blank line apart. The design puts a 7px gap between
+them, a little under half a line at the body's 13px/1.4, and a terminal cannot
+do half a line — so the choice is none or one, and one is right, because it
+also spreads the nine stat rows down the sixteen rows of art instead of
+bunching them against the top. The right column then runs one line longer than
+the art, so both columns are collected first and the paste walks whichever is
+taller, padding the short one.
+
+Width is spent in the same spirit. The column gap and the label column each
+have a roomy value and a tight one, and the meters are `flex: 1; max-width:
+300px` in the design, so they absorb whatever is left — 32 cells down to 10.
+The layout takes the roomy pair, falls back to the tight pair if the meter no
+longer fits, and only below about 69 columns, where even a 10-cell meter will
+not fit, collapses to a one-liner rather than wrapping:
+
+```
+GENGAR · archlinux · x86_64 · Hyprland   HP 79%
+```
+
+That flexing is not decoration. DejaVu Sans Mono's cell is **1.33× wider** than
+CozetteVector's at the same `font_size` — 11.33px against 8.50px, measured by
+dividing a real window's pixel width by the columns kitty reported — so the
+same window carries a third fewer columns than it did before the font change.
+At `font_size 13` a 1014px window fell from 117 columns to 88, and a fixed
+width threshold tuned against the old cell then collapsed the greeting on a
+window that had room for it.
+
+`font_size 10` undoes that: the cell lands at 8.72px, within a fifth of a pixel
+of Cozette's 8.50, so the terminal is back to the width it has always been in
+the design's font. For reference, 11 gives 104 columns, 12 gives 95, 13 gives
+88.
+
+HP is the battery on the same thresholds waybar uses — warn at 30, critical at
+15 — so one battery cannot read *warning* in the bar and *fine* in the shell.
+Time remaining is computed from `energy_now` and `power_now` and is simply
+absent when there is no draw, which is what the standing charge limit produces.
+EXP is uptime against a nominal twelve-hour level.
+
+All three files hardcode the handoff's design tokens as literal truecolor
+rather than using ANSI slots. That is on purpose: `skinctl` repaints the
+terminal palette for every skin, but the creature's colours are fixed by the
+design, so the terminal must not follow the skin.
 
 ## Not in here
 

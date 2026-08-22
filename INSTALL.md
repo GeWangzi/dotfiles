@@ -79,7 +79,6 @@ stow -t ~ backgrounds chrome ember fontconfig fonts hyprland hyprlock hyprmocha 
 chsh -s /usr/bin/zsh
 fc-cache -f
 skinctl generate
-make-cursors
 ```
 
 There is no `wofi` package any more. Its stylesheet has to have the palette
@@ -89,10 +88,18 @@ inlined rather than imported, so the whole file is generated; the rules live in
 
 `fc-cache -f` is not optional, for two reasons. The `fontconfig` package marks
 CozetteVector as a monospaced family, that edit is applied when fonts are
-scanned into the cache, and without it kitty rejects the theme's font and
-renders in Noto Sans CJK instead. The `fonts` package also installs Silkscreen
-and DotGothic16, which nothing can see until the cache is rebuilt. README's
-*Theme* section has the details.
+scanned into the cache, and without it waybar and wofi fall back. The `fonts`
+package also installs Silkscreen and DotGothic16, which nothing can see until
+the cache is rebuilt. README's *Theme* section has the details.
+
+kitty's body face is **DejaVu Sans Mono**, which comes from `ttf-dejavu` in
+`pkglist-repo.txt` and is the one font here that is not self-hosted. If it is
+missing, kitty does not fall back gracefully: fontconfig answers the miss with
+Noto Sans CJK, kitty sizes its cell grid from that proportional face, and the
+whole terminal comes out wide and airy. `rice-doctor` fails on this rather than
+warning, because nothing else about the terminal is right until it is fixed.
+
+    sudo pacman -S ttf-dejavu && fc-cache -f
 
 `skinctl generate` is not optional either. The Quickshell shell reads
 `skin.json`, kitty includes `skin.conf`, the
@@ -101,12 +108,6 @@ fallback hyprlock sources the hyprlang `skin.conf` and wofi reads a generated
 hyprpaper packages are stowed for reverting but nothing starts them: the
 shell draws the bar and the wallpaper itself. See README's *Skins* and *The
 shell* sections.
-
-`make-cursors` builds the pixel-art cursor theme into
-`~/.local/share/icons/rpg-cursors` — the theme is generated, not carried in
-the repo. Hyprland and the GTK settings both name it; until the script has
-run, everything falls back to Adwaita via the theme's `Inherits` and nothing
-breaks.
 
 `stow -t ~ */` also works and picks up everything, including `system/`. That is
 harmless but pointless — `system/` is installed by its own script in step 5, not by

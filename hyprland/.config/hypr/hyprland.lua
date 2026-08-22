@@ -151,13 +151,9 @@ end)
 hl.env("XCURSOR_SIZE", "24")
 hl.env("HYPRCURSOR_SIZE", "24")
 
--- The pixel-art cursor theme, built by `make-cursors` into
--- ~/.local/share/icons/rpg-cursors. Xcursor-format only -- there is no
--- hyprcursor theme of this name, and Hyprland falls back to Xcursor on its
--- own. Missing shapes inherit from Adwaita, so nothing renders invisible if
--- the generator has not run; GTK apps get the same theme from
+-- Stock Adwaita cursor; GTK apps get the same theme from
 -- gtk-3.0/settings.ini and the gsettings key.
-hl.env("XCURSOR_THEME", "rpg-cursors")
+hl.env("XCURSOR_THEME", "Adwaita")
 
 -- Electron apps (Discord, VS Code) default to Xwayland, where the compositor
 -- can only bitmap-upscale them: right size, but soft at scale 1.5. This makes
@@ -198,7 +194,9 @@ hl.config({
         gaps_in  = 0,
         gaps_out = 0,
 
-        border_size = 2,
+        -- 3 rather than 2: at the panel's scale 2 read as a hairline against
+        -- the wallpaper and did not hold the flat accent colour convincingly.
+        border_size = 3,
 
         -- Flat single colours: accent for the focused window, `inner` for the
         -- rest -- visible against the wallpaper, but far enough down in
@@ -216,8 +214,8 @@ hl.config({
     },
 
     decoration = {
-        -- Square corners are half of the chunky look; the 4px border above is
-        -- the other half. rounding_power is inert while rounding is 0 and is
+        -- Square corners are half of the chunky look; the border above is the
+        -- other half. rounding_power is inert while rounding is 0 and is
         -- kept only so restoring rounding = 10 restores the old shape exactly.
         rounding       = 0,
         rounding_power = 2,
@@ -413,9 +411,17 @@ hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd('PATH="$HOME/.local/bin:$PATH" hyprshot
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("qs ipc call launcher clipboard"))
 hl.bind(mainMod .. " + G", hl.dsp.exec_cmd("qs ipc call launcher glyphs"))
 
--- The CONNECT panel (turns 25f-25j): Wi-Fi and Bluetooth as an encounter
--- screen. Scanning runs only while it is open.
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("qs ipc call connect toggle"))
+-- Wi-Fi and Bluetooth. The shell's own CONNECT panel (turns 25f-25j) was
+-- removed on 2026-08-21: it was a second, worse client for two stacks that
+-- already have good ones, and Quickshell's Networking module reports
+-- WifiNetwork.connected as false even for the network in use, which quietly
+-- broke every state the panel drew. nmtui does the scan/join/password dance
+-- properly and inherits the terminal's skin; blueman-manager is a GTK3 app
+-- and so follows the GTK theming.
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("kitty --class rpg-nmtui nmtui"))
+-- SHIFT+C rather than B: B is already the browser, and the two halves of
+-- what CONNECT used to hold belong on the same key.
+hl.bind(mainMod .. " + SHIFT + C", hl.dsp.exec_cmd("blueman-manager"))
 
 -- Notifications (turns 25a-25c): the shell is the daemon now (swaync is
 -- retired). N shows the BATTLE LOG history; SHIFT+D raises/lowers SUB

@@ -1,0 +1,251 @@
+#!/bin/sh
+# rpg-greet -- the shell-start greeting from the "Battle Terminal" design
+# handoff (Retro RPG launcher concepts #4, screen "w4 spine greeting").
+#
+# The machine is personified as GENGAR: battery is HP, uptime is EXP. There is
+# deliberately no uptime row, because EXP is the uptime row -- and no separate
+# battery indicator, because HP is the battery.
+#
+# Called once per interactive shell from ~/.zshrc. Everything here is sysfs
+# and /proc reads plus three forks total, so it does not measurably slow shell
+# start. COLUMNS and RPG_SHELL are passed in by the caller to avoid two more.
+#
+# Colours are the handoff's design tokens written as literal truecolor
+# escapes, not ANSI slots. That is deliberate: skinctl repaints the terminal
+# palette per skin, but the creature's palette is fixed by the design, so the
+# greeting must not follow the skin.
+
+set -u
+
+# --- design tokens ---------------------------------------------------------
+esc=$(printf '\033')
+fg() { printf '%s[38;2;%s;%s;%sm' "$esc" "$1" "$2" "$3"; }
+bg() { printf '%s[48;2;%s;%s;%sm' "$esc" "$1" "$2" "$3"; }
+
+r="${esc}[0m"
+# Bold is mapped to Silkscreen by `bold_font` in kitty.conf, so every bold run
+# below is a Silkscreen label -- which is what the design specifies for all of
+# them. In a terminal without that mapping they degrade to bold body text.
+b="${esc}[1m"
+
+C_ART=$(fg 156 107 255)     # accent solid  #9C6BFF
+C_NAME=$(fg 244 237 255)    # brightest     #F4EDFF
+C_DIM=$(fg 154 131 194)     # dim           #9A83C2
+C_RULE=$(fg 74 46 110)      # rule          #4A2E6E
+C_LABEL=$(fg 200 107 255)   # accent        #C86BFF
+C_VALUE=$(fg 210 194 238)   # body          #D2C2EE
+C_EXP=$(fg 124 184 255)     # info          #7CB8FF
+C_TRACK=$(fg 74 46 110)     # meter track   #4A2E6E
+C_OK=$(fg 61 220 132)       # hp ok         #3DDC84
+C_WARN=$(fg 255 197 61)     # hp warn       #FFC53D
+C_CRIT=$(fg 255 74 31)      # hp critical   #FF4A1F
+B_GHOST="$(bg 156 107 255)$(fg 10 7 19)"
+B_POISON="$(bg 212 90 184)$(fg 10 7 19)"
+
+# Same thresholds waybar uses for the battery block, so one battery never
+# reads "warning" in the bar and "fine" here.
+HP_WARN=30
+HP_CRIT=15
+
+# EXP is uptime expressed against a nominal level length. Twelve hours is one
+# full bar; the design's mock shows 46%, which is a little under half a level.
+EXP_LEVEL=43200
+
+ART_W=30        # the braille art is exactly 30 columns by 16 rows
+READOUT_W=14    # the longest meter readout, "7H 12M SESSION"
+BAR_MAX=32      # the design's 300px meter maximum
+BAR_MIN=10      # below this a meter stops reading as a meter
+
+# The column gap and the label column each get a roomy value and a tight one.
+# Wide is the design's proportions with air around them; tight is what the
+# layout needs to survive a narrow window, and is what it used before there was
+# room to spend. Which one is used is decided by whether the meter still fits.
+GAP_WIDE='      '
+GAP_TIGHT='   '
+LABEL_WIDE=12
+LABEL_TIGHT=10
+
+# The design puts a 7px gap between stat rows, which is a little under half a
+# line at the body's 13px/1.4. A terminal cannot do half a line, so the choice
+# is none or one -- and one is right, because it also spreads the nine stat
+# rows down the sixteen rows of art instead of bunching them against the top.
+ROW_GAP=1
+
+# --- facts -----------------------------------------------------------------
+# uname prints in a fixed field order regardless of flag order: sysname,
+# nodename, release, machine.
+set -- $(uname -s -n -r -m)
+node=$2
+kernel=$3
+arch=$4
+
+osname=Linux
+if [ -r /etc/os-release ]; then
+    osname=$(. /etc/os-release && printf '%s' "${NAME:-Linux}")
+fi
+
+read -r uptime_s _ < /proc/uptime
+uptime_s=${uptime_s%.*}
+
+exp=$(( uptime_s * 100 / EXP_LEVEL ))
+[ "$exp" -gt 100 ] && exp=100
+
+bat=/sys/class/power_supply/BAT0
+hp=0
+hp_time=""
+if [ -r "$bat/capacity" ]; then
+    read -r hp < "$bat/capacity"
+    read -r bat_status < "$bat/status" 2>/dev/null || bat_status=Unknown
+    energy=0
+    power=0
+    [ -r "$bat/energy_now" ] && read -r energy < "$bat/energy_now"
+    [ -r "$bat/power_now" ]  && read -r power  < "$bat/power_now"
+    # power_now is 0 on AC and while the charge limit holds the battery at its
+    # ceiling ("Not charging"). No draw means no meaningful time remaining.
+    if [ "$power" -gt 0 ]; then
+        if [ "$bat_status" = Charging ]; then
+            full=$energy
+            [ -r "$bat/energy_full" ] && read -r full < "$bat/energy_full"
+            mins=$(( (full - energy) * 60 / power ))
+        else
+            mins=$(( energy * 60 / power ))
+        fi
+        hp_time=$(printf '%dH %02dM' $(( mins / 60 )) $(( mins % 60 )))
+    fi
+fi
+
+if   [ "$hp" -le "$HP_CRIT" ]; then C_HP=$C_CRIT
+elif [ "$hp" -le "$HP_WARN" ]; then C_HP=$C_WARN
+else                                C_HP=$C_OK
+fi
+
+# --- helpers ---------------------------------------------------------------
+# A run of one glyph, so the bars and the rule are drawn without a fork.
+repeat() {
+    _n=$2
+    _out=""
+    while [ "$_n" -gt 0 ]; do _out="$_out$1"; _n=$(( _n - 1 )); done
+    printf '%s' "$_out"
+}
+
+# The design's meters are solid slabs on a track. HP is 9px tall and EXP is
+# 6px, which a character cell cannot express, so the height difference is
+# carried by the glyph instead: a full block for HP, a half block for EXP.
+meter() {  # meter FILL_COLOUR GLYPH PERCENT
+    _n=$(( BAR_W * $3 / 100 ))
+    [ "$_n" -gt "$BAR_W" ] && _n=$BAR_W
+    [ "$_n" -lt 0 ] && _n=0
+    printf '%s%s%s%s%s' \
+        "$1" "$(repeat "$2" "$_n")" \
+        "$C_TRACK" "$(repeat "$2" $(( BAR_W - _n )))" "$r"
+}
+
+stat() {  # stat LABEL VALUE
+    printf '%s%s%-*s%s %s%s%s' "$b" "$C_LABEL" "$LABEL_W" "$1" "$r" \
+        "$C_VALUE" "$2" "$r"
+}
+
+# --- fitting the width -----------------------------------------------------
+# The meters are `flex: 1; max-width: 300px` in the design, so they are allowed
+# to shrink before anything else does. The right column takes what the art and
+# the gap leave, the label and the readout are fixed, and the meter absorbs the
+# difference up to its maximum. Only when even a BAR_MIN meter will not fit does
+# the greeting collapse to the one-liner -- around 69 columns.
+#
+# This matters more than it looks. The terminal's cell is 1.33x wider in DejaVu
+# Sans Mono than it was in CozetteVector, so the same window carries a third
+# fewer columns than it used to; a fixed threshold tuned against the old cell
+# silently collapses the greeting on a window that has room for it.
+cols=${COLUMNS:-0}
+if [ "$cols" -eq 0 ]; then
+    cols=$(tput cols 2>/dev/null) || cols=80
+fi
+
+fit() {  # fit GAP LABEL_W
+    GAP=$1
+    LABEL_W=$2
+    right_w=$(( cols - ART_W - ${#GAP} ))
+    BAR_W=$(( right_w - LABEL_W - READOUT_W - 2 ))
+}
+
+fit "$GAP_WIDE" "$LABEL_WIDE"
+[ "$BAR_W" -lt "$BAR_MIN" ] && fit "$GAP_TIGHT" "$LABEL_TIGHT"
+[ "$BAR_W" -gt "$BAR_MAX" ] && BAR_W=$BAR_MAX
+
+if [ "$BAR_W" -lt "$BAR_MIN" ]; then
+    printf '\n%s%sGENGAR%s %s· %s · %s · %s%s   %s%sHP %s%%%s\n\n' \
+        "$b" "$C_NAME" "$r" "$C_DIM" "$node" "$arch" "${XDG_CURRENT_DESKTOP:-tty}" \
+        "$r" "$b" "$C_HP" "$hp" "$r"
+    exit 0
+fi
+
+# --- the right column, one variable per row --------------------------------
+row_1="$b${C_NAME}GENGAR$r $b${C_DIM}LV 50$r $b$B_GHOST GHOST $r $b$B_POISON POISON $r"
+row_2="$C_RULE$(repeat '━' $(( right_w - 1 )))$r"
+row_3=$(stat HOST   "${USER:-$(id -un)}@$node")
+row_4=$(stat OS     "$osname $arch")
+row_5=$(stat KERNEL "$kernel")
+row_6=$(stat SHELL  "${RPG_SHELL:-sh}")
+row_7=$(stat WM     "${XDG_CURRENT_DESKTOP:-none}")
+row_8=$(printf '%s%s%-*s%s %s %s%s%s%%%s%s' \
+    "$b" "$C_LABEL" "$LABEL_W" HP "$r" "$(meter "$C_HP" '█' "$hp")" \
+    "$b" "$C_VALUE" "$hp" "${hp_time:+ — $hp_time}" "$r")
+row_9=$(printf '%s%s%-*s%s %s %s%s%s%s' \
+    "$b" "$C_EXP" "$LABEL_W" EXP "$r" "$(meter "$C_EXP" '▄' "$exp")" \
+    "$b" "$C_DIM" "$(printf '%dH %02dM SESSION' $(( uptime_s / 3600 )) $(( uptime_s % 3600 / 60 )))" "$r")
+
+# --- paste the two columns -------------------------------------------------
+# The stat rows are interleaved with blanks, so the right column is now taller
+# than the art. Both are collected first and the columns are then walked to
+# whichever is longer, with the short one padded, rather than the art driving
+# the loop and silently truncating the stats.
+disp_n=0
+add_row() {
+    disp_n=$(( disp_n + 1 ))
+    eval "disp_$disp_n=\$1"
+}
+
+k=1
+while [ "$k" -le 9 ]; do
+    eval "add_row \"\$row_$k\""
+    [ "$k" -lt 9 ] && [ "$ROW_GAP" -gt 0 ] && add_row ""
+    k=$(( k + 1 ))
+done
+
+art_n=0
+while IFS= read -r artline; do
+    art_n=$(( art_n + 1 ))
+    eval "art_$art_n=\$artline"
+done <<'ART'
+⠀⠀⠀⠀⠀⢸⠓⢄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢸⠀⠀⠑⢤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢸⡆⠀⠀⠀⠙⢤⡷⣤⣦⣀⠤⠖⠚⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⣠⡿⠢⢄⡀⠀⡇⠀⠀⠀⠀⠀⠉⠀⠀⠀⠀⠀⠸⠷⣶⠂⠀⠀⠀⣀⣀⠀⠀⠀
+⢸⣃⠀⠀⠉⠳⣷⠞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠉⠉⠉⠉⠉⠉⢉⡭⠋
+⠀⠘⣆⠀⠀⠀⠁⠀⢀⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡴⠋⠀⠀
+⠀⠀⠘⣦⠆⠀⠀⢀⡎⢹⡀⠀⠀⠀⠀⠀⠀⠀⠀⡀⠀⠀⡀⣠⠔⠋⠀⠀⠀⠀
+⠀⠀⠀⡏⠀⠀⣆⠘⣄⠸⢧⠀⠀⠀⠀⢀⣠⠖⢻⠀⠀⠀⣿⢥⣄⣀⣀⣀⠀⠀
+⠀⠀⢸⠁⠀⠀⡏⢣⣌⠙⠚⠀⠀⠠⣖⡛⠀⣠⠏⠀⠀⠀⠇⠀⠀⠀⠀⢙⣣⠄
+⠀⠀⢸⡀⠀⠀⠳⡞⠈⢻⠶⠤⣄⣀⣈⣉⣉⣡⡔⠀⠀⢀⠀⠀⣀⡤⠖⠚⠀⠀
+⠀⠀⡼⣇⠀⠀⠀⠙⠦⣞⡀⠀⢀⡏⠀⢸⣣⠞⠀⠀⠀⡼⠚⠋⠁⠀⠀⠀⠀⠀
+⠀⢰⡇⠙⠀⠀⠀⠀⠀⠀⠉⠙⠚⠒⠚⠉⠀⠀⠀⠀⡼⠁⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢧⡀⠀⢠⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠙⣞⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠙⣶⣶⣿⠢⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠉⠀⠀⠀⠙⢿⣳⠞⠳⡄⠀⠀⠀⢀⡞⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⠹⣄⣀⡤⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+ART
+
+art_blank=$(repeat ' ' "$ART_W")
+rows=$art_n
+[ "$disp_n" -gt "$rows" ] && rows=$disp_n
+
+printf '\n'
+i=1
+while [ "$i" -le "$rows" ]; do
+    eval "artline=\${art_$i-}"
+    [ -z "$artline" ] && artline=$art_blank
+    eval "right=\${disp_$i-}"
+    printf '%s%s%s%s%s\n' "$C_ART" "$artline" "$r" "$GAP" "$right"
+    i=$(( i + 1 ))
+done
+printf '\n'

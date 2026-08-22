@@ -1,191 +1,122 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
-format = """
-[](ember)\
-$os\
-$username\
-[](bg:surface2 fg:ember)\
-$directory\
-[](fg:surface2 bg:surface1)\
-$git_branch\
-$git_status\
-[](fg:surface1 bg:surface2)\
-$c\
-$rust\
-$golang\
-$nodejs\
-$php\
-$java\
-$kotlin\
-$haskell\
-$python\
-[](fg:surface2 bg:surface1)\
-$docker_context\
-[](fg:surface1 bg:surface2)\
-$time\
-[](fg:surface2)\
-$line_break$character"""
+# The live prompt from the "W4 -- spine + full greeting" handoff (Retro RPG
+# launcher concepts #5), section 3:
+#
+#     ▌ …/dotfiles ⑂ master !2 ?1 █
+#
+# The spine, the directory, the branch, the dirty counts, then the cursor. No
+# caret glyph -- the block cursor is the design's terminal cursor, sitting
+# where you type.
+#
+# The clock is an addition to the handoff, which has no clock on the prompt. It
+# sits at the left, immediately after the spine, rather than right-aligned: the
+# prompt is a single line and you type at the end of it, so anything pushed to
+# the right edge would have the command typed straight past it. At the left it
+# also stamps every block in the scrollback with the time the command was
+# entered, which is the useful half of having a clock here at all.
+#
+# There is still no battery: the handoff puts HP in the greeting and says there
+# is no separate battery indicator anywhere. To add one, append `$fill$battery`
+# and restore the [fill] and [battery] sections from git history.
+#
+# The rest of the block -- the status-coloured row that closes it -- is
+# ~/.config/zsh/rpg-spine.zsh, because a prompt cannot colour a spine by an
+# exit status it has not seen yet.
+#
+# add_newline is off: the shell-owned lines then stack directly against each
+# other and the gutter reads as one column rather than as detached stubs. It is
+# the closest a terminal gets to the mock's full-height spine.
+#
+# The previous Ember prompt is kept as starship-ember.toml. To go back:
+#     export STARSHIP_CONFIG=~/.config/starship-ember.toml
+# or just swap the two files.
 
-palette = "ember"
+add_newline = false
 
-# Was a muted grayscale palette under the name catppuccin_mocha. The greys are
-# still greys, but warmed onto the wallpaper's plum-brown axis so the prompt
-# does not read as cold next to the bar, and the leading segment is now the
-# accent itself. Colour names are kept because the module styles below refer to
-# them; only the values moved.
-[palettes.ember]
-ember     = "#F96B69"  # the sun, and the leading prompt segment
-ember2    = "#D4525A"
-ember3    = "#A83A44"
-amber     = "#E8A04A"
-bone      = "#DED0C4"
+format = "[▌ ](fg:live)$time$directory$git_branch$git_status$git_state"
 
-rosewater = "#EDE0DC"
-flamingo  = "#FFB0A3"
-pink      = "#DD97B8"
-orange    = "#E8A04A"
-red       = "#F96B69"
-maroon    = "#D4525A"
-peach     = "#E8A04A"
-yellow    = "#F5C06A"
-green     = "#A3B57A"
-teal      = "#7FB0A8"
-sky       = "#9CCDC4"
-sapphire  = "#8FB3C4"
-blue      = "#A8B6D4"
-lavender  = "#C9B6B3"
+palette = "battle"
 
-# Text & surfaces
-text      = "#EDE0DC"
-subtext1  = "#D5C4C0"
-subtext0  = "#C9B6B3"
-overlay2  = "#A08E8F"
-overlay1  = "#8A7A7C"
-overlay0  = "#6B5D61"
-surface2  = "#4D4248"  # outer segments
-surface1  = "#3F373C"  # mid segment
-surface0  = "#322C31"
-base      = "#262126"
-mantle    = "#1E1A1E"
-crust     = "#161215"
-
-[os]
-disabled = false
-style = "bg:ember fg:crust"
-
-[os.symbols]
-Windows = "󰍲"
-Ubuntu = "󰕈"
-SUSE = ""
-Raspbian = "󰐿"
-Mint = "󰣭"
-Macos = ""
-Manjaro = ""
-Linux = "󰌽"
-Gentoo = "󰣨"
-Fedora = "󰣛"
-Alpine = ""
-Amazon = ""
-Android = ""
-Arch = "󰣇"
-Artix = "󰣇"
-CentOS = ""
-Debian = "󰣚"
-Redhat = "󱄛"
-RedHatEnterprise = "󱄛"
-
-[username]
-show_always = true
-style_user = "bg:ember fg:crust"
-style_root = "bg:ember fg:crust"
-format = "[ $user ]($style)"
+# The handoff's "Design Tokens" verbatim. These are literal hex rather than
+# skinctl's tokens on purpose: skinctl repaints the terminal's ANSI palette per
+# skin, but the creature's colours are fixed by the design, so the prompt must
+# not follow the skin. rpg-greet hardcodes the same values for the same reason.
+[palettes.battle]
+field     = "#0A0713"   # background
+panel     = "#1A1230"
+panel_alt = "#241A3C"
+rule      = "#4A2E6E"   # inner / track / rule
+frame     = "#E4D6FF"   # frame / bright text
+brightest = "#F4EDFF"
+body      = "#D2C2EE"
+dim       = "#9A83C2"
+dimmest   = "#6A5A8C"
+accent    = "#C86BFF"
+live      = "#9C6BFF"   # accent solid; the handoff's colour for the live spine
+secondary = "#D45AB8"
+ok        = "#8FE06A"   # git branch
+warn      = "#FF9A3C"   # dirty counts
+yellow    = "#FFD36B"
+critical  = "#FF4A1F"
+info      = "#7CB8FF"   # EXP
+mint      = "#7EF0C8"
+hp_ok     = "#3DDC84"
+hp_warn   = "#FFC53D"
+hp_crit   = "#FF4A1F"
 
 [directory]
-style = "fg:text bg:surface2"
-format = "[ $path ]($style)"
-truncation_length = 3
+style = "fg:accent"
+format = "[$path]($style)[$read_only]($read_only_style) "
+truncation_length = 1
 truncation_symbol = "…/"
+truncate_to_repo = false
+read_only = " RO"
+read_only_style = "bold fg:critical"
 
-[directory.substitutions]
-"Documents" = "󰈙 "
-"Downloads" = " "
-"Music"     = "󰝚 "
-"Pictures"  = " "
-"Developer" = "󰲋 "
-
+# U+2442, the fork glyph the design draws. Only Adwaita Mono and FreeMono carry
+# it on this machine, so kitty renders it out of the fallback rather than out
+# of DejaVu. Swap to the Nerd Font "" if that fallback ever looks wrong.
 [git_branch]
-symbol = ""
-style = "bg:surface1"
-format = '[[ $symbol $branch ](fg:text bg:surface1)]($style)'
+symbol = "⑂ "
+style = "fg:ok"
+format = "[$symbol$branch]($style) "
+truncation_length = 24
+truncation_symbol = "…"
 
+# "!2 ?1". Counters render only when they are real -- a clean repo shows
+# nothing at all, which is what the handoff asks for.
 [git_status]
-style = "bg:surface1"
-format = '[[($all_status$ahead_behind )](fg:text bg:surface1)]($style)'
+style = "fg:warn"
+format = "([$all_status$ahead_behind]($style))"
+conflicted = "×${count} "
+ahead = "↑${count} "
+behind = "↓${count} "
+diverged = "↕${ahead_count}${behind_count} "
+up_to_date = ""
+untracked = "?${count} "
+stashed = "≡${count} "
+modified = "!${count} "
+staged = "+${count} "
+renamed = "»${count} "
+deleted = "✘${count} "
 
-[nodejs]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+# Mid-operation state: rebase, merge, bisect. Bold, so kitty draws it in
+# Silkscreen -- these are labels in the design, not body text.
+[git_state]
+style = "bold fg:critical"
+format = "[$state( $progress_current/$progress_total)]($style) "
+rebase = "REBASE"
+merge = "MERGE"
+revert = "REVERT"
+cherry_pick = "CHERRY-PICK"
+bisect = "BISECT"
+am = "AM"
+am_or_rebase = "AM/REBASE"
 
-[c]
-symbol = " "
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[rust]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[golang]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[php]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[java]
-symbol = " "
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[kotlin]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[haskell]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[python]
-symbol = ""
-style = "bg:surface2"
-format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
-
-[docker_context]
-symbol = ""
-style = "bg:surface1"
-format = '[[ $symbol( $context) ](fg:text bg:surface1)]($style)'
-
+# Dim, so it sits behind the directory rather than competing with it.
 [time]
 disabled = false
 time_format = "%R"
-style = "bg:surface2"
-format = '[[  $time ](fg:text bg:surface2)]($style)'
-
-[line_break]
-disabled = false
-
-[character]
-disabled = false
-success_symbol = "[](bold fg:ember)"
-error_symbol   = "[](bold fg:ember3)"
-vimcmd_symbol  = "[](bold fg:amber)"
-vimcmd_replace_one_symbol = "[](bold fg:bone)"
-vimcmd_replace_symbol     = "[](bold fg:bone)"
-vimcmd_visual_symbol      = "[](bold fg:amber)"
+format = "[$time ]($style)"
+style = "fg:dim"

@@ -176,14 +176,21 @@ PanelWindow {
         ? altResults.slice(altStart, altStart + altWindow)
         : altResults
 
+    // Enter means "put this here", not "put this on the clipboard": the row
+    // is copied and then pasted into whatever had focus before the launcher
+    // opened. paste-to-focus waits for this surface to release its keyboard
+    // grab and picks CTRL+V or CTRL+SHIFT+V by window class. The clipboard is
+    // still filled either way, so a paste that lands nowhere loses nothing.
     function altActivate() {
         const item = altResults[Math.min(selected, altResults.length - 1)];
         if (!item) return;
+        const paste = ' && "$HOME/.local/bin/paste-to-focus"';
         if (mode === "clip")
             Quickshell.execDetached(["sh", "-c",
-                "cliphist decode " + item.cid + " | wl-copy"]);
+                "cliphist decode " + item.cid + " | wl-copy" + paste]);
         else
-            Quickshell.execDetached(["wl-copy", "--", item.ch]);
+            Quickshell.execDetached(["sh", "-c",
+                'printf %s "$1" | wl-copy' + paste, "sh", item.ch]);
         win.dismissed();
     }
 

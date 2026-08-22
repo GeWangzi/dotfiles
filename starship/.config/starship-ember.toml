@@ -1,0 +1,191 @@
+"$schema" = "https://starship.rs/config-schema.json"
+
+format = """
+[](ember)\
+$os\
+$username\
+[](bg:surface2 fg:ember)\
+$directory\
+[](fg:surface2 bg:surface1)\
+$git_branch\
+$git_status\
+[](fg:surface1 bg:surface2)\
+$c\
+$rust\
+$golang\
+$nodejs\
+$php\
+$java\
+$kotlin\
+$haskell\
+$python\
+[](fg:surface2 bg:surface1)\
+$docker_context\
+[](fg:surface1 bg:surface2)\
+$time\
+[](fg:surface2)\
+$line_break$character"""
+
+palette = "ember"
+
+# Was a muted grayscale palette under the name catppuccin_mocha. The greys are
+# still greys, but warmed onto the wallpaper's plum-brown axis so the prompt
+# does not read as cold next to the bar, and the leading segment is now the
+# accent itself. Colour names are kept because the module styles below refer to
+# them; only the values moved.
+[palettes.ember]
+ember     = "#F96B69"  # the sun, and the leading prompt segment
+ember2    = "#D4525A"
+ember3    = "#A83A44"
+amber     = "#E8A04A"
+bone      = "#DED0C4"
+
+rosewater = "#EDE0DC"
+flamingo  = "#FFB0A3"
+pink      = "#DD97B8"
+orange    = "#E8A04A"
+red       = "#F96B69"
+maroon    = "#D4525A"
+peach     = "#E8A04A"
+yellow    = "#F5C06A"
+green     = "#A3B57A"
+teal      = "#7FB0A8"
+sky       = "#9CCDC4"
+sapphire  = "#8FB3C4"
+blue      = "#A8B6D4"
+lavender  = "#C9B6B3"
+
+# Text & surfaces
+text      = "#EDE0DC"
+subtext1  = "#D5C4C0"
+subtext0  = "#C9B6B3"
+overlay2  = "#A08E8F"
+overlay1  = "#8A7A7C"
+overlay0  = "#6B5D61"
+surface2  = "#4D4248"  # outer segments
+surface1  = "#3F373C"  # mid segment
+surface0  = "#322C31"
+base      = "#262126"
+mantle    = "#1E1A1E"
+crust     = "#161215"
+
+[os]
+disabled = false
+style = "bg:ember fg:crust"
+
+[os.symbols]
+Windows = "󰍲"
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = ""
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+Arch = "󰣇"
+Artix = "󰣇"
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
+
+[username]
+show_always = true
+style_user = "bg:ember fg:crust"
+style_root = "bg:ember fg:crust"
+format = "[ $user ]($style)"
+
+[directory]
+style = "fg:text bg:surface2"
+format = "[ $path ]($style)"
+truncation_length = 3
+truncation_symbol = "…/"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music"     = "󰝚 "
+"Pictures"  = " "
+"Developer" = "󰲋 "
+
+[git_branch]
+symbol = ""
+style = "bg:surface1"
+format = '[[ $symbol $branch ](fg:text bg:surface1)]($style)'
+
+[git_status]
+style = "bg:surface1"
+format = '[[($all_status$ahead_behind )](fg:text bg:surface1)]($style)'
+
+[nodejs]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[c]
+symbol = " "
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[rust]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[golang]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[php]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[java]
+symbol = " "
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[kotlin]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[haskell]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[python]
+symbol = ""
+style = "bg:surface2"
+format = '[[ $symbol( $version) ](fg:text bg:surface2)]($style)'
+
+[docker_context]
+symbol = ""
+style = "bg:surface1"
+format = '[[ $symbol( $context) ](fg:text bg:surface1)]($style)'
+
+[time]
+disabled = false
+time_format = "%R"
+style = "bg:surface2"
+format = '[[  $time ](fg:text bg:surface2)]($style)'
+
+[line_break]
+disabled = false
+
+[character]
+disabled = false
+success_symbol = "[](bold fg:ember)"
+error_symbol   = "[](bold fg:ember3)"
+vimcmd_symbol  = "[](bold fg:amber)"
+vimcmd_replace_one_symbol = "[](bold fg:bone)"
+vimcmd_replace_symbol     = "[](bold fg:bone)"
+vimcmd_visual_symbol      = "[](bold fg:amber)"
