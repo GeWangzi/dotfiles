@@ -51,6 +51,21 @@ else
     bad "GTK stylesheets missing -- run: skinctl generate"
 fi
 
+# The prompt and the two zsh surfaces are generated per skin as well. A stale
+# ~/.config/starship.toml is worth calling out separately: $STARSHIP_CONFIG
+# points into the state directory now, so a leftover file there is not read,
+# and editing it looks like a prompt that refuses to change.
+skindir="${XDG_STATE_HOME:-$HOME/.local/state}/skins"
+if [ -r "$skindir/starship.toml" ] && [ -r "$skindir/skin.sh" ]; then
+    ok "prompt and shell colours generated"
+else
+    bad "starship.toml or skin.sh missing -- run: skinctl generate"
+fi
+
+if [ -e "$HOME/.config/starship.toml" ]; then
+    warn "~/.config/starship.toml is stale -- \$STARSHIP_CONFIG reads $skindir/starship.toml (rm it)"
+fi
+
 # kitty's body face since the Battle Terminal pass. Unlike the two above, a
 # miss here is not a graceful fallback: kitty asks fontconfig, fontconfig
 # answers Noto Sans CJK, and the whole terminal grid is sized from a

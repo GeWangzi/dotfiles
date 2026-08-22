@@ -75,7 +75,7 @@ under `$HOME`, so `stow -t ~ waybar` links `waybar/.config/waybar/*` into
 cd ~/dotfiles
 stow -t ~ backgrounds chrome ember fontconfig fonts hyprland hyprlock hyprmocha \
           hyprpaper kitty local-bin quickshell skins spotify starship \
-          systemd-user tmux waybar wireplumber zshrc
+          systemd-user waybar wireplumber zshrc
 chsh -s /usr/bin/zsh
 fc-cache -f
 skinctl generate

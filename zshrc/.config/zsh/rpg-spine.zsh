@@ -39,12 +39,21 @@
 
 zmodload zsh/datetime
 
-# Handoff design tokens. Literal truecolor rather than ANSI slots, for the same
-# reason rpg-greet and starship.toml use literals: skinctl repaints the ANSI
-# palette per skin, but the creature's colours are fixed by the design.
-typeset -g _rpg_ok=$'\e[38;2;61;220;132m'      # HP ok        #3DDC84
-typeset -g _rpg_crit=$'\e[38;2;255;74;31m'     # critical     #FF4A1F
-typeset -g _rpg_dimmest=$'\e[38;2;106;90;140m' # dimmest      #6A5A8C
+# Colours follow the skin. skinctl renders skin.sh on every `skinctl set`, as
+# SGR triplets, because both this file and rpg-greet only ever paste them into
+# an escape. It is read once, when the shell starts, so a skin change reaches
+# the next shell rather than the ones already open -- the same way hyprlock
+# keeps its old config until the next lock.
+#
+# The fallbacks are the GENGAR values from the handoff, so the block still
+# draws correctly on a machine where skinctl has never been run.
+_rpg_skin=${XDG_STATE_HOME:-$HOME/.local/state}/skins/skin.sh
+[[ -r $_rpg_skin ]] && source $_rpg_skin
+unset _rpg_skin
+
+typeset -g _rpg_ok=$'\e[38;2;'${RPG_C_OK:-"61;220;132"}m       # success spine
+typeset -g _rpg_crit=$'\e[38;2;'${RPG_C_CRIT:-"255;74;31"}m    # failure spine
+typeset -g _rpg_dimmest=$'\e[38;2;'${RPG_C_DIMMEST:-"106;90;140"}m
 typeset -g _rpg_bold=$'\e[1m'                  # -> Silkscreen, see kitty.conf
 typeset -g _rpg_reset=$'\e[0m'
 

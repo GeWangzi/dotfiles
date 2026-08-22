@@ -24,6 +24,8 @@ repository, and none of them should be edited by hand):
     ~/.config/gtk-4.0/gtk.css        the same stylesheet, for libadwaita apps
     ~/.local/state/skins/skin.lua    Lua table, read by hyprland.lua
     ~/.local/state/skins/skin.json   everything, for the shell surfaces
+    ~/.local/state/skins/starship.toml  the prompt, rendered from a template
+    ~/.local/state/skins/skin.sh     sh vars, sourced by rpg-greet and rpg-spine
     ~/.local/state/skins/active      the active slug, so the choice survives logout
 
 Both a design-token namespace (bg, outer, inner, accent, ...) and the legacy
@@ -140,6 +142,22 @@ def norm(value: str, where: str) -> str:
 def bare(hexcolor: str) -> str:
     """"#rrggbb" -> "rrggbb", the form hyprlang and Hyprland's rgba() want."""
     return hexcolor.lstrip("#")
+
+
+def mix(a: str, b: str, amount: float) -> str:
+    """Blend colour `a` toward colour `b` by `amount` (0-1)."""
+    out = []
+    for i in (1, 3, 5):
+        ca, cb = int(a[i:i + 2], 16), int(b[i:i + 2], 16)
+        out.append(round(ca + (cb - ca) * amount))
+    return "#{:02x}{:02x}{:02x}".format(*out)
+
+
+def triplet(hexcolor: str) -> str:
+    """"#rrggbb" -> "r;g;b", the form a truecolor SGR escape wants:
+    \033[38;2;<triplet>m. The two shell surfaces build their escapes by
+    hand, so this is the shape that costs them no arithmetic."""
+    return ";".join(str(int(hexcolor[i:i + 2], 16)) for i in (1, 3, 5))
 
 
 def luminance(hexcolor: str) -> float:
@@ -589,6 +607,128 @@ def render_kitty(skin: Skin) -> str:
     return "\n".join(out) + "\n"
 
 
+# The prompt and the two zsh surfaces used to hardcode the W4 handoff's
+# palette as literal hex, on the grounds that the creature's colours were
+# fixed by the design. That was reversed on 2026-08-21: switching skins left
+# the terminal purple while the rest of the desktop moved, which reads as a
+# surface that forgot to update rather than as a deliberate constant. So the
+# handoff palette is now a mapping onto the tokens instead of a copy of them.
+#
+# Under the GENGAR skin this reproduces the handoff almost exactly, because
+# that skin's tokens *are* the handoff's palette. Two entries drift by design:
+#
+#   ok       the git branch. Was #8fe06a, now the fixed `ok` threshold, which
+#            is already the colour rpg-spine draws a successful command in --
+#            so branch green and success green are now the same green.
+#   warn     the dirty counters, likewise pinned to the fixed `warn`.
+#
+# Pinning those two to thresholds rather than to tokens is the same rule the
+# rest of this file follows: a status colour that moves with the theme stops
+# reading as a status.
+def prompt_colors(skin: Skin) -> dict:
+    t, th = skin.tokens, skin.thresholds
+    cr = skin.creature or {}
+    return {
+        "field": t["bg"],
+        "panel": t["cell"],
+        "panel_alt": t["window"],
+        "rule": t["inner"],
+        "frame": t["outer"],
+        "brightest": t["text"],
+        "body": t["body"],
+        "dim": t["dim"],
+        # The handoff's #6A5A8C sits about a third of the way from `dim` to
+        # the background, and there is no token for it -- it is the only
+        # colour in the prompt that has to be derived rather than mapped.
+        "dimmest": mix(t["dim"], t["bg"], 0.33),
+        "accent": t["accent"],
+        # The live spine is the creature's primary type hue, which is what
+        # the handoff's #9C6BFF is. A skin with no creature block has no type,
+        # so it falls back to the accent it is already drawing the cursor in.
+        "live": cr.get("type1_hue", t["accent"]),
+        "secondary": cr.get("type2_hue", t["snd"]),
+        "ok": th["ok"],
+        "warn": th["warn"],
+        "critical": th["critical"],
+        "yellow": t["txt"],
+        "info": t["net"],
+        "mint": t["cmd"],
+    }
+
+
+def render_starship(skin: Skin) -> str:
+    """The prompt. starship has no include directive and reads exactly one
+    file, so the whole config is rendered from a template rather than just
+    its palette -- which is why ~/.config/starship.toml is no longer stowed
+    and $STARSHIP_CONFIG points into the state directory instead."""
+    tpl = TEMPLATES / "starship.toml.in"
+    if not tpl.exists():
+        die(f"{tpl} not found -- is the `skins` stow package installed?")
+
+    out = tpl.read_text()
+    values = {"BANNER": BANNER, "SKIN": skin.name, **prompt_colors(skin)}
+    for name, value in values.items():
+        out = out.replace(f"@@{name}@@", value)
+
+    leftover = [ln for ln in out.splitlines() if "@@" in ln]
+    if leftover:
+        die(f"{tpl}: unfilled placeholder in {leftover[0].strip()!r}")
+    return out
+
+
+# What the two shell surfaces need, as SGR triplets. The names are the roles
+# the scripts use them in rather than token names, because that is the level
+# the scripts think at -- rpg-greet wants "the colour of a stat label", not
+# "accent".
+SHELL_COLORS = {
+    "art":      lambda t, th, cr: cr.get("type1_hue", t["accent"]),
+    "name":     lambda t, th, cr: t["text"],
+    "dim":      lambda t, th, cr: t["dim"],
+    "dimmest":  lambda t, th, cr: mix(t["dim"], t["bg"], 0.33),
+    "rule":     lambda t, th, cr: t["inner"],
+    "label":    lambda t, th, cr: t["accent"],
+    "value":    lambda t, th, cr: t["body"],
+    "exp":      lambda t, th, cr: t["net"],
+    "track":    lambda t, th, cr: t["inner"],
+    "ok":       lambda t, th, cr: th["ok"],
+    "warn":     lambda t, th, cr: th["warn"],
+    "crit":     lambda t, th, cr: th["critical"],
+    "type1":    lambda t, th, cr: cr.get("type1_hue", t["accent"]),
+    "type2":    lambda t, th, cr: cr.get("type2_hue", t["snd"]),
+    "badge_fg": lambda t, th, cr: t["bg"],
+}
+
+
+def render_shell(skin: Skin) -> str:
+    """POSIX sh assignments, sourced by rpg-greet and rpg-spine.zsh.
+
+    Colours are SGR triplets rather than hex because both consumers only ever
+    paste them into an escape sequence. The identity strings are here too, so
+    the greeting says WOOPER under the wooper skin instead of always saying
+    GENGAR; a skin with no creature block falls back to its own name and
+    shows no type badges.
+
+    Sourced once when a shell starts, so a `skinctl set` recolours the next
+    shell rather than the ones already open -- the same way it leaves the
+    already-running hyprlock config alone.
+    """
+    t, th = skin.tokens, skin.thresholds
+    cr = skin.creature or {}
+    out = [f"# {BANNER}", f"# Skin: {skin.name}", ""]
+    ident = [
+        ("RPG_SKIN", skin.slug),
+        ("RPG_SPECIES", cr.get("species", skin.name)),
+        ("RPG_TYPE1", cr.get("type1", "")),
+        ("RPG_TYPE2", cr.get("type2", "")),
+    ]
+    for name, value in ident:
+        out.append(f"{name}='{str(value)}'")
+    out.append("")
+    for role, pick in SHELL_COLORS.items():
+        out.append(f"RPG_C_{role.upper()}='{triplet(pick(t, th, cr))}'")
+    return "\n".join(out) + "\n"
+
+
 TARGETS = [
     (HOME / ".config" / "hypr" / "skin.conf", render_hyprlang),
     (HOME / ".config" / "waybar" / "skin.css", render_gtk_css),
@@ -598,6 +738,8 @@ TARGETS = [
     (HOME / ".config" / "kitty" / "skin.conf", render_kitty),
     (STATE_DIR / "skin.lua", render_lua),
     (STATE_DIR / "skin.json", render_json),
+    (STATE_DIR / "starship.toml", render_starship),
+    (STATE_DIR / "skin.sh", render_shell),
 ]
 
 
@@ -693,6 +835,10 @@ def cmd_set(skins: list[Skin], ref: str) -> None:
     # old lock screen until the next lock. Nothing can be signalled to fix
     # that; say so rather than let it look like a bug.
     print("      hyprlock picks this up at the next lock; wofi at next launch")
+    # starship re-reads its config on every prompt, so the prompt itself
+    # changes immediately -- but rpg-greet and rpg-spine.zsh source skin.sh
+    # once when a shell starts, so open shells keep the old spine colour.
+    print("      the prompt changes now; open shells keep their old spine")
 
 
 def cmd_lint(skins: list[Skin]) -> int:

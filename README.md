@@ -36,7 +36,7 @@ cd ~/dotfiles && stow -t ~ */              # everything
 | `skins` | every palette and creature, and the templates they are rendered through |
 | `ember` | the hand-maintained Ember copies `skins` replaced, kept for reverting |
 | `hyprmocha` | the Catppuccin Mocha palette `ember` replaced, kept for reverting |
-| `kitty` `tmux` `starship` `zshrc` | terminal and shell |
+| `kitty` `starship` `zshrc` | terminal and shell |
 | `chrome` `spotify` | Wayland flags for two stubborn apps |
 | `fontconfig` | one rule, without which kitty refuses the theme's font |
 | `fonts` | Silkscreen and DotGothic16, self-hosted; the terminal's DejaVu Sans Mono is packaged |
@@ -189,13 +189,10 @@ font (`DejaVu Sans 10`; the pixel faces are for the shell's own surfaces,
 where the sizes are chosen, not for file dialogs). `nwg-look` rewrites this
 file if it is ever run.
 
-**Not yet skinned:** starship and tmux. kitty now includes the generated
-`skin.conf` — the creature-shell handoff added a 16-colour ANSI derivation,
-so the terminal follows the skin. Colours for the other two still live inline
-in
-`starship/.config/starship.toml` (as a palette) and `tmux/.tmux.conf` (as
-`@thm_*`, which must stay above the `run tpm` line — catppuccin sets its own
-with `set -ogq` and loses to anything already set).
+**Everything is skinned.** kitty includes the generated `skin.conf`, and the
+prompt and the two zsh surfaces follow the skin as well — see *The terminal*
+below for how, since starship has no include directive and needs a different
+mechanism from every other consumer.
 
 Ember needs `cozette-ttf`, and it needs the `fontconfig` package with it.
 CozetteVector.ttf declares no `spacing` property, so fontconfig does not
@@ -240,7 +237,7 @@ no uptime row, because HP and EXP already are those things.
 | | |
 |---|---|
 | `kitty/.config/kitty/kitty.conf` | the two faces, the block cursor, the blink |
-| `starship/.config/starship.toml` | the live prompt — spine, directory, branch, dirty counts |
+| `skins/.config/skins/templates/starship.toml.in` | the live prompt — spine, directory, branch, dirty counts |
 | `starship/.config/starship-ember.toml` | the previous Ember prompt, kept for reverting |
 | `zshrc/.config/zsh/rpg-spine.zsh` | the row that closes each command block, with exit code and duration |
 | `local-bin/.local/bin/rpg-greet` | the shell-start greeting — art, stat block, HP and EXP meters |
@@ -377,10 +374,43 @@ Time remaining is computed from `energy_now` and `power_now` and is simply
 absent when there is no draw, which is what the standing charge limit produces.
 EXP is uptime against a nominal twelve-hour level.
 
-All three files hardcode the handoff's design tokens as literal truecolor
-rather than using ANSI slots. That is on purpose: `skinctl` repaints the
-terminal palette for every skin, but the creature's colours are fixed by the
-design, so the terminal must not follow the skin.
+### Following the skin
+
+All three files began by hardcoding the handoff's tokens as literal truecolor,
+on the grounds that the creature's colours were fixed by the design. That was
+reversed: switching skins left the terminal purple while everything else
+moved, which reads as a surface that forgot to update rather than as a
+deliberate constant. So the handoff palette became a *mapping* onto the
+sixteen tokens, and `skinctl` renders all three.
+
+Under the GENGAR skin this reproduces the handoff almost exactly, because that
+skin's tokens are the handoff's palette. Two colours drift on purpose: the git
+branch and the dirty counters are pinned to the fixed `ok` and `warn`
+thresholds rather than to tokens, for the same reason the battery blocks are —
+a status colour that moves with the theme stops reading as a status. Branch
+green is now the same green a successful command's spine is drawn in.
+
+The mechanism is not the one every other consumer uses, because starship has
+no include directive and reads exactly one file. There is nowhere to put a
+generated palette that a hand-written config could pull in, so the whole
+config is the template — `skins/templates/starship.toml.in`, with `@@token@@`
+placeholders — and `skinctl` renders it to
+`~/.local/state/skins/starship.toml`. `$STARSHIP_CONFIG` in `.zshrc` points
+there. **`~/.config/starship.toml` is no longer stowed and should not exist**;
+if one is lying around it is not being read, and `rice-doctor` says so.
+
+`rpg-greet` and `rpg-spine.zsh` are cheaper: they source
+`~/.local/state/skins/skin.sh`, which skinctl writes as SGR triplets, since
+both of them only ever paste a colour into an escape sequence. That file
+carries the creature's identity too, so the greeting says WOOPER under the
+wooper skin and shows a WATER badge instead of GHOST and POISON. A skin with
+no creature block shows its own name and no badges at all. The braille art
+does not change — it is one creature drawn by hand, and there is no second
+drawing to switch to.
+
+Both scripts read `skin.sh` once, when a shell starts, so `skinctl set`
+recolours the next shell rather than the ones already open. The prompt does
+change immediately, because starship re-reads its config on every prompt.
 
 ## Not in here
 

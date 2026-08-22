@@ -10,17 +10,28 @@
 # and /proc reads plus three forks total, so it does not measurably slow shell
 # start. COLUMNS and RPG_SHELL are passed in by the caller to avoid two more.
 #
-# Colours are the handoff's design tokens written as literal truecolor
-# escapes, not ANSI slots. That is deliberate: skinctl repaints the terminal
-# palette per skin, but the creature's palette is fixed by the design, so the
-# greeting must not follow the skin.
+# Both the colours and the creature's identity come from the active skin.
+# skinctl renders ~/.local/state/skins/skin.sh on every `skinctl set`, as SGR
+# triplets and a handful of strings, and this file sources it. Under the
+# gengar skin that reproduces the handoff exactly, because the skin's tokens
+# are the handoff's palette; under wooper the greeting says WOOPER and turns
+# blue. The fallbacks below are the handoff's own values, so the greeting is
+# still correct on a machine where skinctl has never run.
+#
+# The braille art does not follow the skin -- it is one creature drawn by
+# hand, and there is no second drawing to switch to. A skin with no creature
+# block shows its own name and no type badges.
 
 set -u
 
-# --- design tokens ---------------------------------------------------------
+# --- the active skin -------------------------------------------------------
+RPG_SKIN_SH=${XDG_STATE_HOME:-$HOME/.local/state}/skins/skin.sh
+# shellcheck source=/dev/null
+[ -r "$RPG_SKIN_SH" ] && . "$RPG_SKIN_SH"
+
 esc=$(printf '\033')
-fg() { printf '%s[38;2;%s;%s;%sm' "$esc" "$1" "$2" "$3"; }
-bg() { printf '%s[48;2;%s;%s;%sm' "$esc" "$1" "$2" "$3"; }
+fg() { printf '%s[38;2;%sm' "$esc" "$1"; }
+bg() { printf '%s[48;2;%sm' "$esc" "$1"; }
 
 r="${esc}[0m"
 # Bold is mapped to Silkscreen by `bold_font` in kitty.conf, so every bold run
@@ -28,19 +39,27 @@ r="${esc}[0m"
 # them. In a terminal without that mapping they degrade to bold body text.
 b="${esc}[1m"
 
-C_ART=$(fg 156 107 255)     # accent solid  #9C6BFF
-C_NAME=$(fg 244 237 255)    # brightest     #F4EDFF
-C_DIM=$(fg 154 131 194)     # dim           #9A83C2
-C_RULE=$(fg 74 46 110)      # rule          #4A2E6E
-C_LABEL=$(fg 200 107 255)   # accent        #C86BFF
-C_VALUE=$(fg 210 194 238)   # body          #D2C2EE
-C_EXP=$(fg 124 184 255)     # info          #7CB8FF
-C_TRACK=$(fg 74 46 110)     # meter track   #4A2E6E
-C_OK=$(fg 61 220 132)       # hp ok         #3DDC84
-C_WARN=$(fg 255 197 61)     # hp warn       #FFC53D
-C_CRIT=$(fg 255 74 31)      # hp critical   #FF4A1F
-B_GHOST="$(bg 156 107 255)$(fg 10 7 19)"
-B_POISON="$(bg 212 90 184)$(fg 10 7 19)"
+C_ART=$(fg "${RPG_C_ART:-156;107;255}")       # the creature's primary type hue
+C_NAME=$(fg "${RPG_C_NAME:-244;237;255}")     # text
+C_DIM=$(fg "${RPG_C_DIM:-154;131;194}")       # dim
+C_RULE=$(fg "${RPG_C_RULE:-74;46;110}")       # inner
+C_LABEL=$(fg "${RPG_C_LABEL:-200;107;255}")   # accent
+C_VALUE=$(fg "${RPG_C_VALUE:-210;194;238}")   # body
+C_EXP=$(fg "${RPG_C_EXP:-124;184;255}")       # net
+C_TRACK=$(fg "${RPG_C_TRACK:-74;46;110}")     # meter track -- inner
+C_OK=$(fg "${RPG_C_OK:-61;220;132}")          # HP ok       -- fixed threshold
+C_WARN=$(fg "${RPG_C_WARN:-255;197;61}")      # HP warn     -- fixed threshold
+C_CRIT=$(fg "${RPG_C_CRIT:-255;74;31}")       # HP critical -- fixed threshold
+
+# The type badges are the creature's two type hues, with the background token
+# as their text colour -- accent is light in every skin, so the label reads.
+badge_fg=$(fg "${RPG_C_BADGE_FG:-10;7;19}")
+B_TYPE1="$(bg "${RPG_C_TYPE1:-156;107;255}")$badge_fg"
+B_TYPE2="$(bg "${RPG_C_TYPE2:-212;90;184}")$badge_fg"
+
+species=${RPG_SPECIES:-GENGAR}
+type1=${RPG_TYPE1-GHOST}
+type2=${RPG_TYPE2-POISON}
 
 # Same thresholds waybar uses for the battery block, so one battery never
 # reads "warning" in the bar and "fine" here.
@@ -89,6 +108,11 @@ uptime_s=${uptime_s%.*}
 
 exp=$(( uptime_s * 100 / EXP_LEVEL ))
 [ "$exp" -gt 100 ] && exp=100
+
+# The same level the shell surfaces show: 50, plus one for every whole day the
+# machine has been awake. A fixed "LV 50" next to a bar that fills with uptime
+# was the one number in the greeting that disagreed with the rest of the desktop.
+level=$(( 50 + uptime_s / 86400 ))
 
 bat=/sys/class/power_supply/BAT0
 hp=0
@@ -173,14 +197,16 @@ fit "$GAP_WIDE" "$LABEL_WIDE"
 [ "$BAR_W" -gt "$BAR_MAX" ] && BAR_W=$BAR_MAX
 
 if [ "$BAR_W" -lt "$BAR_MIN" ]; then
-    printf '\n%s%sGENGAR%s %s· %s · %s · %s%s   %s%sHP %s%%%s\n\n' \
-        "$b" "$C_NAME" "$r" "$C_DIM" "$node" "$arch" "${XDG_CURRENT_DESKTOP:-tty}" \
-        "$r" "$b" "$C_HP" "$hp" "$r"
+    printf '\n%s%s%s%s %s· %s · %s · %s%s   %s%sHP %s%%%s\n\n' \
+        "$b" "$C_NAME" "$species" "$r" "$C_DIM" "$node" "$arch" \
+        "${XDG_CURRENT_DESKTOP:-tty}" "$r" "$b" "$C_HP" "$hp" "$r"
     exit 0
 fi
 
 # --- the right column, one variable per row --------------------------------
-row_1="$b${C_NAME}GENGAR$r $b${C_DIM}LV 50$r $b$B_GHOST GHOST $r $b$B_POISON POISON $r"
+row_1="$b${C_NAME}${species}$r $b${C_DIM}LV ${level}$r"
+[ -n "$type1" ] && row_1="$row_1 $b$B_TYPE1 $type1 $r"
+[ -n "$type2" ] && row_1="$row_1 $b$B_TYPE2 $type2 $r"
 row_2="$C_RULE$(repeat '━' $(( right_w - 1 )))$r"
 row_3=$(stat HOST   "${USER:-$(id -un)}@$node")
 row_4=$(stat OS     "$osname $arch")

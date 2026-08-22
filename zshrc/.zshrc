@@ -3,6 +3,12 @@
 # Ported from ~/.bashrc. The graphical session and the GPU pinning live in
 # ~/.zprofile, which is the login-shell file; do not move them here.
 
+# The prompt is generated per skin, so it lives with the rest of the generated
+# state rather than in ~/.config. starship reads exactly one file and has no
+# include directive, which is why the whole config is rendered from
+# ~/.config/skins/templates/starship.toml.in instead of only its palette.
+# To go back to the pre-creature prompt, point this at ~/.config/starship-ember.toml.
+export STARSHIP_CONFIG=${XDG_STATE_HOME:-$HOME/.local/state}/skins/starship.toml
 eval "$(starship init zsh)"
 [ -f ~/.config/user-dirs.dirs ] && source ~/.config/user-dirs.dirs
 

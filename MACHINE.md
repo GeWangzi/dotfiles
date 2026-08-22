@@ -538,7 +538,7 @@ that profile, or revert to wpa_supplicant for the trip.
 ## What in this repo is hardware-specific
 
 Safe anywhere — the stow packages. Configs for Hyprland, waybar, wofi, kitty,
-zsh, tmux, starship, and the scripts in `local-bin`. Worst case a keybind refers to
+zsh, starship, and the scripts in `local-bin`. Worst case a keybind refers to
 hardware that is not there.
 
 Tied to this laptop — most of `system/`:

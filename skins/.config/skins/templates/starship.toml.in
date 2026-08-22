@@ -1,3 +1,11 @@
+# @@BANNER@@
+# Skin: @@SKIN@@
+#
+# Edit ~/.config/skins/templates/starship.toml.in, not this file: this one is
+# rewritten from that template every time the skin changes, and $STARSHIP_CONFIG
+# points here rather than at ~/.config/starship.toml (which is not stowed, and
+# should not exist -- starship reads exactly one file and has no include).
+
 "$schema" = "https://starship.rs/config-schema.json"
 
 # The live prompt from the "W4 -- spine + full greeting" handoff (Retro RPG
@@ -28,9 +36,9 @@
 # other and the gutter reads as one column rather than as detached stubs. It is
 # the closest a terminal gets to the mock's full-height spine.
 #
-# The previous Ember prompt is kept as starship-ember.toml. To go back:
-#     export STARSHIP_CONFIG=~/.config/starship-ember.toml
-# or just swap the two files.
+# The previous Ember prompt is kept as ~/.config/starship-ember.toml, which is
+# still stowed and still hand-written. To go back, point $STARSHIP_CONFIG at it
+# in ~/.zshrc instead of at the generated file.
 
 add_newline = false
 
@@ -38,32 +46,31 @@ format = "[▌ ](fg:live)$time$directory$git_branch$git_status$git_state"
 
 palette = "battle"
 
-# The handoff's "Design Tokens" verbatim. These are literal hex rather than
-# skinctl's tokens on purpose: skinctl repaints the terminal's ANSI palette per
-# skin, but the creature's colours are fixed by the design, so the prompt must
-# not follow the skin. rpg-greet hardcodes the same values for the same reason.
+# The handoff's "Design Tokens", mapped onto the active skin rather than
+# copied out of the design. skinctl's prompt_colors() is where each of these
+# is decided and why; the short version is that everything structural follows
+# the skin and the two status colours (ok, warn) stay pinned to the fixed
+# thresholds, because a status that changes colour with the theme stops
+# reading as a status.
 [palettes.battle]
-field     = "#0A0713"   # background
-panel     = "#1A1230"
-panel_alt = "#241A3C"
-rule      = "#4A2E6E"   # inner / track / rule
-frame     = "#E4D6FF"   # frame / bright text
-brightest = "#F4EDFF"
-body      = "#D2C2EE"
-dim       = "#9A83C2"
-dimmest   = "#6A5A8C"
-accent    = "#C86BFF"
-live      = "#9C6BFF"   # accent solid; the handoff's colour for the live spine
-secondary = "#D45AB8"
-ok        = "#8FE06A"   # git branch
-warn      = "#FF9A3C"   # dirty counts
-yellow    = "#FFD36B"
-critical  = "#FF4A1F"
-info      = "#7CB8FF"   # EXP
-mint      = "#7EF0C8"
-hp_ok     = "#3DDC84"
-hp_warn   = "#FFC53D"
-hp_crit   = "#FF4A1F"
+field = "@@field@@"  # background
+panel = "@@panel@@"
+panel_alt = "@@panel_alt@@"
+rule = "@@rule@@"  # inner / track / rule
+frame = "@@frame@@"  # frame / bright text
+brightest = "@@brightest@@"
+body = "@@body@@"
+dim = "@@dim@@"
+dimmest = "@@dimmest@@"
+accent = "@@accent@@"
+live = "@@live@@"  # the creature's primary type hue; the live spine
+secondary = "@@secondary@@"
+ok = "@@ok@@"  # git branch -- fixed threshold
+warn = "@@warn@@"  # dirty counts -- fixed threshold
+yellow = "@@yellow@@"
+critical = "@@critical@@"
+info = "@@info@@"  # EXP
+mint = "@@mint@@"
 
 [directory]
 style = "fg:accent"
