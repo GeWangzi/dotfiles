@@ -232,10 +232,11 @@ for unit in iwd NetworkManager; do
     fi
 done
 
-# wpa_supplicant and iwd both claim the card and neither wins cleanly. This
-# machine is set to iwd in conf.d, over a stale wpa_supplicant line still
-# sitting in the main NetworkManager.conf, so a both-running state is a real
-# possibility worth catching rather than a theoretical one.
+# wpa_supplicant and iwd both claim the card and neither wins cleanly. The
+# backend is named in exactly one place now (conf.d/wifi-backend.conf), so a
+# both-running state should not arise from config any more -- but the package
+# is still installed as the eduroam fallback, and something starting it by
+# hand is exactly the failure this catches.
 if systemctl is-active --quiet wpa_supplicant 2>/dev/null; then
     warn "wpa_supplicant is running alongside iwd -- they fight over $IFACE"
     note "sudo systemctl disable --now wpa_supplicant"

@@ -52,13 +52,12 @@ linux-headers
 mesa-utils
 minecraft-launcher
 nautilus
-network-manager-applet
+networkmanager
 nload
 noto-fonts-cjk
 noto-fonts-emoji
 npm
 nvidia-open
-nwg-look
 obs-studio
 ollama
 ollama-cuda
@@ -70,7 +69,6 @@ pipewire-alsa
 pipewire-jack
 pipewire-pulse
 pnpm
-polkit-kde-agent
 power-profiles-daemon
 python-dbus
 python-pip

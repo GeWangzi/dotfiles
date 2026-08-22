@@ -180,14 +180,15 @@ Adwaita's own GTK3 theme compiles its colours in as literals, so redefining a
 name reaches a few widgets and leaves the rest of a file dialog grey.
 The theme reads the libadwaita names instead, which is the whole reason it is
 in `pkglist-repo.txt` (and why `catppuccin-gtk-theme-mocha`, the previous
-theme, no longer is). Both toolkits watch the user stylesheet, so `skinctl
+theme, was uninstalled on 2026-08-21). Both toolkits watch the user stylesheet, so `skinctl
 set` recolours GTK windows that are already open.
 
 `~/.config/gtk-3.0/settings.ini` is **not stowed** — it is a plain file, edited
 in place, and it carries the theme name, the icon theme, the cursor and the
 font (`DejaVu Sans 10`; the pixel faces are for the shell's own surfaces,
-where the sizes are chosen, not for file dialogs). `nwg-look` rewrites this
-file if it is ever run.
+where the sizes are chosen, not for file dialogs). `nwg-look` was uninstalled
+on 2026-08-21 because it rewrites this file wholesale; do not reinstall it to
+change a GTK setting, edit the file.
 
 **Everything is skinned.** kitty includes the generated `skin.conf`, and the
 prompt and the two zsh surfaces follow the skin as well — see *The terminal*

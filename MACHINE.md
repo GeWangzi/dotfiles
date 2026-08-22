@@ -85,10 +85,19 @@ would be treating the wrong cause here.
 
 **Wifi** — MediaTek MT7921 (`02:00.0`, `mt7921e`), driven through NetworkManager
 with the **iwd** backend rather than wpa_supplicant, set in
-`/etc/NetworkManager/conf.d/wifi-backend.conf`. That file overrides a stale
-`wifi.backend=wpa_supplicant` still sitting in the main `NetworkManager.conf` — edit
-the conf.d file, never the main one, and note that a backend change needs a full
-`systemctl restart NetworkManager`, not a reload.
+`/etc/NetworkManager/conf.d/wifi-backend.conf`. That drop-in is the only place
+the backend is named: the main `NetworkManager.conf` used to carry a stale
+`wifi.backend=wpa_supplicant` that the drop-in silently overrode, and it is gone
+as of 2026-08-21. Keep it that way — two files naming a backend is one deleted
+drop-in away from falling back to a `wpa_supplicant` that is not even enabled,
+which presents as dead wifi rather than as a config error. A backend change
+needs a full `systemctl restart NetworkManager`, not a reload.
+
+`networkmanager` is explicitly installed and listed in `pkglist-repo.txt`. It
+was dep-marked until 2026-08-21, when removing `network-manager-applet` with
+`-Rns` cascaded and took NetworkManager, `libnma` and `nmcli` with it —
+`system-connections/` survived, but nothing on this machine could have
+configured wifi after a reboot. Marked explicit so that cannot repeat.
 
 **There is no ethernet port.** A text console (Ctrl+Alt+F2) is the only fallback if
 wifi breaks, which is why several recovery tools are kept working from a bare TTY.
