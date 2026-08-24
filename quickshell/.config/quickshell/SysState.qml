@@ -190,20 +190,24 @@ Singleton {
         }
     }
 
-    // The 0-8 step value, on the SAME exponential curve brightnessctl -e4
-    // uses for every write (keys and the details menu alike): percent p sets
-    // raw = max * (p/100)^4, so reading back linearly made the meter lie --
-    // clicking step 4 read back as 0 and low steps looked like they fell
-    // below zero. Inverting the exponent makes set-then-read round-trip.
-    readonly property int bright8: Math.round(Math.pow(brightRaw / brightMax, 1 / 4) * 8)
+    // The 0-8 step value. Set and read have to share one curve -- reading
+    // back on a different curve made the meter lie, and clicking step 4 read
+    // back as 0. That curve is plain linear over the raw value now, because
+    // the kernel already supplies the perceptual one: amdgpu reports
+    // /sys/class/backlight/amdgpu_bl1/scale as `non-linear`, meaning the raw
+    // number is pre-mapped. brightnessctl -e4 stacked a second gamma on top
+    // of it, which put the eight steps at 0.03/0.4/2/6/16/32/60/100 percent
+    // of raw -- a 13x luminance jump from step 1 to step 2 and 1.7x from 7 to
+    // 8, so the bottom of the dial did everything and the top did nothing.
+    readonly property int bright8: Math.round(brightRaw / brightMax * 8)
 
     // No floor: step 0 is a genuinely dark panel (the user wants the bottom
     // bar to mean OFF). Recovery is the brightness-up key, which works
     // blind.
     function setBright8(n) {
         const step = Math.max(0, Math.min(8, n));
-        Quickshell.execDetached(["brightnessctl", "-e4", "set",
-                                 Math.round(step / 8 * 100) + "%"]);
+        Quickshell.execDetached(["brightnessctl", "set",
+                                 "" + Math.round(step / 8 * brightMax)]);
     }
 
     // ---------------------------------------------------------------- SUB (do not disturb)

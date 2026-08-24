@@ -101,6 +101,15 @@ hl.on("hyprland.start", function()
     -- layer itself. Their configs stay in the repo but nothing starts them.
     hl.exec_cmd("hypridle")
 
+    -- Keyboard backlight dark at login. Nothing in userspace was choosing its
+    -- level before this line: the Fn keys are handled in-kernel by
+    -- asus_nb_wmi, so whatever the EC powered up with simply persisted across
+    -- the session. Touch typing does not need it lit, and the panel is the
+    -- only backlight worth spending battery on. Fn+F2/F3 still steps it back
+    -- up on demand -- this only sets the starting point, and only at a real
+    -- login, like everything else in this block.
+    hl.exec_cmd("brightnessctl -d asus::kbd_backlight set 0")
+
     -- The Quickshell shell, currently hosting the RPG launcher (SUPER + space).
     -- -d detaches it from this process. It stays resident with no window
     -- shown: the launcher surface is built once at startup and toggled over
@@ -501,8 +510,8 @@ hl.bind("XF86AudioRaiseVolume",  hl.dsp.exec_cmd("qs ipc call trainable volup ||
 hl.bind("XF86AudioLowerVolume",  hl.dsp.exec_cmd("qs ipc call trainable voldown || wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),    { locked = true, repeating = true })
 hl.bind("XF86AudioMute",         hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true, repeating = true })
 hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("qs ipc call trainable brightup || brightnessctl -e4 set 12%+"), { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("qs ipc call trainable brightdown || brightnessctl -e4 set 12%-"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("qs ipc call trainable brightup || brightnessctl set 12%+"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("qs ipc call trainable brightdown || brightnessctl set 12%-"), { locked = true, repeating = true })
 
 -- Cycle ASUS platform profile: quiet -> balanced -> performance.
 -- Calls a root helper via a NOPASSWD sudoers rule and shows a notification.
