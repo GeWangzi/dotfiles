@@ -39,6 +39,21 @@
 # The 2026-08 prune cut the roster from eleven skins to these four; the old
 # ones (ember included) live in git history and on the archive/dream-land-mascot
 # tag if they are ever wanted back.
+#
+# Beyond colours, a skin can change what the shell SAYS and SHOWS:
+#
+#   [skins.features]   boolean switches for shell elements (Skin.has gates)
+#   [skins.variants]   which implementation fills a slot -- lock, idle,
+#                      field, summary; unknown names degrade to plain
+#   [skins.lexicon]    wording overrides; the QML call sites' fallbacks are
+#                      the plain voice, and {name}/{app} placeholders are
+#                      filled by Skin.phrase
+#
+# The shell's native voice is PLAIN. A [voices.<name>] table bundles all
+# three of the above into a costume a skin opts into with `voice = "<name>"`;
+# the merge order is the global [features] table, then the voice, then the
+# skin's own tables, later layers winning per key. Today there is one voice:
+# the creature costume the three creature skins wear.
 
 # Battery and peripheral health only. These are deliberately skin-independent:
 # a warning that changes colour with the theme is not a warning. The POWER OFF

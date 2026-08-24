@@ -1,9 +1,11 @@
-// The details menu, from turn 17a of the creature-shell handoff: the control
-// panel as a real game menu, ONE layer deep -- every section shows its whole
-// contents with the controls in place, and there are no drill-in pages.
+// The details menu: the control panel, ONE layer deep -- every section
+// shows its whole contents with the controls in place, and there are no
+// drill-in pages. Plain by default (OVERVIEW / SYSTEM / MEDIA / ...); the
+// creature costume restores turn 17a's game-menu dress through the lexicon,
+// the feature gates and the `summary` variant.
 //
-// Left rail: SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TM / TRAIN /
-// SESSION, plus the caught plate. Right pane: that section's contents,
+// Left rail: the sections, plus the caught plate (costume only). Right
+// pane: that section's contents,
 // scrollable when it overflows (MOVES and TM list everything). Keys:
 // up/down row, left/right section, return toggles, ESC closes. `mSec` is
 // the section NAME, never an index -- an index-keyed version of this menu
@@ -42,6 +44,21 @@ PanelWindow {
                                      "MOVES", "TM", "TRAIN", "SESSION"]
         .filter(k => k === "SUMMARY" || k === "SESSION"
                      || Skin.has("sec_" + k.toLowerCase()))
+
+    // What a section is CALLED, display-only. `mSec` and everything keyed on
+    // it -- the filter above, rowCount, the pane Loader switch, toggle() --
+    // stay on the raw names: renaming a key reintroduced an off-by-one class
+    // of bug once already (see the header). The plain shell names the
+    // sections after their contents; the creature voice restores the game
+    // menu words through the lexicon.
+    function secLabel(name) {
+        const plain = {
+            "SUMMARY": "OVERVIEW", "STATS": "SYSTEM", "ABILITIES": "MEDIA",
+            "ITEMS": "BLUETOOTH", "MOVES": "PROCESSES", "TM": "APPS",
+            "TRAIN": "CONTROLS", "SESSION": "SESSION"
+        };
+        return Skin.lex("sec_" + name.toLowerCase(), plain[name] || name);
+    }
 
     readonly property int rowCount: {
         switch (mSec) {
@@ -233,12 +250,12 @@ PanelWindow {
 
     // Power mode.
     readonly property var perfModes: [
-        { label: "QUIET", profile: PowerProfile.PowerSaver,
-          note: "Fans quiet. Clocks capped. HP drains slowest." },
-        { label: "BALANCED", profile: PowerProfile.Balanced,
-          note: "Default. Clock scales with load." },
-        { label: "MEGA", profile: PowerProfile.Performance,
-          note: "All cores unlocked. Fans loud, HP drains faster." }
+        { label: Skin.lex("perf_saver", "QUIET"), profile: PowerProfile.PowerSaver,
+          note: Skin.lex("perf_saver_note", "Fans quiet. Clocks capped. Battery lasts longest.") },
+        { label: Skin.lex("perf_balanced", "BALANCED"), profile: PowerProfile.Balanced,
+          note: Skin.lex("perf_balanced_note", "Default. Clock scales with load.") },
+        { label: Skin.lex("perf_performance", "PERFORMANCE"), profile: PowerProfile.Performance,
+          note: Skin.lex("perf_performance_note", "All cores unlocked. Fans loud, battery drains faster.") }
     ]
 
     function cyclePerf() {
@@ -345,7 +362,9 @@ PanelWindow {
             id: menuFrame
             width: 940
             anchors.centerIn: parent
-            title: Skin.species
+            // A creature titles the menu with its species; the plain shell
+            // names it for what it is.
+            title: Skin.creature ? Skin.species : Skin.lex("details_title", "SETTINGS")
 
             padTop: 26
             padSide: 20
@@ -380,7 +399,9 @@ PanelWindow {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: Skin.species + " · " + win.mSec
+                            text: (Skin.creature ? Skin.species
+                                                 : Skin.lex("details_title", "SETTINGS"))
+                                  + " · " + win.secLabel(win.mSec)
                             color: Skin.text
                             font.family: Skin.fontLabel
                             font.pixelSize: 16
@@ -390,7 +411,7 @@ PanelWindow {
                     Text {
                         anchors.right: parent.right
                         anchors.verticalCenter: crumbRow.verticalCenter
-                        text: "KEYS ARMED — ESC RELEASES"
+                        text: Skin.lex("keys_armed", "ESC CLOSES")
                         color: Skin.accent
                         font.family: Skin.fontLabel
                         font.pixelSize: 10
@@ -453,7 +474,7 @@ PanelWindow {
                                     }
 
                                     Text {
-                                        text: tab.modelData
+                                        text: win.secLabel(tab.modelData)
                                         color: tab.active ? Skin.shadow : Skin.body
                                         font.family: Skin.fontLabel
                                         font.pixelSize: 12
@@ -526,7 +547,7 @@ PanelWindow {
                             Text {
                                 id: paneTab
                                 anchors.centerIn: parent
-                                text: win.mSec
+                                text: win.secLabel(win.mSec)
                                 color: Skin.text
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
@@ -552,7 +573,9 @@ PanelWindow {
                                 onLoaded: paneScroll.contentY = 0
                                 sourceComponent: {
                                     switch (win.mSec) {
-                                    case "SUMMARY":   return summarySec;
+                                    case "SUMMARY":
+                                        return Skin.variant("summary", "plain") === "creature"
+                                            ? summaryCreature : summaryPlain;
                                     case "STATS":     return statsSec;
                                     case "ABILITIES": return abilitiesSec;
                                     case "ITEMS":     return itemsSec;
@@ -626,9 +649,50 @@ PanelWindow {
 
     // ================================================================ sections
 
-    // ---------------- SUMMARY
+    // ---------------- OVERVIEW (the plain SUMMARY: the battery, nothing else)
     Component {
-        id: summarySec
+        id: summaryPlain
+
+        Column {
+            spacing: 12
+
+            Row {
+                width: parent.width
+                spacing: 10
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Skin.lex("hp", "BATTERY")
+                    color: Skin.outer
+                    font.family: Skin.fontLabel
+                    font.pixelSize: 10
+                    font.letterSpacing: 10 * 0.16
+                }
+
+                HpBar {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - 220
+                    height: 12
+                    fraction: SysState.hp
+                    fillColor: Skin.hpColor(SysState.hp)
+                    alarm: SysState.hp <= 0.2
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: SysState.hpNum
+                    color: Skin.body
+                    font.family: Skin.fontLabel
+                    font.pixelSize: 12
+                    font.letterSpacing: 12 * 0.12
+                }
+            }
+        }
+    }
+
+    // ---------------- SUMMARY (the creature costume's version)
+    Component {
+        id: summaryCreature
 
         Row {
             spacing: 18
@@ -807,7 +871,9 @@ PanelWindow {
                     columnSpacing: 10
                     rowSpacing: 6
 
+                    // A skin without an ability drops the pair on its data.
                     Text {
+                        visible: Skin.ability !== ""
                         width: 84
                         text: "ABILITY"
                         color: Skin.dim
@@ -816,6 +882,7 @@ PanelWindow {
                         font.letterSpacing: 10 * 0.14
                     }
                     Text {
+                        visible: Skin.ability !== ""
                         text: Skin.ability
                         color: Skin.text
                         font.family: Skin.fontLabel
@@ -923,6 +990,10 @@ PanelWindow {
                         }
 
                         Text {
+                            // Hidden when the plain label already says the
+                            // same thing (BATTERY over BATTERY stutters).
+                            visible: parent.parent.modelData.sub
+                                     !== parent.parent.modelData.label
                             text: parent.parent.modelData.sub
                             color: Skin.dim
                             font.family: Skin.fontLabel
@@ -954,8 +1025,10 @@ PanelWindow {
             }
 
             // Nature IS the power mode: CALM saves power, HARDY is balanced,
-            // MODEST runs hot. Changed in TRAIN.
+            // MODEST runs hot. Changed in TRAIN. Costume furniture -- the
+            // plain shell already names the mode in CONTROLS.
             Text {
+                visible: Skin.has("nature")
                 text: SysState.nature + " NATURE — "
                       + (SysState.nature === "CALM" ? "QUIET, HP DRAINS SLOWEST"
                          : SysState.nature === "MODEST" ? "MEGA, HP DRAINS FASTER"
@@ -967,6 +1040,7 @@ PanelWindow {
             }
 
             Row {
+                visible: Skin.has("chips")
                 spacing: 9
 
                 Text {
@@ -1217,8 +1291,8 @@ PanelWindow {
 
                         Text {
                             anchors.right: parent.right
-                            text: SysState.volPct === 0 ? "THROAT CHOP"
-                                : SysState.volPct >= 100 ? "BOOMBURST"
+                            text: SysState.volPct === 0 ? Skin.lex("osd_vol_min", "MUTED")
+                                : SysState.volPct >= 100 ? Skin.lex("osd_vol_max", "VOL 100%")
                                 : SysState.volPct + "%"
                             color: Skin.text
                             font.family: Skin.fontLabel
@@ -1507,8 +1581,10 @@ PanelWindow {
 
             Text {
                 text: win.btAdapter && win.btAdapter.enabled
-                    ? (win.btDevices.length === 0 ? "NO DEVICE HELD" : "NO OTHER DEVICE PAIRED")
-                    : "RADIO OFF — NOTHING HELD"
+                    ? (win.btDevices.length === 0
+                       ? Skin.lex("items_empty", "NO DEVICES CONNECTED")
+                       : "NO OTHER DEVICE PAIRED")
+                    : Skin.lex("items_off", "RADIO OFF")
                 color: Skin.dim
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
@@ -1556,6 +1632,7 @@ PanelWindow {
                             }
 
                             Text {
+                                visible: Skin.has("pp")
                                 anchors.right: parent.right
                                 anchors.baseline: procName.baseline
                                 text: Apps.ppForCpu(parent.parent.parent.modelData.cpu)
@@ -1644,7 +1721,7 @@ PanelWindow {
             spacing: 10
 
             Text {
-                text: "INSTALLED — TEACHABLE, NOT RUNNING"
+                text: Skin.lex("tm_note", "INSTALLED — NOT RUNNING")
                 color: Skin.dim
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
@@ -1731,8 +1808,8 @@ PanelWindow {
 
                     Text {
                         anchors.right: parent.right
-                        text: SysState.volPct === 0 ? "THROAT CHOP"
-                            : SysState.volPct >= 100 ? "BOOMBURST"
+                        text: SysState.volPct === 0 ? Skin.lex("osd_vol_min", "MUTED")
+                            : SysState.volPct >= 100 ? Skin.lex("osd_vol_max", "VOL 100%")
                             : SysState.volPct + "%"
                         color: Skin.text
                         font.family: Skin.fontLabel
@@ -1783,8 +1860,8 @@ PanelWindow {
                     // readout; only the extremes get a name.
                     Text {
                         anchors.right: parent.right
-                        text: SysState.bright8 === 0 ? "BLACK HOLE ECLIPSE"
-                            : SysState.bright8 >= 8 ? "LIGHT THAT BURNS THE SKY"
+                        text: SysState.bright8 === 0 ? Skin.lex("osd_bright_min", "BRIGHTNESS 0")
+                            : SysState.bright8 >= 8 ? Skin.lex("osd_bright_max", "BRIGHTNESS MAX")
                             : ""
                         color: Skin.text
                         font.family: Skin.fontLabel
@@ -2020,7 +2097,7 @@ PanelWindow {
 
             Text {
                 width: parent.width
-                text: "Restart and shut down ask first — the capture device holds the confirmation."
+                text: Skin.lex("session_note", "Restart and shut down ask first.")
                 color: Skin.body
                 font.family: Skin.fontBody
                 font.pixelSize: 16

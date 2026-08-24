@@ -407,20 +407,20 @@ Singleton {
     // The six stats of the details menu's STATS section, each mapped to the
     // real figure named in its sub-label.
     readonly property var statRows: [
-        { label: "HP", sub: "BATTERY", val: hpNum,
+        { label: Skin.lex("hp", "BATTERY"), sub: "BATTERY", val: hpNum,
           frac: hp, hue: Skin.hpColor(hp) },
-        { label: "ATTACK", sub: "CPU CLOCK",
+        { label: Skin.lex("stat_attack", "CPU"), sub: "CPU CLOCK",
           val: (cpuCurMHz / 1000).toFixed(1) + " / " + (cpuMaxMHz / 1000).toFixed(1) + " GHZ",
           frac: cpuCurMHz / cpuMaxMHz, hue: Skin.cmd },
-        { label: "DEFENSE", sub: "THERMALS",
+        { label: Skin.lex("stat_defense", "TEMPERATURE"), sub: "THERMALS",
           val: tempC + "°C",
           frac: Math.max(0, Math.min(1, 1 - tempC / 90)), hue: Skin.net },
-        { label: "SP. ATK", sub: "GPU LOAD", val: gpuBusy + "%",
+        { label: Skin.lex("stat_spatk", "GPU"), sub: "GPU LOAD", val: gpuBusy + "%",
           frac: gpuBusy / 100, hue: Skin.snd },
-        { label: "SP. DEF", sub: "DISK FREE",
+        { label: Skin.lex("stat_spdef", "DISK"), sub: "DISK FREE",
           val: diskAvailG + " / " + diskSizeG + " GB",
           frac: diskSizeG > 0 ? diskAvailG / diskSizeG : 0, hue: Skin.txt },
-        { label: "SPEED", sub: "MEMORY FREE",
+        { label: Skin.lex("stat_speed", "MEMORY"), sub: "MEMORY FREE",
           val: (memAvailKb / 1024 / 1024).toFixed(1) + " / "
                + Math.round(memTotalKb / 1024 / 1024) + " GB",
           frac: memFreeFraction, hue: Skin.ok }

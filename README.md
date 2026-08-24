@@ -52,9 +52,18 @@ them means git history, not a parked copy; the wallpapers themselves moved to
 The desktop's default palette is **DREAM LAND** — the Kirby night-sky field
 with pink chrome and a warm star accent, worn plainly: Adwaita Sans for
 every face, a subtle 8px radius, the bar on the top edge, no pixel styling.
-The colours are the flavour; the furniture is quiet. It is the one skin with
-a `[skins.features]` table: it drops the foe plate, the status chips, EXP
-and LV, because Kirby fights nothing and does not level.
+The colours are the flavour; the furniture is quiet.
+
+**The shell's native voice is plain.** Every surface's default wording and
+structure is normal — a battery is a battery, processes are processes, the
+lock is a clock and a password field. The RPG dress is a *costume*: one
+`[voices.creature]` preset in the TOML bundling variant picks (the lock
+card, the launcher move bar, the wallpaper battle field, the creature
+summary pane), feature switches (foe plate, chips, LV/EXP, …) and the
+battle lexicon. The three creature skins opt in with `voice = "creature"`;
+dream-land declares nothing and gets the plain shell. One caveat:
+notification headlines are composed when they arrive, so history keeps the
+voice it was written in across skin switches.
 
 It is one of four skins. The other three are **creatures** from the
 creature-shell handoff — a skin plus a `[skins.creature]` block (species,
@@ -128,10 +137,11 @@ machine is always the actor, never the collector.
 | | |
 |---|---|
 | `shell.qml` | entry point, IPC targets, keeps the process resident |
-| `Wallpaper.qml` | the battle field as the wallpaper — a route background per workspace, sprite slots, clock + ROUTE widget |
+| `Wallpaper.qml` | the wallpaper — a background per workspace and the clock |
 | `Bar.qml` | 34px HP header — creature, HP bar, chips only when real, wifi/vol, clock |
-| `Lock.qml` | lock screen — **SUPER + L** — WlSessionLock + PAM; capture device, creature card, running moves |
-| `Launcher.qml` | move bar — **SUPER + space** — "What will GENGAR do?", typing searches |
+| `Lock.qml` | lock screen — **SUPER + L** — WlSessionLock + PAM; clock, battery, password field |
+| `Launcher.qml` | launcher — **SUPER + space** — a search line, typing filters |
+| `CreatureField.qml` `LockCard.qml` `MoveBar.qml` | the creature costume's structural halves — battle field, capture-device lock card, move bar — loaded only when the skin's voice asks |
 | `Osd.qml` | volume/brightness pop-up, hard fade frames |
 | `PowerMenu.qml` | **SUPER + ESC** — LOCK / SUSPEND / LOG OUT / SHUT DOWN, red confirm log line |
 | `DetailsMenu.qml` | **SUPER + D** — SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TM / TRAIN / SESSION |

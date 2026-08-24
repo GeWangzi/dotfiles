@@ -59,8 +59,10 @@ PanelWindow {
             height: parent.height - 5
             spacing: 14
 
-            // ---- the machine itself
+            // ---- the machine itself (costume only: the plain bar leads
+            // with the battery, not a name)
             Text {
+                visible: Skin.has("species")
                 anchors.verticalCenter: parent.verticalCenter
                 text: Skin.species
                 color: Skin.text

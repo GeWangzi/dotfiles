@@ -59,20 +59,24 @@ Singleton {
         return "CMD";
     }
 
-    // The headline puts the machine in the actor/patient role where that
-    // reads naturally; otherwise it is the app's own summary, uppercased for
-    // Silkscreen. The body is never flavoured.
+    // The headline is the app's own summary where one exists; the tagged
+    // fallbacks are plain (the app name) unless the creature voice puts the
+    // machine in the actor role through the notif_* lexicon keys. The body
+    // is never flavoured. Headlines are composed at ingest and persisted, so
+    // history keeps the voice it was written in across skin switches.
     function compose(tag, appName, summary, body) {
         const app = (appName || "APP").toUpperCase();
+        const subs = { name: Skin.species, app: app };
         if (tag === "NET")
-            return { headline: Skin.species + " TOOK DAMAGE FROM " + app + "!",
+            return { headline: Skin.phrase("notif_net", "{app}", subs),
                      body: [summary, body].filter(Boolean).join(" — ") };
         if (tag === "SND")
-            return { headline: Skin.species + " HEARD A CALL!",
+            return { headline: Skin.phrase("notif_snd", "{app}", subs),
                      body: [summary, body].filter(Boolean).join(" — ") };
         if (summary)
             return { headline: summary.toUpperCase(), body: body || "" };
-        return { headline: Skin.species + " FELT SOMETHING!", body: body || "" };
+        return { headline: Skin.phrase("notif_plain", "NOTIFICATION", subs),
+                 body: body || "" };
     }
 
     function ingest(n) {

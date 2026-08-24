@@ -1,22 +1,16 @@
-// The launcher, reworked to turn 14a of the creature-shell handoff: the move
-// bar. The machine's four favourite apps are its moves; launching one is
-// using it. With no query the surface is only the bottom band of the battle
-// screen -- a log box asking `What will GRIMLING do?` plus a 2x2 command box
-// with PP per move. Typing switches to the list mode from 15f: a query line
-// where the log box sits and truncating result rows below it.
+// The launcher. Plain by default: with no query it is a bare search line
+// with a blinking cursor, and typing brings the result list (turn 15f's
+// list mode -- a query line and truncating result rows below it). The
+// creature costume (skin variant idle = "moves") loads MoveBar.qml into the
+// idle slot instead: turn 14a's log box and 2x2 command grid with PP.
 //
 // Departures from the design document, all deliberate:
 //
 //   - It floats over the live desktop rather than sitting in a full battle
 //     screen; the field became the wallpaper (turn 16a) and the launcher
 //     kept only the band.
-//   - PP is real: a move's meter is the machine's RAM not spent on that app,
-//     out of the machine's total in GB (an IV -- fixed at birth). An app
-//     that is not running has full PP. The design left PP unmapped.
 //   - Every Silkscreen size is rounded up to even, because the face is a
 //     pixel font and this panel runs at scale 1.5. See fonts/README.md.
-//
-// The blinking advance marker in the log box is Skin.glyphMore.
 
 import QtQuick
 import Quickshell
@@ -54,6 +48,12 @@ PanelWindow {
     }
 
     readonly property bool listMode: mode === "apps" && query !== ""
+
+    // The plain idle: no query and no move-bar costume. The launcher shows
+    // just the search line; selection and Enter are inert until typing
+    // starts, because there is nothing on screen to select.
+    readonly property bool plainIdle: mode === "apps" && query === ""
+        && Skin.variant("idle", "plain") !== "moves"
 
     readonly property int perPage: listMode ? 6 : 4
     readonly property var results: Apps.search(query)
@@ -224,6 +224,7 @@ PanelWindow {
     }
 
     function launch() {
+        if (win.plainIdle) return;
         if (!current) return;
         Apps.launch(current);
         win.dismissed();
@@ -233,6 +234,7 @@ PanelWindow {
     // the edges and page rather than wrap. Clip is a sliding column over the
     // full result list; glyphs an 8-wide grid.
     function move(dx, dy) {
+        if (win.plainIdle) return;
         if (mode === "clip") {
             selected = Math.max(0, Math.min(altResults.length - 1, selected + dy));
             return;
@@ -357,181 +359,24 @@ PanelWindow {
                  : win.mode === "glyphs" ? "GLYPHS"
                  : win.listMode ? "SEARCH" : Skin.menuWord
 
-            // ---------------- move bar (no query)
-            Row {
-                visible: !win.listMode && !win.altMode
+            // ---------------- move bar (no query; costume only)
+            Loader {
+                // Constructed only under the creature costume. The height
+                // clamp matters: Frame sizes by childrenRect, and an inactive
+                // Loader still reports its last size without it.
+                active: !win.listMode && !win.altMode
+                        && Skin.variant("idle", "plain") === "moves"
                 width: parent.width
-                spacing: 12
-
-                // Log box, 1.3fr of the band.
-                Rectangle {
-                    id: logBox
-                    width: (parent.width - 12) * 1.3 / 2.3
-                    height: commandBox.height
-                    color: Skin.strip
-                    border.width: 4
-                    border.color: Skin.inner
-
-                    Column {
-                        x: 20
-                        y: 18
-                        width: parent.width - 40
-                        spacing: 10
-
-                        Text {
-                            width: parent.width
-                            text: "What will " + Skin.species + " do?"
-                            color: Skin.text
-                            font.family: Skin.fontBody
-                            font.pixelSize: 18
-                            wrapMode: Text.WordWrap
-                        }
-
-                        Text {
-                            width: parent.width
-                            text: win.current && win.current.description !== ""
-                                ? win.current.description : "No description."
-                            color: Skin.body
-                            font.family: Skin.fontBody
-                            font.pixelSize: 16
-                            wrapMode: Text.WordWrap
-                            maximumLineCount: 2
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    Text {
-                        x: 20
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 12
-                        text: win.current
-                            ? win.current.tag + " · " + Apps.statusFor(win.current.match)
-                            : ""
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-
-                    // The log box advance marker.
-                    Blink {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 12
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 8
-                        width: advance.implicitWidth
-                        height: advance.implicitHeight
-
-                        Text {
-                            id: advance
-                            text: Skin.glyphMore
-                            color: Skin.accent
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 14
-                        }
-                    }
-                }
-
-                // 2x2 command box.
-                Rectangle {
-                    id: commandBox
-                    width: (parent.width - 12) * 1 / 2.3
-                    height: moveGrid.height + 24
-                    color: Skin.strip
-                    border.width: 4
-                    border.color: Skin.inner
-
-                    Grid {
-                        id: moveGrid
-                        x: 8
-                        y: 8
-                        columns: 2
-                        columnSpacing: 8
-                        rowSpacing: 8
-
-                        readonly property int cellWidth:
-                            (commandBox.width - 16 - 8 - 8) / 2
-
-                        Repeater {
-                            model: win.listMode ? [] : win.pageItems
-
-                            Rectangle {
-                                id: moveCell
-
-                                required property int index
-                                required property var modelData
-
-                                readonly property bool active: win.selected === index
-
-                                width: moveGrid.cellWidth
-                                height: 64
-                                color: Skin.cell
-
-                                Column {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    x: 14
-                                    width: parent.width - 28
-                                    spacing: 5
-
-                                    Text {
-                                        width: parent.width
-                                        text: moveCell.modelData.name
-                                        color: Skin.text
-                                        font.family: Skin.fontLabel
-                                        font.pixelSize: 14
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Item {
-                                        width: parent.width
-                                        height: tagText.implicitHeight
-
-                                        Text {
-                                            id: tagText
-                                            text: moveCell.modelData.tag
-                                            color: Skin.categoryColor(moveCell.modelData.tag)
-                                            font.family: Skin.fontLabel
-                                            font.pixelSize: 10
-                                            font.letterSpacing: 10 * 0.18
-                                        }
-
-                                        Text {
-                                            anchors.right: parent.right
-                                            text: Apps.ppFor(moveCell.modelData.match)
-                                            color: Skin.dim
-                                            font.family: Skin.fontLabel
-                                            font.pixelSize: 10
-                                            font.letterSpacing: 10 * 0.12
-                                        }
-                                    }
-                                }
-
-                                // Selection is the outline only -- no per-cell
-                                // cursor glyph in the command box (turn 14a).
-                                Rectangle {
-                                    visible: moveCell.active
-                                    anchors.fill: parent
-                                    color: "transparent"
-                                    border.width: 3
-                                    border.color: Skin.outline
-                                }
-
-                                HoverHandler { id: moveHover }
-                                TapHandler {
-                                    onTapped: {
-                                        win.selected = moveCell.index;
-                                        win.launch();
-                                    }
-                                }
-                            }
-                        }
-                    }
+                height: active && item ? item.implicitHeight : 0
+                sourceComponent: MoveBar {
+                    win: win
                 }
             }
 
-            // ---------------- list mode (typing)
+            // ---------------- list mode (typing), and the plain idle's
+            // bare search line
             Column {
-                visible: win.listMode
+                visible: win.listMode || win.plainIdle
                 width: parent.width
                 spacing: 10
 
@@ -579,11 +424,26 @@ PanelWindow {
                     }
 
                     Text {
+                        visible: win.listMode
                         anchors.right: parent.right
                         anchors.rightMargin: 14
                         anchors.verticalCenter: parent.verticalCenter
                         text: (win.results.length === 0 ? 0 : win.page * win.perPage + win.selected + 1)
                               + " OF " + win.results.length
+                        color: Skin.dim
+                        font.family: Skin.fontLabel
+                        font.pixelSize: 10
+                        font.letterSpacing: 10 * 0.12
+                    }
+
+                    // The plain idle's only furniture: a hint where the
+                    // count sits in list mode.
+                    Text {
+                        visible: win.plainIdle
+                        anchors.right: parent.right
+                        anchors.rightMargin: 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: "TYPE TO SEARCH"
                         color: Skin.dim
                         font.family: Skin.fontLabel
                         font.pixelSize: 10
@@ -658,7 +518,7 @@ PanelWindow {
 
                 // Nothing matched: the creature's empty word (15f).
                 Rectangle {
-                    visible: win.pageItems.length === 0
+                    visible: win.listMode && win.pageItems.length === 0
                     width: parent.width
                     height: 96
                     color: Skin.cell

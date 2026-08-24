@@ -8,9 +8,8 @@
 // never a QML animation (see Blink.qml for why that matters on a surface
 // that would otherwise hold the frame clock at refresh rate).
 //
-// The extremes name a move: volume 0 THROAT CHOP, volume max BOOMBURST,
-// brightness 0 BLACK HOLE ECLIPSE, brightness max LIGHT THAT BURNS THE SKY
-// (full names at the user's request). The details menu uses the same words.
+// The extremes get a name: plain by default, and the creature voice names a
+// move through the osd_* lexicon keys. The details menu uses the same words.
 
 import QtQuick
 import Quickshell
@@ -93,12 +92,12 @@ PanelWindow {
     // move, and the brightness pair get their full names.
     readonly property string label: {
         if (mode === "vol") {
-            if (SysState.volPct === 0) return "THROAT CHOP";
-            if (SysState.volPct >= 100) return "BOOMBURST";
+            if (SysState.volPct === 0) return Skin.lex("osd_vol_min", "MUTED");
+            if (SysState.volPct >= 100) return Skin.lex("osd_vol_max", "VOL 100%");
             return "VOL " + SysState.volPct + "%";
         }
-        if (value === 0) return "BLACK HOLE ECLIPSE";
-        if (value >= 8) return "LIGHT THAT BURNS THE SKY";
+        if (value === 0) return Skin.lex("osd_bright_min", "BRIGHTNESS 0");
+        if (value >= 8) return Skin.lex("osd_bright_max", "BRIGHTNESS MAX");
         return "BRIGHT";
     }
 

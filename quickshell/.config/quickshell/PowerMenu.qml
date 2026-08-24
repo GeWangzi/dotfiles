@@ -1,7 +1,8 @@
-// The power menu, from turn 19a of the creature-shell handoff: four session
-// actions on the move-bar frame under a CAPTURE DEVICE tab, each with its
-// real keybind and one line on what happens to HP and PP. Confirmation is a
-// red-framed log line with YES / NO -- not a second menu.
+// The power menu: four session actions, each with its real keybind and one
+// line on what it does. Confirmation is a red-framed log line with YES / NO
+// -- not a second menu. Plain wording by default; the creature voice (turn
+// 19a's CAPTURE DEVICE dress) comes back through the power_* lexicon keys
+// and the per-creature ball word on the tab.
 //
 // The key hints in the cells are this machine's actual binds, not the
 // design's: LOCK is SUPER+L, LOG OUT is SUPER+SHIFT+L (hyprland.lua).
@@ -24,22 +25,22 @@ PanelWindow {
     readonly property var actions: [
         {
             name: "LOCK", key: "SUPER + L", danger: false, confirm: false,
-            note: "Stays awake. Moves keep their PP.",
+            note: Skin.lex("power_note_lock", "Stays awake."),
             run: ["loginctl", "lock-session"]
         },
         {
             name: "SUSPEND", key: "CLOSE LID", danger: false, confirm: false,
-            note: "Sleeps. HP holds where it is.",
+            note: Skin.lex("power_note_suspend", "Sleeps. Resumes where you left off."),
             run: ["systemctl", "suspend"]
         },
         {
             name: "LOG OUT", key: "SUPER + SHIFT + L", danger: false, confirm: true,
-            note: "Ends the session. Moves are cleared.",
+            note: Skin.lex("power_note_logout", "Ends the session. Open apps close."),
             run: ["hyprctl", "dispatch", "exit"]
         },
         {
             name: "SHUT DOWN", key: "HOLD POWER", danger: true, confirm: true,
-            note: "Full stop. Everything is released.",
+            note: Skin.lex("power_note_off", "Full stop."),
             run: ["systemctl", "poweroff"]
         }
     ]
@@ -154,7 +155,10 @@ PanelWindow {
             id: powerFrame
             width: 640
             anchors.centerIn: parent
-            title: Skin.ballWord
+            // The costume tabs the menu with the creature's capture device;
+            // plain, it says what it is. Ball is per-creature data, not a
+            // shared word, so this is data-driven rather than a lexicon key.
+            title: Skin.creature ? Skin.ballWord : "POWER"
 
             padTop: 24
             padSide: 18
@@ -171,7 +175,8 @@ PanelWindow {
 
                     Text {
                         id: headText
-                        text: "RETURN " + Skin.species + " TO THE DEVICE"
+                        text: Skin.phrase("power_header", "END OR LOCK THE SESSION",
+                                          { name: Skin.species })
                         color: Skin.text
                         font.family: Skin.fontLabel
                         font.pixelSize: 12
@@ -282,10 +287,15 @@ PanelWindow {
                             width: parent.width
                             text: win.confirming
                                 ? (win.confirming.name === "SHUT DOWN"
-                                    ? "Shut down " + Skin.species + "? Everything running is released."
+                                    ? Skin.phrase("power_confirm_off",
+                                          "Shut down? Unsaved work will be lost.",
+                                          { name: Skin.species })
                                     : win.confirming.name === "RESTART"
-                                    ? "Restart " + Skin.species + "? Everything is released, then it comes back."
-                                    : "End the session? Every move loses its PP.")
+                                    ? Skin.phrase("power_confirm_restart",
+                                          "Restart? The machine comes right back.",
+                                          { name: Skin.species })
+                                    : Skin.lex("power_confirm_logout",
+                                          "Log out? Open apps will close."))
                                 : ""
                             color: Skin.text
                             font.family: Skin.fontBody
