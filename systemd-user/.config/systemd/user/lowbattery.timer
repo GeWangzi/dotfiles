@@ -1,9 +1,0 @@
-[Unit]
-Description=Run low battery check every minute
-
-[Timer]
-OnBootSec=1min
-OnUnitActiveSec=1min
-
-[Install]
-WantedBy=timers.target
