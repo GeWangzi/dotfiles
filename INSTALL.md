@@ -68,14 +68,13 @@ pacman -Qqm > ~/dotfiles/pkglist-aur.txt
 ## 4. Dotfiles
 
 Each top-level directory in the repo is a GNU stow package that mirrors the layout
-under `$HOME`, so `stow -t ~ waybar` links `waybar/.config/waybar/*` into
-`~/.config/waybar/`.
+under `$HOME`, so `stow -t ~ kitty` links `kitty/.config/kitty/*` into
+`~/.config/kitty/`.
 
 ```bash
 cd ~/dotfiles
-stow -t ~ backgrounds chrome ember fontconfig fonts hyprland hyprlock hyprmocha \
-          hyprpaper kitty local-bin quickshell skins spotify starship \
-          systemd-user waybar wireplumber zshrc
+stow -t ~ chrome fontconfig fonts hyprland hyprlock kitty local-bin \
+          quickshell skins spotify starship systemd-user wireplumber zshrc
 chsh -s /usr/bin/zsh
 fc-cache -f
 skinctl generate
@@ -88,8 +87,8 @@ inlined rather than imported, so the whole file is generated; the rules live in
 
 `fc-cache -f` is not optional, for two reasons. The `fontconfig` package marks
 CozetteVector as a monospaced family, that edit is applied when fonts are
-scanned into the cache, and without it waybar and wofi fall back. The `fonts`
-package also installs Silkscreen and DotGothic16, which nothing can see until
+scanned into the cache, and without it wofi falls back. The `fonts` package
+also installs Silkscreen, Lilita One and Baloo 2, which nothing can see until
 the cache is rebuilt. README's *Theme* section has the details.
 
 kitty's body face is **DejaVu Sans Mono**, which comes from `ttf-dejavu` in
@@ -104,10 +103,8 @@ warning, because nothing else about the terminal is right until it is fixed.
 `skinctl generate` is not optional either. The Quickshell shell reads
 `skin.json`, kitty includes `skin.conf`, the
 fallback hyprlock sources the hyprlang `skin.conf` and wofi reads a generated
-`style.css` — none of which exist until skinctl has run once. The waybar and
-hyprpaper packages are stowed for reverting but nothing starts them: the
-shell draws the bar and the wallpaper itself. See README's *Skins* and *The
-shell* sections.
+`style.css` — none of which exist until skinctl has run once. See README's
+*Skins* and *The shell* sections.
 
 `stow -t ~ */` also works and picks up everything, including `system/`. That is
 harmless but pointless — `system/` is installed by its own script in step 5, not by
@@ -171,7 +168,7 @@ sudo systemctl enable sing-box        # only after step 7
 User level:
 
 ```bash
-systemctl --user enable hyprpolkitagent hyprsunset lowbattery.timer
+systemctl --user enable hyprpolkitagent hyprsunset
 systemctl --user enable wireplumber pipewire-pulse
 ```
 

@@ -67,8 +67,8 @@ TOKENS = [
     "cmd", "net", "txt", "snd",
 ]
 
-BEHAVIOR = ["glyph", "radius", "blink", "shine", "menu_word", "empty_word",
-            "bar", "font_label", "font_body"]
+BEHAVIOR = ["glyph", "glyph_more", "radius", "blink", "shine", "menu_word",
+            "empty_word", "bar", "font_label", "font_body"]
 
 # Optional per-skin creature block (the creature-shell handoff). All keys are
 # free-form strings apart from `level`; a skin without one is not a creature

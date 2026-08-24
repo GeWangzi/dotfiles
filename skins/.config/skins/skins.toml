@@ -58,6 +58,7 @@ par      = "#ffd36b"
 # table.
 [defaults]
 glyph      = "▶"
+glyph_more = "▼"
 radius     = "0px"
 blink      = "1s"
 shine      = "none"

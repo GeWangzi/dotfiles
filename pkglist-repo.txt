@@ -31,7 +31,6 @@ htop
 hypridle
 hyprland
 hyprlock
-hyprpaper
 hyprpicker
 hyprpolkitagent
 hyprprop-git
@@ -98,7 +97,6 @@ visual-studio-code-bin
 vlc
 vulkan-radeon
 vulkan-tools
-waybar
 wechat-bin
 wget
 wireless-regdb

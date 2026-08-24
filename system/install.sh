@@ -209,7 +209,7 @@ Still to do by hand, in rough order:
      sudo systemctl enable docker        # optional
      sudo systemctl enable sing-box      # only after the config below exists
 
-     systemctl --user enable hyprpolkitagent hyprsunset lowbattery.timer
+     systemctl --user enable hyprpolkitagent hyprsunset
      systemctl --user enable wireplumber pipewire-pulse
 
 2. sing-box is NOT in this repo. /etc/sing-box/config.json holds the VLESS
