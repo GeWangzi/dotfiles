@@ -316,8 +316,8 @@ PanelWindow {
             default:
                 // Number keys switch skin, but only when they are not part of
                 // a query and only on the move bar -- in the clip/glyph modes
-                // a digit is filter text. 1-9 are the first nine, 0 is the
-                // tenth, and the eleventh is one PgDn-free `skinctl next` away.
+                // a digit is filter text. Key n is the nth skin in the TOML;
+                // a number past the end of the roster is a silent no-op.
                 if (!win.altMode && win.query === ""
                         && event.key >= Qt.Key_0 && event.key <= Qt.Key_9) {
                     const n = event.key === Qt.Key_0 ? 10 : event.key - Qt.Key_0;
