@@ -88,8 +88,9 @@ inlined rather than imported, so the whole file is generated; the rules live in
 `fc-cache -f` is not optional, for two reasons. The `fontconfig` package marks
 CozetteVector as a monospaced family, that edit is applied when fonts are
 scanned into the cache, and without it wofi falls back. The `fonts` package
-also installs Silkscreen, Lilita One and Baloo 2, which nothing can see until
-the cache is rebuilt. README's *Theme* section has the details.
+also installs Silkscreen, which nothing can see until the cache is rebuilt;
+Dream Land's Adwaita Sans comes from the `adwaita-fonts` package in
+`pkglist-repo.txt`. README's *Theme* section has the details.
 
 kitty's body face is **DejaVu Sans Mono**, which comes from `ttf-dejavu` in
 `pkglist-repo.txt` and is the one font here that is not self-hosted. If it is

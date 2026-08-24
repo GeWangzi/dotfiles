@@ -34,7 +34,7 @@ cd ~/dotfiles && stow -t ~ */              # everything
 | `kitty` `starship` `zshrc` | terminal and shell |
 | `chrome` `spotify` | Wayland flags for two stubborn apps |
 | `fontconfig` | one rule, without which kitty refuses the theme's font |
-| `fonts` | Silkscreen plus the skin faces (Lilita One, Baloo 2), self-hosted; the terminal's DejaVu Sans Mono is packaged |
+| `fonts` | Silkscreen (the creature skins' pixel face), self-hosted; Dream Land's Adwaita Sans and the terminal's DejaVu Sans Mono are packaged |
 | `local-bin` | scripts in `~/.local/bin` |
 | `systemd-user` | user units |
 | `wireplumber` | audio drop-in that protects the tuned mic gain |
@@ -49,11 +49,12 @@ them means git history, not a parked copy; the wallpapers themselves moved to
 
 ## Skins
 
-The desktop's default palette is **DREAM LAND** — a night-sky purple field
-with pink chrome and a warm star accent, rounded corners, its own faces
-(Lilita One labels, Baloo 2 body) and the bar on the bottom edge. It is the
-one skin with a `[skins.features]` table: it drops the foe plate, the status
-chips, EXP and LV, because Kirby fights nothing and does not level.
+The desktop's default palette is **DREAM LAND** — the Kirby night-sky field
+with pink chrome and a warm star accent, worn plainly: Adwaita Sans for
+every face, a subtle 8px radius, the bar on the top edge, no pixel styling.
+The colours are the flavour; the furniture is quiet. It is the one skin with
+a `[skins.features]` table: it drops the foe plate, the status chips, EXP
+and LV, because Kirby fights nothing and does not level.
 
 It is one of four skins. The other three are **creatures** from the
 creature-shell handoff — a skin plus a `[skins.creature]` block (species,
@@ -210,13 +211,14 @@ The cursor is stock Adwaita at size 24, set for Hyprland in `hyprland.lua`
 (`XCURSOR_THEME`) and for GTK apps in `gtk-3.0/settings.ini` plus the
 gsettings key.
 
-The `fonts` package adds **Silkscreen** (the shell's fallback label face) and
-the two faces Dream Land names — **Lilita One** for labels, **Baloo 2** for
-body copy — all self-hosted rather than pulled from a package. Which face a
-surface uses is the skin's call (`font_label` / `font_body` behaviour
-tokens); the terminal sets its own in DejaVu Sans Mono — see *The terminal*
-below. Silkscreen is a pixel face and the panel runs at scale 1.5, so only
-even logical sizes land on whole physical pixels — see `fonts/README.md`.
+The `fonts` package adds **Silkscreen**, the creature skins' pixel label
+face, self-hosted rather than pulled from a package. Dream Land names
+**Adwaita Sans** for both of its faces instead, from the `adwaita-fonts`
+pacman package. Which face a surface uses is the skin's call (`font_label` /
+`font_body` behaviour tokens); the terminal sets its own in DejaVu Sans Mono
+— see *The terminal* below. Silkscreen is a pixel face and the panel runs at
+scale 1.5, so only even logical sizes land on whole physical pixels — see
+`fonts/README.md`.
 
 The old palettes (Catppuccin Mocha, the hand-maintained Ember pair) and their
 revert copies were deleted in the 2026-08 simplification; going back to any

@@ -64,14 +64,19 @@ blink      = "1s"
 shine      = "none"
 menu_word  = "LAUNCH"
 empty_word = "EMPTY"
+bar        = "top"
+font_label = "Silkscreen"
+font_body  = "DejaVu Sans Mono"
 
 
 # ---------------------------------------------------------------------------
-# DREAM LAND -- the default. Kirby-flavoured: a night-sky purple field with
-# pink chrome and a warm star accent. Rounded, faster blink, star cursor,
-# a highlight along the top of filled meter blocks, and its own faces --
-# Lilita One for labels, Baloo 2 for body copy (both in the fonts package).
-# The bar sits on the bottom edge, where the HUD lives in the games.
+# DREAM LAND -- the default. The Kirby night-sky palette under a plain,
+# modern dress (2026-08-24, user call): Adwaita Sans everywhere, because the
+# machine is read all day and a display face is not an all-day face; a small
+# 8px radius instead of the cartoon 14; no shine, no star cursor, default
+# wording, bar on the top edge. The colours are the flavour now -- the
+# furniture is quiet. The pixel look stayed with the creature skins, which
+# keep Silkscreen through the behaviour defaults.
 [[skins]]
 slug    = "dream-land"
 name    = "DREAM LAND"
@@ -93,15 +98,9 @@ txt     = "#ffb26b"
 snd     = "#ff5fa2"
 
 [skins.behavior]
-glyph      = "★"
-radius     = "14px"
-blink      = "0.7s"
-shine      = "inset 0 2px 0 0 rgba(255,255,255,0.55)"
-menu_word  = "COPY"
-empty_word = "NOTHING HERE!"
-bar        = "bottom"
-font_label = "Lilita One"
-font_body  = "Baloo 2"
+radius     = "8px"
+font_label = "Adwaita Sans"
+font_body  = "Adwaita Sans"
 
 # What Dream Land drops (2026-08-23, user call): Kirby fights nothing here,
 # carries no status ailments, and does not level. The HP line is the whole

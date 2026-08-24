@@ -35,14 +35,13 @@ else
     warn "Silkscreen not in the font cache -- shell fallback face missing (fc-cache -f)"
 fi
 
-# The skin's own faces, if it names any (font_label / font_body).
-for face in "Lilita One" "Baloo 2"; do
-    if fc-list 2>/dev/null | grep -qi "$(printf '%s' "$face" | tr -d ' ')\|$face"; then
-        ok "$face installed"
-    else
-        warn "$face not in the font cache -- Dream Land falls back (fc-cache -f)"
-    fi
-done
+# The skin's own face (font_label / font_body). Adwaita Sans comes from the
+# adwaita-fonts package, not this repo.
+if fc-list 2>/dev/null | grep -qi "Adwaita Sans"; then
+    ok "Adwaita Sans installed"
+else
+    warn "Adwaita Sans not in the font cache -- Dream Land falls back (pacman -S adwaita-fonts)"
+fi
 
 # GTK applications are themed by the generated gtk.css, but only the GTK4 half
 # of that works on its own: GTK3 needs adw-gtk-theme, which is what reads the

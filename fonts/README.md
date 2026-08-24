@@ -6,16 +6,20 @@ next to the font file.
 
 | file | family | used for |
 |---|---|---|
-| `Silkscreen-Regular.ttf` | Silkscreen | labels, numbers, app names, key hints |
+| `Silkscreen-Regular.ttf` | Silkscreen | the creature skins' labels, numbers, app names, key hints (the behaviour default) |
 | `Silkscreen-Bold.ttf` | Silkscreen Bold | the same, where the design asks for 700 |
-| `LilitaOne-Regular.ttf` | Lilita One | DREAM LAND's labels -- the heavy Star Allies HUD lettering (the game's own face is Fontworks' Raglan Punch, which is commercial; Lilita One is the closest open face) |
-| `Baloo2-VariableFont_wght.ttf` | Baloo 2 | DREAM LAND's body copy -- rounded and legible where Pixelify Sans' digits were not (its 2/5/9 collapse toward 8 at UI sizes) |
 
-Body copy is **DejaVu Sans Mono**, the terminal's own face, from `ttf-dejavu`.
-The design's body face was DotGothic16 and it was dropped 2026-08-21 at the
-user's request: it is not a face they like, and taking the terminal's face
-instead means the shell surfaces and the terminal read in one voice. To bring
-it back, refetch the file below and swap the family name in the QML.
+DREAM LAND names **Adwaita Sans** for both faces (2026-08-24, user call: a
+face that is easy on the eyes all day, not a display face). It comes from the
+`adwaita-fonts` pacman package, not this repo, and is recorded in
+`pkglist-repo.txt`. The Lilita One / Baloo 2 pair that carried the Star
+Allies look lives in git history.
+
+The fallback body copy is **DejaVu Sans Mono**, the terminal's own face, from
+`ttf-dejavu`. The design's body face was DotGothic16 and it was dropped
+2026-08-21 at the user's request: it is not a face they like, and taking the
+terminal's face instead means the shell surfaces and the terminal read in one
+voice.
 
 Fetched from the upstream Google Fonts repository:
 
