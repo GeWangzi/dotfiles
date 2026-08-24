@@ -8,7 +8,7 @@ pragma Singleton
 // contain a hex colour except the fallbacks below.
 //
 // watchChanges means `skinctl set <skin>` reskins a running shell without a
-// restart, the same way it already signals waybar and Hyprland.
+// restart, the same way it already signals kitty and Hyprland.
 
 import QtQuick
 import Quickshell
@@ -136,11 +136,37 @@ Singleton {
     readonly property string heldCharge:  cr("held_charge", "LEFTOVERS")
     readonly property string heldBattery: cr("held_battery", "GANLON BERRY")
 
+    // The features block: which shell elements render at all. Everything
+    // defaults ON (the creature skins' full set), so a skin lists only what
+    // it drops. Gate an element with Skin.has("...") -- the set of gates in
+    // the QML is the canonical key list.
+    readonly property var features: data.features || null
+
+    function has(name) {
+        return (data.features && data.features[name] !== undefined)
+            ? data.features[name] : true;
+    }
+
     // Behaviour tokens.
     readonly property string glyph:     behavior("glyph", "▶")
+
+    // The advance marker ("press to continue") is its own word, not the
+    // cursor pointed sideways -- a skin may star its cursors and keep ▼.
+    readonly property string glyphMore: behavior("glyph_more", "▼")
     readonly property string menuWord:  behavior("menu_word", "LAUNCH")
     readonly property string emptyWord: behavior("empty_word", "EMPTY")
     readonly property int radius:       parseInt(behavior("radius", "0px")) || 0
+
+    // Which screen edge the bar sits on. Dream Land puts it at the bottom,
+    // where the HUD lives in the games; everything else keeps the top.
+    readonly property string barEdge:   behavior("bar", "top")
+
+    // The faces. Defaults are the pixel label face and the terminal's own
+    // body face; a skin that names its own is also free of Silkscreen's
+    // even-sizes-only bitmap rule, which belongs to that font and not to
+    // the shell.
+    readonly property string fontLabel: behavior("font_label", "Silkscreen")
+    readonly property string fontBody:  behavior("font_body", "DejaVu Sans Mono")
 
     // "1s" / "0.7s" -> milliseconds. Only Dream Land is not 1s.
     readonly property int blinkMs: {

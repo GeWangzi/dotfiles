@@ -101,7 +101,7 @@ PanelWindow {
                                 text: toast.modelData.target || ""
                                 color: Skin.text
                                 elide: Text.ElideRight
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                                 font.letterSpacing: 12 * 0.10
                             }
@@ -112,7 +112,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: Math.max(1, Notifs.unreadCount - toast.index) + " UNREAD"
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.16
                             }
@@ -130,7 +130,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 text: toast.modelData.resultChip || ""
                                 color: Skin.bg
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.18
                             }
@@ -144,7 +144,7 @@ PanelWindow {
                             color: Skin.text
                             wrapMode: Text.Wrap
                             lineHeight: 1.35
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 20   // 19 in the design; even rule
                             font.letterSpacing: 20 * 0.04
                         }
@@ -156,7 +156,7 @@ PanelWindow {
                             text: toast.modelData.body
                             color: Skin.body
                             wrapMode: Text.Wrap
-                            font.family: "DotGothic16"
+                            font.family: Skin.fontBody
                             font.pixelSize: 16
                         }
 
@@ -168,7 +168,7 @@ PanelWindow {
                             color: Skin.dim
                             wrapMode: Text.Wrap
                             lineHeight: 1.6
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.14
                         }
@@ -195,7 +195,7 @@ PanelWindow {
                                         anchors.centerIn: parent
                                         text: parent.modelData.label
                                         color: Skin.body
-                                        font.family: "Silkscreen"
+                                        font.family: Skin.fontLabel
                                         font.pixelSize: 10
                                         font.letterSpacing: 10 * 0.16
                                     }
@@ -224,9 +224,9 @@ PanelWindow {
 
                         Text {
                             id: mark
-                            text: "▼"
+                            text: Skin.glyphMore
                             color: Skin.accent
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 12
                         }
                     }

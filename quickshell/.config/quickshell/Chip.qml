@@ -67,7 +67,7 @@ Rectangle {
         anchors.centerIn: parent
         text: root.label
         color: root.fieldEffect ? root.hue : Skin.shadow
-        font.family: "Silkscreen"
+        font.family: Skin.fontLabel
         font.pixelSize: 10   // 9 in the design; even for the pixel grid
         font.letterSpacing: 10 * 0.16
     }

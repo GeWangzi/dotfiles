@@ -173,7 +173,7 @@ PanelWindow {
                         id: headText
                         text: "RETURN " + Skin.species + " TO THE DEVICE"
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 12
                     }
 
@@ -182,7 +182,7 @@ PanelWindow {
                         anchors.baseline: headText.baseline
                         text: "SUPER + ESC"
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.14
                     }
@@ -230,14 +230,14 @@ PanelWindow {
                                 Text {
                                     text: cell.modelData.name
                                     color: cell.modelData.danger ? Skin.critical : Skin.text
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 14
                                 }
 
                                 Text {
                                     text: cell.modelData.key
                                     color: Skin.dim
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.12
                                 }
@@ -246,7 +246,7 @@ PanelWindow {
                                     width: parent.width
                                     text: cell.modelData.note
                                     color: Skin.body
-                                    font.family: "DotGothic16"
+                                    font.family: Skin.fontBody
                                     font.pixelSize: 16
                                     wrapMode: Text.WordWrap
                                 }
@@ -288,7 +288,7 @@ PanelWindow {
                                     : "End the session? Every move loses its PP.")
                                 : ""
                             color: Skin.text
-                            font.family: "DotGothic16"
+                            font.family: Skin.fontBody
                             font.pixelSize: 18
                             wrapMode: Text.WordWrap
                         }
@@ -308,7 +308,7 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     text: "YES"
                                     color: Skin.critical
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 12
                                 }
 
@@ -329,7 +329,7 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     text: "NO"
                                     color: Skin.text
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 12
                                 }
 
@@ -351,9 +351,9 @@ PanelWindow {
 
                         Text {
                             id: confirmAdvance
-                            text: "▼"
+                            text: Skin.glyphMore
                             color: Skin.critical
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 14
                         }
                     }

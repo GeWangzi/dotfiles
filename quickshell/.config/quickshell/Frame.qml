@@ -87,7 +87,7 @@ Item {
             anchors.centerIn: parent
             text: root.title
             color: Skin.window
-            font.family: "Silkscreen"
+            font.family: Skin.fontLabel
             // 11-12px in the design; 12 because odd logical sizes land on half
             // physical pixels at this monitor's 1.5 scale and a pixel font
             // smears when they do. See fonts/README.md.

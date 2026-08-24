@@ -116,7 +116,7 @@ PanelWindow {
         color: Skin.strip
         border.width: 4
         border.color: Skin.inner
-        visible: SysState.foe !== null
+        visible: SysState.foe !== null && Skin.has("foe")
 
         // soft drop shadow (soft-shadows-only decision, 2026-08-20)
         SoftShadow {
@@ -139,7 +139,7 @@ PanelWindow {
                     id: foeName
                     text: SysState.foe ? SysState.foe.name : ""
                     color: Skin.text
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 16
                 }
 
@@ -149,7 +149,7 @@ PanelWindow {
                     anchors.baseline: foeName.baseline
                     text: SysState.foe ? "LV " + SysState.foe.level : ""
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.14
                 }
@@ -166,7 +166,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: "ENRAGED"
                         color: Skin.shadow
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.16
                     }
@@ -182,7 +182,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "HP"
                     color: Skin.outer
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.16
                 }
@@ -205,12 +205,13 @@ PanelWindow {
         width: 200
         height: 5
         color: Skin.accent
-        visible: SysState.foe !== null
+        visible: SysState.foe !== null && Skin.has("foe")
     }
 
     // ---------------------------------------------------------------- foe sprite (upper right)
 
     Column {
+        visible: Skin.has("foe")
         x: parent.width - 96 - 238 + 44
         y: 170
 
@@ -249,6 +250,7 @@ PanelWindow {
     // ---------------------------------------------------------------- ally sprite (lower left)
 
     Column {
+        visible: Skin.has("ally")
         x: 78
         // 240, up from the design's 178: the sprites read too small against
         // the full-panel field (user request 2026-08-21). Bottom edge stays
@@ -327,6 +329,7 @@ PanelWindow {
                 height: allyName.implicitHeight
 
                 Row {
+                    visible: Skin.has("types") && Skin.type1 !== ""
                     spacing: 8
 
                     Rectangle {
@@ -339,7 +342,7 @@ PanelWindow {
                             anchors.centerIn: parent
                             text: Skin.type1
                             color: Skin.shadow
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.18
                         }
@@ -356,7 +359,7 @@ PanelWindow {
                             anchors.centerIn: parent
                             text: Skin.type2
                             color: Skin.shadow
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.18
                         }
@@ -365,11 +368,12 @@ PanelWindow {
 
                 Text {
                     id: allyLv
+                    visible: Skin.has("lv")
                     anchors.right: parent.right
                     anchors.baseline: allyName.baseline
                     text: "LV " + SysState.level
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.14
                 }
@@ -380,7 +384,7 @@ PanelWindow {
                     anchors.rightMargin: 10
                     text: Skin.species
                     color: Skin.text
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 16
                 }
             }
@@ -394,7 +398,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "HP"
                     color: Skin.outer
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.16
                 }
@@ -413,7 +417,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: SysState.hpNum
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.12
                 }
@@ -422,6 +426,7 @@ PanelWindow {
             // EXP sliver: uptime, NET hue; wraps at 24 hours awake (same
             // rule as the lock screen).
             Row {
+                visible: Skin.has("exp")
                 width: parent.width
                 spacing: 8
 
@@ -430,7 +435,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "EXP"
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.16
                 }

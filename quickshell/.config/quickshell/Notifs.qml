@@ -142,6 +142,30 @@ Singleton {
         shown.forEach(e => acknowledge(e.id));
     }
 
+    // The calendar page's CLEAR ALL: drop every held event that falls on one
+    // of the given local midnights. Anything still toasting goes with it, and
+    // the live notification is dismissed so the app is told.
+    function clearDays(dayStarts) {
+        const wanted = ({});
+        dayStarts.forEach(t => wanted["" + t] = true);
+        const doomed = events.filter(e => wanted["" + dayOf(e.ts)]);
+        doomed.forEach(e => {
+            presented = presented.filter(p => p.id !== e.id);
+            const n = nrefs[e.id];
+            if (n) {
+                delete nrefs[e.id];
+                try { n.dismiss(); } catch (err) { /* already closed */ }
+            }
+        });
+        events = events.filter(e => !wanted["" + dayOf(e.ts)]);
+        unreadCount = events.filter(e => !e.read).length;
+    }
+
+    function dayOf(ms) {
+        const d = new Date(ms);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    }
+
     function markAllRead() {
         events.forEach(e => e.read = true);
         events = events.slice();

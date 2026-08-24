@@ -159,8 +159,12 @@ ShellRoot {
     // layer; hyprpaper is retired.
     Wallpaper {}
 
-    // The 34px HP/PP header from turn 13b. Always on, event-driven.
-    Bar {}
+    // The 34px HP/PP strip from turn 13b. Always on, event-driven. Its
+    // clock is the pointer's way into the calendar page (SUPER + N is the
+    // keyboard's).
+    Bar {
+        onClockActivated: root.notifHistoryOpen = true
+    }
 
     // The OSD from turn 15e. Shows itself on volume/brightness changes.
     Osd {}
@@ -182,7 +186,7 @@ ShellRoot {
     // Notifs presents something. The daemon itself is the Notifs singleton.
     Toasts {}
 
-    // The BATTLE LOG from turn 25c (SUPER + N).
+    // The calendar + log page (SUPER + N, or the bar clock).
     NotifHistory {
         visible: root.notifHistoryOpen
         onDismissed: root.notifHistoryOpen = false

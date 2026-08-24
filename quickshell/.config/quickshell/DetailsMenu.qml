@@ -36,8 +36,12 @@ PanelWindow {
     property string mSec: "SUMMARY"
     property int mRow: 0
 
+    // SUMMARY and SESSION are always present; everything between is a
+    // feature the skin can drop (sec_stats .. sec_train).
     readonly property var sections: ["SUMMARY", "STATS", "ABILITIES", "ITEMS",
                                      "MOVES", "TM", "TRAIN", "SESSION"]
+        .filter(k => k === "SUMMARY" || k === "SESSION"
+                     || Skin.has("sec_" + k.toLowerCase()))
 
     readonly property int rowCount: {
         switch (mSec) {
@@ -367,9 +371,9 @@ PanelWindow {
 
                             Text {
                                 id: crumbCursor
-                                text: "▶"
+                                text: Skin.glyph
                                 color: Skin.accent
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 14
                             }
                         }
@@ -378,7 +382,7 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             text: Skin.species + " · " + win.mSec
                             color: Skin.text
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 16
                         }
                     }
@@ -388,7 +392,7 @@ PanelWindow {
                         anchors.verticalCenter: crumbRow.verticalCenter
                         text: "KEYS ARMED — ESC RELEASES"
                         color: Skin.accent
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.16
                     }
@@ -442,16 +446,16 @@ PanelWindow {
                                     spacing: 9
 
                                     Text {
-                                        text: "▸"
+                                        text: Skin.glyph
                                         color: tab.active ? Skin.shadow : Skin.dim
-                                        font.family: "Silkscreen"
+                                        font.family: Skin.fontLabel
                                         font.pixelSize: 12
                                     }
 
                                     Text {
                                         text: tab.modelData
                                         color: tab.active ? Skin.shadow : Skin.body
-                                        font.family: "Silkscreen"
+                                        font.family: Skin.fontLabel
                                         font.pixelSize: 12
                                         font.letterSpacing: 12 * 0.10
                                     }
@@ -469,6 +473,7 @@ PanelWindow {
                         // caught plate (the nature line moved to STATS,
                         // where it names the power mode)
                         Rectangle {
+                            visible: Skin.has("caught")
                             width: rail.width
                             height: caughtText.implicitHeight + 22
                             color: Skin.strip
@@ -481,7 +486,7 @@ PanelWindow {
                                 y: 11
                                 text: win.caught
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
                             }
@@ -523,7 +528,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 text: win.mSec
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.2
                             }
@@ -598,7 +603,7 @@ PanelWindow {
                                     anchors.centerIn: parent
                                     text: parent.parent.modelData.key
                                     color: Skin.body
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.14
                                 }
@@ -608,7 +613,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: parent.modelData.what
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.14
                             }
@@ -667,21 +672,23 @@ PanelWindow {
                         id: sumName
                         text: Skin.species
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 20
                     }
 
                     Text {
                         x: sumName.implicitWidth + 10
+                        visible: Skin.has("lv")
                         anchors.baseline: sumName.baseline
                         text: "LV " + SysState.level
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 12
                         font.letterSpacing: 12 * 0.14
                     }
 
                     Row {
+                        visible: Skin.has("types") && Skin.type1 !== ""
                         anchors.right: parent.right
                         spacing: 7
 
@@ -695,7 +702,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 text: Skin.type1
                                 color: Skin.shadow
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.18
                             }
@@ -712,7 +719,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 text: Skin.type2
                                 color: Skin.shadow
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.18
                             }
@@ -729,7 +736,7 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "HP"
                         color: Skin.outer
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.16
                     }
@@ -748,12 +755,13 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: SysState.hpNum
                         color: Skin.body
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
                 }
 
                 Row {
+                    visible: Skin.has("exp")
                     width: parent.width
                     spacing: 10
 
@@ -762,7 +770,7 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "EXP"
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.16
                     }
@@ -789,7 +797,7 @@ PanelWindow {
                         text: "EXP TO NEXT LV — "
                               + (100 - Math.round(SysState.expFrac * 100)) + "%"
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
                 }
@@ -803,45 +811,47 @@ PanelWindow {
                         width: 84
                         text: "ABILITY"
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.14
                     }
                     Text {
                         text: Skin.ability
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
 
                     // On charge the row disappears -- LEFTOVERS on the wire
                     // told the user nothing (their request, 2026-08-21).
                     Text {
-                        visible: SysState.onBattery
+                        visible: SysState.onBattery && Skin.has("held")
                         width: 84
                         text: "HELD"
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.14
                     }
                     Text {
-                        visible: SysState.onBattery
+                        visible: SysState.onBattery && Skin.has("held")
                         text: SysState.heldItem + " — ON BATTERY"
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
 
                     Text {
+                        visible: Skin.has("chips")
                         width: 84
                         text: "STATUS"
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.14
                     }
                     Row {
+                        visible: Skin.has("chips")
                         spacing: 5
 
                         Repeater {
@@ -864,7 +874,7 @@ PanelWindow {
                             visible: SysState.chips.length === 0 && !SysState.sub
                             text: "NONE"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                         }
                     }
@@ -874,7 +884,7 @@ PanelWindow {
                     width: parent.width
                     text: Skin.crNote
                     color: Skin.body
-                    font.family: "DotGothic16"
+                    font.family: Skin.fontBody
                     font.pixelSize: 16
                     wrapMode: Text.WordWrap
                 }
@@ -908,14 +918,14 @@ PanelWindow {
                         Text {
                             text: parent.parent.modelData.label
                             color: Skin.text
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 12
                         }
 
                         Text {
                             text: parent.parent.modelData.sub
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.10
                         }
@@ -936,7 +946,7 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: parent.modelData.val
                         color: Skin.body
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.06
                     }
@@ -951,7 +961,7 @@ PanelWindow {
                          : SysState.nature === "MODEST" ? "MEGA, HP DRAINS FASTER"
                          : "BALANCED")
                 color: Skin.accent
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.12
             }
@@ -963,7 +973,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "CONDITIONS"
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.18
                 }
@@ -979,10 +989,11 @@ PanelWindow {
                 }
 
                 Text {
+                    visible: Skin.has("chips")
                     anchors.verticalCenter: parent.verticalCenter
                     text: "BRN — THERMAL THROTTLE · SLP — SUSPEND · SUB — DO NOT DISTURB"
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.10
                 }
@@ -1023,9 +1034,9 @@ PanelWindow {
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "▸"
+                                text: Skin.glyph
                                 color: win.mRow === 0 ? Skin.accent : Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
@@ -1034,7 +1045,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "MUSIC"
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
                         }
@@ -1053,7 +1064,7 @@ PanelWindow {
                                     ? "PLAYING" : "IDLE"
                                 color: win.player && win.player.playbackState === MprisPlaybackState.Playing
                                     ? Skin.shadow : Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.14
                             }
@@ -1077,7 +1088,7 @@ PanelWindow {
                                 width: parent.width
                                 text: win.player ? (win.player.trackTitle || "NOTHING QUEUED").toUpperCase() : "NO PLAYER"
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                                 elide: Text.ElideRight
                             }
@@ -1086,7 +1097,7 @@ PanelWindow {
                                 width: parent.width
                                 text: win.player ? (win.player.trackArtist || "").toUpperCase() : ""
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
                                 elide: Text.ElideRight
@@ -1121,7 +1132,7 @@ PanelWindow {
                                         ? win.mmss(win.player.position) + " / " + win.mmss(win.player.length)
                                         : ""
                                     color: Skin.dim
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                 }
                             }
@@ -1162,7 +1173,7 @@ PanelWindow {
                                         anchors.centerIn: parent
                                         text: parent.modelData.glyph
                                         color: parent.modelData.accent ? Skin.accent : Skin.body
-                                        font.family: "Silkscreen"
+                                        font.family: Skin.fontLabel
                                         font.pixelSize: 10
                                     }
 
@@ -1190,7 +1201,7 @@ PanelWindow {
                                 id: outLabel
                                 text: "OUT"
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.16
                             }
@@ -1199,7 +1210,7 @@ PanelWindow {
                                 text: SysState.sink && SysState.sink.description
                                     ? SysState.sink.description.toUpperCase() : "—"
                                 color: Skin.body
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                             }
                         }
@@ -1210,7 +1221,7 @@ PanelWindow {
                                 : SysState.volPct >= 100 ? "BOOMBURST"
                                 : SysState.volPct + "%"
                             color: Skin.text
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                         }
                     }
@@ -1252,9 +1263,9 @@ PanelWindow {
 
                             Text {
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "▸"
+                                text: Skin.glyph
                                 color: win.mRow === 1 ? Skin.accent : Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
@@ -1263,7 +1274,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "WIFI"
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
                         }
@@ -1279,7 +1290,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 text: SysState.wifiUp ? "CONNECTED" : "OFF"
                                 color: SysState.wifiUp ? Skin.shadow : Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.14
                             }
@@ -1314,14 +1325,14 @@ PanelWindow {
                             Text {
                                 text: SysState.wifiUp ? SysState.ssid.toUpperCase() : "NO LINK"
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
                             Text {
                                 text: win.wifiRate
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.10
                             }
@@ -1335,7 +1346,7 @@ PanelWindow {
                             width: 52
                             text: "IP"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.14
                         }
@@ -1343,7 +1354,7 @@ PanelWindow {
                         Text {
                             text: win.wifiIp
                             color: Skin.body
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                         }
                     }
@@ -1375,9 +1386,9 @@ PanelWindow {
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
-                        text: "▸"
+                        text: Skin.glyph
                         color: win.mRow === 0 ? Skin.accent : Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 12
                     }
 
@@ -1385,7 +1396,7 @@ PanelWindow {
                         anchors.verticalCenter: parent.verticalCenter
                         text: "BLUETOOTH RADIO"
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 12
                     }
                 }
@@ -1403,7 +1414,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: win.btAdapter && win.btAdapter.enabled ? "ON" : "OFF"
                         color: win.btAdapter && win.btAdapter.enabled ? Skin.shadow : Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.14
                     }
@@ -1443,7 +1454,7 @@ PanelWindow {
                                 id: itemName
                                 text: (parent.parent.parent.modelData.name || "DEVICE").toUpperCase()
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
@@ -1452,7 +1463,7 @@ PanelWindow {
                                 anchors.baseline: itemName.baseline
                                 text: "CONNECTED"
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
                             }
@@ -1468,7 +1479,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: "CHARGE"
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.16
                             }
@@ -1486,7 +1497,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: Math.round(parent.parent.parent.modelData.battery * 100) + "%"
                                 color: Skin.hpColor(parent.parent.parent.modelData.battery)
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                             }
                         }
@@ -1499,7 +1510,7 @@ PanelWindow {
                     ? (win.btDevices.length === 0 ? "NO DEVICE HELD" : "NO OTHER DEVICE PAIRED")
                     : "RADIO OFF — NOTHING HELD"
                 color: Skin.dim
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.12
             }
@@ -1540,7 +1551,7 @@ PanelWindow {
                                 id: procName
                                 text: parent.parent.parent.modelData.name.toUpperCase()
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
@@ -1549,7 +1560,7 @@ PanelWindow {
                                 anchors.baseline: procName.baseline
                                 text: Apps.ppForCpu(parent.parent.parent.modelData.cpu)
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.10
                             }
@@ -1564,7 +1575,7 @@ PanelWindow {
                                 width: 44
                                 text: "CPU"
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.14
                             }
@@ -1583,7 +1594,7 @@ PanelWindow {
                                 horizontalAlignment: Text.AlignRight
                                 text: Math.round(parent.parent.parent.modelData.cpu) + "%"
                                 color: Skin.body
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                             }
 
@@ -1592,7 +1603,7 @@ PanelWindow {
                                 width: 44
                                 text: "MEM"
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.14
                             }
@@ -1612,7 +1623,7 @@ PanelWindow {
                                 horizontalAlignment: Text.AlignRight
                                 text: (parent.parent.parent.modelData.rss / 1024 / 1024).toFixed(1) + "G"
                                 color: Skin.body
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                             }
                         }
@@ -1635,7 +1646,7 @@ PanelWindow {
             Text {
                 text: "INSTALLED — TEACHABLE, NOT RUNNING"
                 color: Skin.dim
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.18
             }
@@ -1664,7 +1675,7 @@ PanelWindow {
                             Text {
                                 text: parent.parent.modelData.tag
                                 color: Skin.categoryColor(parent.parent.modelData.tag)
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.14
                             }
@@ -1672,7 +1683,7 @@ PanelWindow {
                             Text {
                                 text: parent.parent.modelData.name
                                 color: Skin.body
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                             }
                         }
@@ -1704,7 +1715,7 @@ PanelWindow {
                             id: volLabel
                             text: "VOLUME"
                             color: win.mRow === 0 ? Skin.text : Skin.body
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.14
                         }
@@ -1712,7 +1723,7 @@ PanelWindow {
                         Text {
                             text: SysState.vol20 + " / 20"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.10
                         }
@@ -1724,7 +1735,7 @@ PanelWindow {
                             : SysState.volPct >= 100 ? "BOOMBURST"
                             : SysState.volPct + "%"
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
                 }
@@ -1754,7 +1765,7 @@ PanelWindow {
                             id: brLabel
                             text: "BRIGHTNESS"
                             color: win.mRow === 1 ? Skin.text : Skin.body
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.14
                         }
@@ -1762,7 +1773,7 @@ PanelWindow {
                         Text {
                             text: SysState.bright8 + " / 8"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.10
                         }
@@ -1776,7 +1787,7 @@ PanelWindow {
                             : SysState.bright8 >= 8 ? "LIGHT THAT BURNS THE SKY"
                             : ""
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
                 }
@@ -1798,7 +1809,7 @@ PanelWindow {
                 Text {
                     text: "POWER MODE"
                     color: win.mRow === 2 ? Skin.text : Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.18
                 }
@@ -1833,7 +1844,7 @@ PanelWindow {
                                 anchors.centerIn: parent
                                 text: parent.modelData.label
                                 color: parent.active ? Skin.shadow : Skin.body
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
@@ -1853,7 +1864,7 @@ PanelWindow {
                         return "";
                     }
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.12
                     elide: Text.ElideRight
@@ -1872,7 +1883,7 @@ PanelWindow {
                         id: tzLabel
                         text: "TIMEZONE"
                         color: win.mRow === 3 ? Skin.text : Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.18
                     }
@@ -1881,7 +1892,7 @@ PanelWindow {
                         anchors.right: parent.right
                         text: win.timezone.toUpperCase()
                         color: Skin.text
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                     }
                 }
@@ -1913,7 +1924,7 @@ PanelWindow {
                                 text: parent.modelData.split("/").pop()
                                       .replace(/_/g, " ").toUpperCase()
                                 color: parent.active ? Skin.shadow : Skin.body
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.10
                             }
@@ -1984,14 +1995,14 @@ PanelWindow {
                             Text {
                                 text: parent.parent.modelData.name
                                 color: parent.parent.modelData.danger ? Skin.critical : Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                             }
 
                             Text {
                                 text: parent.parent.modelData.key
                                 color: Skin.dim
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
                             }
@@ -2011,7 +2022,7 @@ PanelWindow {
                 width: parent.width
                 text: "Restart and shut down ask first — the capture device holds the confirmation."
                 color: Skin.body
-                font.family: "DotGothic16"
+                font.family: Skin.fontBody
                 font.pixelSize: 16
                 wrapMode: Text.WordWrap
             }

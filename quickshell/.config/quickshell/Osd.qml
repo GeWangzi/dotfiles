@@ -130,7 +130,7 @@ PanelWindow {
                 Text {
                     text: osd.label
                     color: Skin.text
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.16
                 }
@@ -143,7 +143,6 @@ PanelWindow {
                     spacing: osd.mode === "vol" ? 2 : 3
                     fillColor: osd.mode === "vol" ? Skin.text : Skin.outer
                     ticks: true
-                    shine: false
                 }
             }
         }

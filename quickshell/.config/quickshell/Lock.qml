@@ -136,7 +136,7 @@ WlSessionLock {
                     anchors.centerIn: parent
                     text: "RELEASE"
                     color: Skin.window
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 12
                     font.letterSpacing: 12 * 0.18
                 }
@@ -148,7 +148,7 @@ WlSessionLock {
                 y: 70
                 text: SysState.time
                 color: Skin.text
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 54
             }
 
@@ -157,7 +157,7 @@ WlSessionLock {
                 y: 146
                 text: Qt.formatDateTime(SysState.clock.date, "dddd dd MMMM yyyy").toUpperCase()
                 color: Skin.dim
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 12
                 font.letterSpacing: 12 * 0.22
             }
@@ -210,7 +210,7 @@ WlSessionLock {
                     anchors.centerIn: parent
                     text: Skin.ballWord
                     color: Skin.body
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.2
                 }
@@ -241,22 +241,24 @@ WlSessionLock {
                             id: cardName
                             text: Skin.species
                             color: Skin.text
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 26
                         }
 
                         Text {
                             x: cardName.implicitWidth + 14
+                            visible: Skin.has("lv")
                             anchors.baseline: cardName.baseline
                             text: "LV " + SysState.level
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 12
                             font.letterSpacing: 12 * 0.14
                         }
                     }
 
                     Row {
+                        visible: Skin.has("types") && Skin.type1 !== ""
                         spacing: 7
 
                         Rectangle {
@@ -269,7 +271,7 @@ WlSessionLock {
                                 anchors.centerIn: parent
                                 text: Skin.type1
                                 color: Skin.shadow
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.18
                             }
@@ -286,7 +288,7 @@ WlSessionLock {
                                 anchors.centerIn: parent
                                 text: Skin.type2
                                 color: Skin.shadow
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.18
                             }
@@ -302,7 +304,7 @@ WlSessionLock {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "HP"
                             color: Skin.outer
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.16
                         }
@@ -322,13 +324,14 @@ WlSessionLock {
                             anchors.verticalCenter: parent.verticalCenter
                             text: SysState.hpNum
                             color: Skin.body
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 12
                             font.letterSpacing: 12 * 0.12
                         }
                     }
 
                     Row {
+                        visible: Skin.has("exp")
                         width: parent.width
                         spacing: 10
 
@@ -337,7 +340,7 @@ WlSessionLock {
                             anchors.verticalCenter: parent.verticalCenter
                             text: "EXP"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.16
                         }
@@ -364,7 +367,7 @@ WlSessionLock {
                             text: "EXP TO NEXT LV — "
                                   + (100 - Math.round(SysState.expFrac * 100)) + "%"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.12
                         }
@@ -374,7 +377,7 @@ WlSessionLock {
                         width: parent.width
                         text: Skin.crNote
                         color: Skin.body
-                        font.family: "DotGothic16"
+                        font.family: Skin.fontBody
                         font.pixelSize: 16
                         wrapMode: Text.WordWrap
                     }
@@ -387,7 +390,7 @@ WlSessionLock {
                 y: 508
                 text: "MOVES — RESUME ON WAKE"
                 color: Skin.dim
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.2
             }
@@ -433,7 +436,7 @@ WlSessionLock {
                                     text: parent.parent.parent.modelData
                                         ? parent.parent.parent.modelData.tag : ""
                                     color: Skin.categoryColor(slotTag.text)
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.18
                                 }
@@ -443,7 +446,7 @@ WlSessionLock {
                                     text: parent.parent.parent.modelData
                                         ? Apps.ppFor(parent.parent.parent.modelData.match) : ""
                                     color: Skin.dim
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.10
                                 }
@@ -453,7 +456,7 @@ WlSessionLock {
                                 width: parent.width
                                 text: parent.parent.modelData ? parent.parent.modelData.name : ""
                                 color: Skin.text
-                                font.family: "Silkscreen"
+                                font.family: Skin.fontLabel
                                 font.pixelSize: 12
                                 elide: Text.ElideRight
                             }
@@ -464,7 +467,7 @@ WlSessionLock {
                             anchors.centerIn: parent
                             text: Skin.emptyWord
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.14
                         }
@@ -481,9 +484,9 @@ WlSessionLock {
 
                 Text {
                     id: promptArrow
-                    text: "▶"
+                    text: Skin.glyph
                     color: Skin.accent
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 14
                 }
             }
@@ -493,7 +496,7 @@ WlSessionLock {
                 y: 632
                 text: surf.checking ? "CHECKING..." : "PRESS ANY KEY TO CONTINUE"
                 color: Skin.text
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 12
                 font.letterSpacing: 12 * 0.16
             }
@@ -532,7 +535,7 @@ WlSessionLock {
                         ? "AUTHENTICATION FAILED — TRY AGAIN"
                         : "TYPE TO RELEASE"
                     color: surf.fails > 0 ? Skin.critical : Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.14
                 }

@@ -38,7 +38,7 @@ Item {
 
                 // shine
                 Rectangle {
-                    visible: parent.filled
+                    visible: parent.filled && Skin.shine
                     x: 2
                     y: 2
                     width: parent.width - 4

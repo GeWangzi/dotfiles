@@ -12,7 +12,7 @@ Item {
     property int size: 10
     property real tracking: 0
     property color color: Skin.text
-    property string family: "Silkscreen"
+    property string family: Skin.fontLabel
     property int shadowOffset: 3
     property int maxWidth: 0
 

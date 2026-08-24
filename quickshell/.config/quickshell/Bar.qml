@@ -1,5 +1,7 @@
 // The status bar, from turn 13b of the creature-shell handoff: a 34px HP/PP
-// header, not a tray.
+// strip, not a tray. Which screen edge it sits on is the skin's call (the
+// `bar` behaviour token): Dream Land asks for the bottom, everything else
+// keeps the top. The 5px rule always faces the workspace.
 //
 //   creature name, HP bar + figure, status chips (only when the condition
 //   is real), then wifi, volume and the time. LV lives on the wallpaper
@@ -22,8 +24,15 @@ import Quickshell
 PanelWindow {
     id: bar
 
+    // The clock opens the calendar page, which is the other half of how that
+    // surface is reached (the keybind is SUPER + N).
+    signal clockActivated()
+
+    readonly property bool atBottom: Skin.barEdge === "bottom"
+
     anchors {
-        top: true
+        top: !bar.atBottom
+        bottom: bar.atBottom
         left: true
         right: true
     }
@@ -34,18 +43,19 @@ PanelWindow {
         anchors.fill: parent
         color: Skin.strip
 
-        // border-bottom: 5px solid outer
+        // The 5px outer rule, on whichever edge faces the workspace.
         Rectangle {
-            anchors.bottom: parent.bottom
+            y: bar.atBottom ? 0 : parent.height - 5
             width: parent.width
             height: 5
             color: Skin.outer
         }
 
-        // Content row, vertically centred in the 29px above the rule.
+        // Content row, vertically centred in the 29px beside the rule.
         Row {
             id: content
             x: 12
+            y: bar.atBottom ? 5 : 0
             height: parent.height - 5
             spacing: 14
 
@@ -54,7 +64,7 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Skin.species
                 color: Skin.text
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 12
             }
 
@@ -71,14 +81,15 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 text: SysState.hpNum
                 color: Skin.body
-                font.family: "Silkscreen"
+                font.family: Skin.fontLabel
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.10
             }
 
-            // Status conditions: filled chips, only when real (turn 19c).
+            // Status conditions: filled chips, only when real (turn 19c),
+            // and only on a skin that has chips at all.
             Repeater {
-                model: SysState.chips
+                model: Skin.has("chips") ? SysState.chips : []
 
                 Chip {
                     required property var modelData
@@ -91,7 +102,7 @@ PanelWindow {
             // SUB is a field effect the machine raised itself, so it is a
             // dashed outline, never a filled chip (turn 20).
             Chip {
-                visible: SysState.sub
+                visible: SysState.sub && Skin.has("chips")
                 anchors.verticalCenter: parent.verticalCenter
                 label: "SUB"
                 hue: Skin.accent
@@ -104,6 +115,7 @@ PanelWindow {
             id: rightSide
             anchors.right: parent.right
             anchors.rightMargin: 12
+            y: bar.atBottom ? 5 : 0
             height: parent.height - 5
             spacing: 14
 
@@ -115,7 +127,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: SysState.wifiUp ? "WIFI" : "NO LINK"
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.14
                 }
@@ -145,7 +157,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "VOL"
                     color: Skin.dim
-                    font.family: "Silkscreen"
+                    font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.14
                 }
@@ -171,9 +183,12 @@ PanelWindow {
             Text {
                 anchors.verticalCenter: parent.verticalCenter
                 text: SysState.time
-                color: Skin.text
-                font.family: "Silkscreen"
+                color: clockHover.hovered ? Skin.accent : Skin.text
+                font.family: Skin.fontLabel
                 font.pixelSize: 12
+
+                HoverHandler { id: clockHover }
+                TapHandler { onTapped: bar.clockActivated() }
             }
         }
     }

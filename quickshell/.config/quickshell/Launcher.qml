@@ -16,7 +16,7 @@
 //   - Every Silkscreen size is rounded up to even, because the face is a
 //     pixel font and this panel runs at scale 1.5. See fonts/README.md.
 //
-// The blinking ▼ in the log box is the only ▼ in the system.
+// The blinking advance marker in the log box is Skin.glyphMore.
 
 import QtQuick
 import Quickshell
@@ -382,7 +382,7 @@ PanelWindow {
                             width: parent.width
                             text: "What will " + Skin.species + " do?"
                             color: Skin.text
-                            font.family: "DotGothic16"
+                            font.family: Skin.fontBody
                             font.pixelSize: 18
                             wrapMode: Text.WordWrap
                         }
@@ -392,7 +392,7 @@ PanelWindow {
                             text: win.current && win.current.description !== ""
                                 ? win.current.description : "No description."
                             color: Skin.body
-                            font.family: "DotGothic16"
+                            font.family: Skin.fontBody
                             font.pixelSize: 16
                             wrapMode: Text.WordWrap
                             maximumLineCount: 2
@@ -408,12 +408,12 @@ PanelWindow {
                             ? win.current.tag + " · " + Apps.statusFor(win.current.match)
                             : ""
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.14
                     }
 
-                    // The only ▼ in the system.
+                    // The log box advance marker.
                     Blink {
                         anchors.right: parent.right
                         anchors.rightMargin: 12
@@ -424,9 +424,9 @@ PanelWindow {
 
                         Text {
                             id: advance
-                            text: "▼"
+                            text: Skin.glyphMore
                             color: Skin.accent
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 14
                         }
                     }
@@ -477,7 +477,7 @@ PanelWindow {
                                         width: parent.width
                                         text: moveCell.modelData.name
                                         color: Skin.text
-                                        font.family: "Silkscreen"
+                                        font.family: Skin.fontLabel
                                         font.pixelSize: 14
                                         elide: Text.ElideRight
                                     }
@@ -490,7 +490,7 @@ PanelWindow {
                                             id: tagText
                                             text: moveCell.modelData.tag
                                             color: Skin.categoryColor(moveCell.modelData.tag)
-                                            font.family: "Silkscreen"
+                                            font.family: Skin.fontLabel
                                             font.pixelSize: 10
                                             font.letterSpacing: 10 * 0.18
                                         }
@@ -499,7 +499,7 @@ PanelWindow {
                                             anchors.right: parent.right
                                             text: Apps.ppFor(moveCell.modelData.match)
                                             color: Skin.dim
-                                            font.family: "Silkscreen"
+                                            font.family: Skin.fontLabel
                                             font.pixelSize: 10
                                             font.letterSpacing: 10 * 0.12
                                         }
@@ -551,9 +551,9 @@ PanelWindow {
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "▸"
+                            text: Skin.glyph
                             color: Skin.accent
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 12
                         }
 
@@ -561,7 +561,7 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             text: win.query
                             color: Skin.text
-                            font.family: "DotGothic16"
+                            font.family: Skin.fontBody
                             font.pixelSize: 18
                         }
 
@@ -585,7 +585,7 @@ PanelWindow {
                         text: (win.results.length === 0 ? 0 : win.page * win.perPage + win.selected + 1)
                               + " OF " + win.results.length
                         color: Skin.dim
-                        font.family: "Silkscreen"
+                        font.family: Skin.fontLabel
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.12
                     }
@@ -612,7 +612,7 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             text: row.modelData.tag
                             color: Skin.categoryColor(row.modelData.tag)
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.16
                         }
@@ -623,7 +623,7 @@ PanelWindow {
                             width: parent.width - 66 - 130
                             text: row.modelData.name
                             color: Skin.text
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 12
                             elide: Text.ElideRight
                         }
@@ -634,7 +634,7 @@ PanelWindow {
                             anchors.verticalCenter: parent.verticalCenter
                             text: Apps.windowsFor(row.modelData.match) > 0 ? "RUNNING" : ""
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.10
                         }
@@ -671,7 +671,7 @@ PanelWindow {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: Skin.emptyWord
                             color: Skin.text
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 14
                         }
 
@@ -679,7 +679,7 @@ PanelWindow {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: "Nothing installed matches that."
                             color: Skin.body
-                            font.family: "DotGothic16"
+                            font.family: Skin.fontBody
                             font.pixelSize: 16
                         }
                     }
@@ -716,7 +716,7 @@ PanelWindow {
                         Text {
                             text: "FILTER"
                             color: Skin.dim
-                            font.family: "Silkscreen"
+                            font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.18
                         }
@@ -728,7 +728,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: win.query
                                 color: Skin.text
-                                font.family: "DotGothic16"
+                                font.family: Skin.fontBody
                                 font.pixelSize: 18
                             }
 
@@ -755,7 +755,7 @@ PanelWindow {
                             : (win.altResults.length === 0 ? 0 : win.selected + 1)
                               + " of " + win.altResults.length + " entries"
                         color: Skin.dim
-                        font.family: "DotGothic16"
+                        font.family: Skin.fontBody
                         font.pixelSize: 14
                     }
                 }
@@ -804,7 +804,7 @@ PanelWindow {
                                         color: Skin.body
                                         elide: Text.ElideRight
                                         maximumLineCount: 1
-                                        font.family: "DotGothic16"
+                                        font.family: Skin.fontBody
                                         font.pixelSize: 16
                                     }
 
@@ -832,7 +832,7 @@ PanelWindow {
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: "IMAGE"
                                         color: Skin.dim
-                                        font.family: "Silkscreen"
+                                        font.family: Skin.fontLabel
                                         font.pixelSize: 10
                                         font.letterSpacing: 10 * 0.16
                                     }
@@ -885,7 +885,7 @@ PanelWindow {
                                         // rows into glyph cells.
                                         text: glyphCell.modelData.ch || ""
                                         color: Skin.body
-                                        font.family: "DotGothic16"
+                                        font.family: Skin.fontBody
                                         font.pixelSize: 20
                                     }
 
@@ -922,7 +922,7 @@ PanelWindow {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: Skin.emptyWord
                                     color: Skin.dim
-                                    font.family: "Silkscreen"
+                                    font.family: Skin.fontLabel
                                     font.pixelSize: 14
                                     font.letterSpacing: 14 * 0.18
                                 }
@@ -931,7 +931,7 @@ PanelWindow {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: "Nothing matches that."
                                     color: Skin.body
-                                    font.family: "DotGothic16"
+                                    font.family: Skin.fontBody
                                     font.pixelSize: 16
                                 }
                             }
