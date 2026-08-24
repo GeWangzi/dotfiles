@@ -4,8 +4,8 @@ consumes it, then tell the running programs to pick it up.
 
 Why this exists: the palette used to live as four hand-synced copies, one per
 config-file syntax, and each of them carried a comment admitting that keeping
-them in step was manual. Eight skins makes that untenable, so the colours now
-live in one TOML file and this script does the translating.
+them in step was manual. More than one skin makes that untenable, so the
+colours now live in one TOML file and this script does the translating.
 
     skinctl list                 show the skins, mark the active one
     skinctl current              print the active slug
@@ -18,7 +18,6 @@ Files written (all generated -- none of them are tracked in the dotfiles
 repository, and none of them should be edited by hand):
 
     ~/.config/hypr/skin.conf         hyprlang $vars, sourced by hyprlock.conf
-    ~/.config/waybar/skin.css        GTK @define-color, imported by waybar
     ~/.config/wofi/style.css         full stylesheet; wofi cannot @import
     ~/.config/gtk-3.0/gtk.css        GTK application theming, via adw-gtk3-dark
     ~/.config/gtk-4.0/gtk.css        the same stylesheet, for libadwaita apps
@@ -28,10 +27,10 @@ repository, and none of them should be edited by hand):
     ~/.local/state/skins/skin.sh     sh vars, sourced by rpg-greet and rpg-spine
     ~/.local/state/skins/active      the active slug, so the choice survives logout
 
-Both a design-token namespace (bg, outer, inner, accent, ...) and the legacy
-Ember namespace (crust, base, ember, ...) are emitted everywhere. The legacy
-names exist so the waybar and wofi stylesheets written before the token set
-keep resolving; they go away when those stylesheets are rewritten.
+Everything is emitted under the design-token namespace (bg, outer, inner,
+accent, ...). The legacy Ember namespace (crust, base, ember, ...) went away
+with the 2026-08 prune, when its last two consumers -- the wofi rules and
+hyprlock.conf -- were rewritten to token names.
 """
 
 from __future__ import annotations
@@ -68,51 +67,13 @@ TOKENS = [
     "cmd", "net", "txt", "snd",
 ]
 
-BEHAVIOR = ["glyph", "radius", "blink", "shine", "menu_word", "empty_word"]
+BEHAVIOR = ["glyph", "radius", "blink", "shine", "menu_word", "empty_word",
+            "bar", "font_label", "font_body"]
 
 # Optional per-skin creature block (the creature-shell handoff). All keys are
 # free-form strings apart from `level`; a skin without one is not a creature
 # and the shell surfaces fall back to plain skin behaviour.
 CREATURE_HUES = ["type1_hue", "type2_hue"]
-
-# How the old Ember colour names are reconstructed from the design tokens.
-#
-# This is a compatibility shim, not a design decision -- it only has to be
-# good enough that the pre-token stylesheets stay legible under every skin.
-# Three of the mappings are worth explaining:
-#
-#   surface1/surface2  Ember had six background steps and the token set has
-#                      five, so the two rule-coloured ones collapse onto
-#                      `inner`, which is what they were both being used for.
-#   ember3             used by waybar for the critical-battery block, so it
-#                      maps to the fixed critical threshold rather than to a
-#                      skin colour. A critical warning that changes colour
-#                      with the theme is not a warning.
-#   amber              likewise pinned to the fixed warn threshold.
-#
-# A skin can override any of these in its own [skins.legacy] table, and Ember
-# overrides all sixteen so that selecting it reproduces the old desktop
-# exactly rather than approximately.
-LEGACY_FROM_TOKEN = {
-    "crust": "bg",
-    "mantle": "strip",
-    "base": "window",
-    "surface0": "cell",
-    "surface1": "inner",
-    "surface2": "inner",
-    "overlay0": "dim",
-    "overlay1": "dim",
-    "subtext": "body",
-    "text": "text",
-    "ember": "outer",
-    "ember2": "accent",
-    "ember3": None,      # -> thresholds.critical
-    "horizon": "inner",
-    "amber": None,       # -> thresholds.warn
-    "bone": "body",
-}
-LEGACY_FROM_THRESHOLD = {"ember3": "critical", "amber": "warn"}
-
 
 def die(msg: str) -> None:
     print(f"skinctl: {msg}", file=sys.stderr)
@@ -126,8 +87,8 @@ def norm(value: str, where: str) -> str:
     """Normalise "#RRGGBB" to lowercase, and reject anything else early.
 
     Catching a malformed colour here beats catching it as a GTK parse error
-    at the next waybar restart, which is silent apart from the bar losing
-    every colour at once.
+    in a consumer, which is silent apart from the surface losing every
+    colour at once.
     """
     v = value.strip().lower()
     if not v.startswith("#") or len(v) != 7:
@@ -197,37 +158,20 @@ class Skin:
                 if k in self.creature:
                     self.creature[k] = norm(self.creature[k], f"{where}.creature.{k}")
 
-        self.legacy = {}
-        override = {k: norm(v, f"{where}.legacy.{k}")
-                    for k, v in raw.get("legacy", {}).items()}
-        for name, token in LEGACY_FROM_TOKEN.items():
-            if name in override:
-                self.legacy[name] = override[name]
-            elif token is None:
-                self.legacy[name] = thresholds[LEGACY_FROM_THRESHOLD[name]]
-            else:
-                self.legacy[name] = self.tokens[token]
+        # Optional per-skin feature switches: which shell elements render at
+        # all. Absent table (or absent key) means ON -- the creature skins'
+        # full set is the default, and a skin only lists what it turns off.
+        # Keys are defined by their QML gates (Skin.has call sites).
+        self.features = raw.get("features") or None
+        if self.features:
+            bad = [k for k, v in self.features.items() if not isinstance(v, bool)]
+            if bad:
+                die(f"{where}.features: non-boolean values for {', '.join(sorted(bad))}")
 
     @property
     def primary(self) -> dict:
         """Design tokens plus the fixed thresholds."""
         return {**self.tokens, **self.thresholds}
-
-    @property
-    def legacy_extra(self) -> dict:
-        """Legacy names that are not already a design token name.
-
-        `text` is spelled the same in both namespaces, and emitting it twice
-        would mean a redefined $text in the hyprlang output. hyprlang tolerates
-        that but logs a config error, and hyprlock prints its config errors on
-        every lock, so the duplicate is dropped here instead.
-        """
-        return {k: v for k, v in self.legacy.items() if k not in self.primary}
-
-    @property
-    def colors(self) -> dict:
-        """Every colour that gets emitted, tokens first then legacy."""
-        return {**self.primary, **self.legacy_extra}
 
 
 def load() -> list[Skin]:
@@ -285,9 +229,8 @@ BANNER = "GENERATED BY skinctl -- DO NOT EDIT. Source: ~/.config/skins/skins.tom
 
 def write(path: Path, content: str) -> None:
     """Write via a temporary file in the same directory and rename over the
-    target, so a consumer reading the file mid-write never sees half of it.
-    waybar in particular re-reads its stylesheet on SIGUSR2 and would render
-    a truncated one without complaint."""
+    target, so a consumer reading the file mid-write never sees half of it --
+    the shell watches skin.json and re-reads it the moment it changes."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(content)
@@ -300,13 +243,11 @@ def render_hyprlang(skin: Skin) -> str:
     convention the retired ember.conf used for the places that need to append
     their own alpha byte."""
     out = [f"# {BANNER}", f"# Skin: {skin.name}", ""]
-    for group, colors in (("Design tokens", skin.primary),
-                          ("Legacy Ember names", skin.legacy_extra)):
-        out.append(f"# {group}.")
-        for name, value in colors.items():
-            out.append(f"${name} = rgb({bare(value)})")
-            out.append(f"${name}Alpha = {bare(value)}")
-        out.append("")
+    out.append("# Design tokens.")
+    for name, value in skin.primary.items():
+        out.append(f"${name} = rgb({bare(value)})")
+        out.append(f"${name}Alpha = {bare(value)}")
+    out.append("")
     if skin.creature:
         out.append("# Creature block, for hyprlock's card. Hues are colours;")
         out.append("# the rest are strings interpolated into label text.")
@@ -337,13 +278,11 @@ def render_hyprlang(skin: Skin) -> str:
 
 def render_gtk_css(skin: Skin) -> str:
     out = [f"/* {BANNER}", f"   Skin: {skin.name} */", ""]
-    for group, colors in (("Design tokens.", skin.primary),
-                          ("Legacy Ember names.", skin.legacy_extra)):
-        out.append(f"/* {group} */")
-        width = max(len(n) for n in colors)
-        for name, value in colors.items():
-            out.append(f"@define-color {name.ljust(width)} {value};")
-        out.append("")
+    out.append("/* Design tokens. */")
+    width = max(len(n) for n in skin.primary)
+    for name, value in skin.primary.items():
+        out.append(f"@define-color {name.ljust(width)} {value};")
+    out.append("")
     return "\n".join(out)
 
 
@@ -393,9 +332,9 @@ ADW_FROM_TOKEN = {
     "accent_fg_color": "bg",
 }
 
-# The status roles keep the fixed thresholds, not skin colours -- same rule as
-# waybar's critical block. `*_fg_color` is the darkest background so that text
-# on a filled warning stays legible.
+# The status roles keep the fixed thresholds, not skin colours -- same rule
+# as the shell's warning meters. `*_fg_color` is the darkest background so
+# that text on a filled warning stays legible.
 ADW_FROM_THRESHOLD = {
     "destructive_bg_color": "critical",
     "destructive_color": "critical",
@@ -472,7 +411,7 @@ def render_lua(skin: Skin) -> str:
         f'  slug = "{skin.slug}",',
         f'  name = "{skin.name}",',
     ]
-    for name, value in skin.colors.items():
+    for name, value in skin.primary.items():
         out.append(f'  {name} = "{bare(value)}",')
     for name in BEHAVIOR:
         value = str(skin.behavior[name]).replace('"', '\\"')
@@ -488,9 +427,9 @@ def render_json(skin: Skin) -> str:
         "name": skin.name,
         "tokens": skin.tokens,
         "thresholds": skin.thresholds,
-        "legacy": skin.legacy,
         "behavior": skin.behavior,
         "creature": skin.creature,
+        "features": skin.features,
     }, indent=2, ensure_ascii=False) + "\n"
 
 
@@ -731,7 +670,6 @@ def render_shell(skin: Skin) -> str:
 
 TARGETS = [
     (HOME / ".config" / "hypr" / "skin.conf", render_hyprlang),
-    (HOME / ".config" / "waybar" / "skin.css", render_gtk_css),
     (HOME / ".config" / "wofi" / "style.css", render_wofi),
     (HOME / ".config" / "gtk-3.0" / "gtk.css", render_gtk_app_css),
     (HOME / ".config" / "gtk-4.0" / "gtk.css", render_gtk_app_css),
@@ -793,11 +731,6 @@ def reload_consumers() -> list[str]:
     generating a skin from a TTY with no session up is a legitimate thing to
     do, and is what the install script does."""
     done = []
-
-    if shutil.which("pkill") and subprocess.run(
-            ["pkill", "-0", "-x", "waybar"], capture_output=True).returncode == 0:
-        subprocess.run(["pkill", "-SIGUSR2", "-x", "waybar"], check=False)
-        done.append("waybar")
 
     if shutil.which("pkill") and subprocess.run(
             ["pkill", "-0", "-x", "kitty"], capture_output=True).returncode == 0:
