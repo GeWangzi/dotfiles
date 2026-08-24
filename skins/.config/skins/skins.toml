@@ -68,6 +68,99 @@ bar        = "top"
 font_label = "Silkscreen"
 font_body  = "DejaVu Sans Mono"
 
+# The plain shell's feature switches: furniture only the creature costume
+# turns on. Merge order per skin: this table, then the skin's voice, then the
+# skin's own [skins.features], later layers winning per key. A key absent
+# everywhere defaults ON in the QML (Skin.has), which is what real content --
+# the menu sections -- relies on.
+[features]
+foe      = false
+chips    = false
+exp      = false
+lv       = false
+types    = false
+ally     = false
+caught   = false
+held     = false
+portrait = false
+pp       = false
+nature   = false
+species  = false
+route    = false
+
+# ---------------------------------------------------------------------------
+# The creature costume. The shell's native voice is plain: plain wording is
+# hardcoded at every lex()/phrase() call site, and every variant slot's
+# default is its plain implementation. A skin that sets `voice = "creature"`
+# gets all of this -- the RPG structure (variants), the battle furniture
+# (features) and the battle vocabulary (lexicon) -- and may still override
+# any single key in its own tables.
+[voices.creature.variants]
+lock    = "card"
+idle    = "moves"
+field   = "creature"
+summary = "creature"
+
+[voices.creature.features]
+foe      = true
+chips    = true
+exp      = true
+lv       = true
+types    = true
+ally     = true
+caught   = true
+held     = true
+portrait = true
+pp       = true
+nature   = true
+species  = true
+route    = true
+
+[voices.creature.lexicon]
+sec_summary   = "SUMMARY"
+sec_stats     = "STATS"
+sec_abilities = "ABILITIES"
+sec_items     = "ITEMS"
+sec_moves     = "MOVES"
+sec_tm        = "TM"
+sec_train     = "TRAIN"
+sec_session   = "SESSION"
+keys_armed    = "KEYS ARMED — ESC RELEASES"
+hp            = "HP"
+stat_attack   = "ATTACK"
+stat_defense  = "DEFENSE"
+stat_spatk    = "SP. ATK"
+stat_spdef    = "SP. DEF"
+stat_speed    = "SPEED"
+nature_saver  = "CALM"
+nature_balanced = "HARDY"
+nature_performance = "MODEST"
+perf_performance = "MEGA"
+perf_saver_note       = "Fans quiet. Clocks capped. HP drains slowest."
+perf_performance_note = "All cores unlocked. Fans loud, HP drains faster."
+items_empty   = "NO DEVICE HELD"
+items_off     = "RADIO OFF — NOTHING HELD"
+tm_note       = "INSTALLED — TEACHABLE, NOT RUNNING"
+session_note  = "Restart and shut down ask first — the capture device holds the confirmation."
+osd_vol_min   = "THROAT CHOP"
+osd_vol_max   = "BOOMBURST"
+osd_bright_min = "BLACK HOLE ECLIPSE"
+osd_bright_max = "LIGHT THAT BURNS THE SKY"
+notif_net     = "{name} TOOK DAMAGE FROM {app}!"
+notif_snd     = "{name} HEARD A CALL!"
+notif_plain   = "{name} FELT SOMETHING!"
+power_header  = "RETURN {name} TO THE DEVICE"
+power_note_lock    = "Stays awake. Moves keep their PP."
+power_note_suspend = "Sleeps. HP holds where it is."
+power_note_logout  = "Ends the session. Moves are cleared."
+power_note_off     = "Full stop. Everything is released."
+power_confirm_off     = "Shut down {name}? Everything running is released."
+power_confirm_restart = "Restart {name}? Everything is released, then it comes back."
+power_confirm_logout  = "End the session? Every move loses its PP."
+lock_tab      = "RELEASE"
+lock_prompt   = "PRESS ANY KEY TO CONTINUE"
+lock_type     = "TYPE TO RELEASE"
+
 
 # ---------------------------------------------------------------------------
 # DREAM LAND -- the default. The Kirby night-sky palette under a plain,
@@ -75,8 +168,9 @@ font_body  = "DejaVu Sans Mono"
 # machine is read all day and a display face is not an all-day face; a small
 # 8px radius instead of the cartoon 14; no shine, no star cursor, default
 # wording, bar on the top edge. The colours are the flavour now -- the
-# furniture is quiet. The pixel look stayed with the creature skins, which
-# keep Silkscreen through the behaviour defaults.
+# furniture is quiet. It declares no voice, so it gets the shell's native
+# plain surfaces; the pixel look and the battle framing stayed with the
+# creature skins.
 [[skins]]
 slug    = "dream-land"
 name    = "DREAM LAND"
@@ -102,24 +196,6 @@ radius     = "8px"
 font_label = "Adwaita Sans"
 font_body  = "Adwaita Sans"
 
-# What Dream Land drops (2026-08-23, user call): Kirby fights nothing here,
-# carries no status ailments, and does not level. The HP line is the whole
-# story. The rest of the creature furniture stays available to other skins.
-[skins.features]
-foe   = false
-chips = false
-exp   = false
-lv    = false
-
-# The speaker. A minimal creature block: no types, no nature, no level --
-# just who is talking and what he carries. Types stay empty so the badge
-# rows collapse on their data gate.
-[skins.creature]
-species      = "KIRBY"
-ball         = "WARP STAR"
-held_charge  = "MAXIM TOMATO"
-held_battery = "PEP BREW"
-
 
 # ---------------------------------------------------------------------------
 # The three creature profiles from the creature-shell handoff (Aug 2026).
@@ -141,6 +217,7 @@ held_battery = "PEP BREW"
 
 [[skins]]
 slug    = "gengar"
+voice   = "creature"
 name    = "GENGAR"
 bg      = "#0a0713"
 shadow  = "#04020a"
@@ -182,6 +259,7 @@ note         = "Under a full moon, this POKEMON likes to mimic the shadows of pe
 
 [[skins]]
 slug    = "wooper"
+voice   = "creature"
 name    = "WOOPER"
 bg      = "#05101a"
 shadow  = "#020810"
@@ -223,6 +301,7 @@ note         = "A slippery film covers its body, making it hard to grasp. It bur
 
 [[skins]]
 slug    = "whimsicott"
+voice   = "creature"
 name    = "WHIMSICOTT"
 bg      = "#0d1410"
 shadow  = "#050a07"

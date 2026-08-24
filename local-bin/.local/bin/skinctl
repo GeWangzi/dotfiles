@@ -135,7 +135,8 @@ def luminance(hexcolor: str) -> float:
 # loading
 
 class Skin:
-    def __init__(self, raw: dict, defaults: dict, thresholds: dict) -> None:
+    def __init__(self, raw: dict, defaults: dict, thresholds: dict,
+                 feature_defaults: dict, voices: dict) -> None:
         self.slug = raw.get("slug") or die("a skin is missing its slug")
         self.name = raw.get("name", self.slug.upper())
         where = f"skin {self.slug}"
@@ -158,15 +159,51 @@ class Skin:
                 if k in self.creature:
                     self.creature[k] = norm(self.creature[k], f"{where}.creature.{k}")
 
-        # Optional per-skin feature switches: which shell elements render at
-        # all. Absent table (or absent key) means ON -- the creature skins'
-        # full set is the default, and a skin only lists what it turns off.
-        # Keys are defined by their QML gates (Skin.has call sites).
-        self.features = raw.get("features") or None
-        if self.features:
-            bad = [k for k, v in self.features.items() if not isinstance(v, bool)]
-            if bad:
-                die(f"{where}.features: non-boolean values for {', '.join(sorted(bad))}")
+        # The voice: a named preset of variants + features + lexicon defined
+        # in a top-level [voices.<name>] table. The shell's native voice is
+        # plain and needs no preset; a skin that dresses up names one here.
+        # Merge order everywhere below: global defaults, then the voice, then
+        # the skin's own table, later layers overriding per key.
+        voice_name = raw.get("voice")
+        if voice_name is not None and voice_name not in voices:
+            die(f"{where}: unknown voice {voice_name!r}")
+        voice = voices.get(voice_name, {}) if voice_name else {}
+
+        def check_types(table: dict | None, kind: str, want, wantname: str):
+            if table:
+                bad = [k for k, v in table.items() if not isinstance(v, want)]
+                if bad:
+                    die(f"{where}.{kind}: non-{wantname} values for "
+                        f"{', '.join(sorted(bad))}")
+            return table or {}
+
+        # Feature switches: which shell elements render at all. The global
+        # [features] table carries the plain shell's answer (creature
+        # furniture off); a voice or skin flips keys back on. An absent key
+        # everywhere means ON in the QML (Skin.has fallback), which is what
+        # real content -- the menu sections -- relies on.
+        merged = dict(feature_defaults)
+        merged.update(check_types(voice.get("features"), "features", bool, "boolean"))
+        merged.update(check_types(raw.get("features"), "features", bool, "boolean"))
+        self.features = merged or None
+
+        # Variant picks: which IMPLEMENTATION fills a shell slot (the lock
+        # centrepiece, the launcher idle furniture, the wallpaper field, the
+        # details summary pane). Values are names the QML slot sites know; an
+        # unknown or absent name means the plain implementation, so this can
+        # never brick a surface.
+        merged = dict(check_types(voice.get("variants"), "variants", str, "string"))
+        merged.update(check_types(raw.get("variants"), "variants", str, "string"))
+        self.variants = merged or None
+
+        # Lexicon: string -> string overrides for the shell's wording. Keys
+        # are defined by their QML call sites, whose fallbacks are the PLAIN
+        # wording; the creature voice restores the battle vocabulary. Unknown
+        # keys are harmless rather than an error -- a skin written against a
+        # newer shell should not brick an older one.
+        merged = dict(check_types(voice.get("lexicon"), "lexicon", str, "string"))
+        merged.update(check_types(raw.get("lexicon"), "lexicon", str, "string"))
+        self.lexicon = merged or None
 
     @property
     def primary(self) -> dict:
@@ -187,7 +224,13 @@ def load() -> list[Skin]:
             die(f"thresholds.{required} is not defined")
 
     defaults = data.get("defaults", {})
-    skins = [Skin(raw, defaults, thresholds) for raw in data.get("skins", [])]
+    feature_defaults = data.get("features", {})
+    bad = [k for k, v in feature_defaults.items() if not isinstance(v, bool)]
+    if bad:
+        die(f"features: non-boolean values for {', '.join(sorted(bad))}")
+    voices = data.get("voices", {})
+    skins = [Skin(raw, defaults, thresholds, feature_defaults, voices)
+             for raw in data.get("skins", [])]
     if not skins:
         die("no skins defined")
 
@@ -430,6 +473,8 @@ def render_json(skin: Skin) -> str:
         "behavior": skin.behavior,
         "creature": skin.creature,
         "features": skin.features,
+        "variants": skin.variants,
+        "lexicon": skin.lexicon,
     }, indent=2, ensure_ascii=False) + "\n"
 
 

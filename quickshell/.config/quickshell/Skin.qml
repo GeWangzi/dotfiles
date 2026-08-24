@@ -136,15 +136,49 @@ Singleton {
     readonly property string heldCharge:  cr("held_charge", "LEFTOVERS")
     readonly property string heldBattery: cr("held_battery", "GANLON BERRY")
 
-    // The features block: which shell elements render at all. Everything
-    // defaults ON (the creature skins' full set), so a skin lists only what
-    // it drops. Gate an element with Skin.has("...") -- the set of gates in
-    // the QML is the canonical key list.
+    // The features block: which shell elements render at all. skinctl merges
+    // the global [features] table (the plain shell's answer -- creature
+    // furniture off), the skin's voice, and the skin's own table before this
+    // file ever sees it. An absent key means ON, which is what real content
+    // (the menu sections) relies on. Gate an element with Skin.has("...") --
+    // the set of gates in the QML is the canonical key list.
     readonly property var features: data.features || null
 
     function has(name) {
         return (data.features && data.features[name] !== undefined)
             ? data.features[name] : true;
+    }
+
+    // The variants block: which implementation fills a slot. A slot site
+    // switches on the returned name and MUST default to its plain
+    // implementation for any name it does not know, so an unknown pick
+    // degrades rather than blanks the surface. Slots today: lock ("plain" /
+    // "card"), idle ("plain" / "moves"), field ("plain" / "creature"),
+    // summary ("plain" / "creature").
+    readonly property var variants: data.variants || null
+
+    function variant(slot, fallback) {
+        return (data.variants && data.variants[slot] !== undefined)
+            ? data.variants[slot] : fallback;
+    }
+
+    // The lexicon block: per-skin overrides for the shell's wording. Every
+    // fallback passed to lex()/phrase() at a call site is the PLAIN wording
+    // -- the shell's native voice -- and the creature voice restores the
+    // battle vocabulary. phrase() additionally fills {name}-style
+    // placeholders, so a voice can reorder a sentence, not just reword it.
+    readonly property var lexicon: data.lexicon || null
+
+    function lex(name, fallback) {
+        return (data.lexicon && data.lexicon[name] !== undefined)
+            ? data.lexicon[name] : fallback;
+    }
+
+    function phrase(name, fallback, subs) {
+        let out = lex(name, fallback);
+        for (const key in subs)
+            out = out.replace("{" + key + "}", subs[key]);
+        return out;
     }
 
     // Behaviour tokens.
