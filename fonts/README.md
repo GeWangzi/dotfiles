@@ -8,12 +8,15 @@ next to the font file.
 |---|---|---|
 | `Silkscreen-Regular.ttf` | Silkscreen | the creature skins' labels, numbers, app names, key hints (the behaviour default) |
 | `Silkscreen-Bold.ttf` | Silkscreen Bold | the same, where the design asks for 700 |
+| `IBMPlexMono-*.ttf` | IBM Plex Mono | DREAM LAND's both faces and the terminal (the Console dress, 2026-08-24) |
 
-DREAM LAND names **Adwaita Sans** for both faces (2026-08-24, user call: a
-face that is easy on the eyes all day, not a display face). It comes from the
-`adwaita-fonts` pacman package, not this repo, and is recorded in
-`pkglist-repo.txt`. The Lilita One / Baloo 2 pair that carried the Star
-Allies look lives in git history.
+DREAM LAND names **IBM Plex Mono** for both faces (2026-08-24, the Console
+redesign: the whole desk reads in the terminal's voice — mono labels, mono
+figures, plain type on live state). The five weights the shell and terminal
+use are vendored here under the same OFL; the Adwaita Sans dress it replaces
+came from the `adwaita-fonts` pacman package and is still installed for GTK
+apps. The Lilita One / Baloo 2 pair that carried the Star Allies look lives
+in git history.
 
 The fallback body copy is **DejaVu Sans Mono**, the terminal's own face, from
 `ttf-dejavu`. The design's body face was DotGothic16 and it was dropped

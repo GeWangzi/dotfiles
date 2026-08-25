@@ -54,9 +54,13 @@ PanelWindow {
 
     // ---------------------------------------------------------------- field
 
+    readonly property bool plainField: Skin.variant("field", "plain") !== "creature"
+
     Rectangle {
         anchors.fill: parent
-        color: Skin.cell
+        // The plain (Console) desk rests on the `bg` void; the creature
+        // field keeps its flat `cell` ground under the art.
+        color: wall.plainField ? Skin.bg : Skin.cell
     }
 
     Image {
@@ -81,9 +85,65 @@ PanelWindow {
         }
     }
 
-    // ---------------------------------------------------------------- clock (top left)
+    // ---------------------------------------------------------------- at rest
 
+    // The Console desk at rest: the day of the month as a faint watermark,
+    // a short rule, the date in small caps, and the workspace number in the
+    // corner. Drawn only on the plain field with no art behind it -- over
+    // per-workspace art it would be clutter, and the bar already carries
+    // the time.
+    Item {
+        visible: wall.plainField
+        anchors.fill: parent
+
+        Column {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.verticalCenterOffset: -20
+            spacing: 14
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Qt.formatDateTime(SysState.clock.date, "dd")
+                color: Skin.cell
+                font.family: Skin.fontLabel
+                font.bold: true
+                font.pixelSize: 300
+            }
+
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 44
+                height: 2
+                color: Skin.inner
+            }
+
+            Text {
+                anchors.horizontalCenter: parent.horizontalCenter
+                text: Qt.formatDateTime(SysState.clock.date, "dddd · MMMM").toUpperCase()
+                color: Skin.dim
+                font.family: Skin.fontLabel
+                font.pixelSize: 10
+                font.letterSpacing: 10 * 0.20
+            }
+        }
+
+        Text {
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            anchors.rightMargin: 22
+            anchors.bottomMargin: 18
+            text: "Nº " + wall.route
+            color: Skin.inner
+            font.family: Skin.fontLabel
+            font.pixelSize: 10
+            font.letterSpacing: 10 * 0.14
+        }
+    }
+
+    // The creature field keeps the unframed pixel clock top left.
     Column {
+        visible: !wall.plainField
         x: 34
         y: 64
         spacing: 26

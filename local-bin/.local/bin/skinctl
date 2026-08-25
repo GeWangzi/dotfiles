@@ -557,18 +557,20 @@ def write_png(path: Path, grid: list[list[str | None]], cell: int) -> None:
 
 
 def render_kitty(skin: Skin) -> str:
-    """The 16-colour ANSI palette from handoff turn 18b, as a kitty include.
-
-    Every slot that has a token maps to it; the four the palette had no
-    equivalent for are fixed values flagged NEW in the handoff (base blue is
-    a darkened NET, base/bright cyan because the palette has no cyan at all,
-    bright red a lift of the critical hue). ANSI 0 and 8 are backgrounds and
-    box drawing, not text; the design checked every other slot against the
-    GRIMLING bg for contrast.
+    """The 16-colour ANSI palette as a kitty include, on the Console
+    redesign's mapping (2026-08-24): every base slot is a token or a fixed
+    threshold, every bright is a lift of its base toward white, so no slot
+    is a hand-picked literal any more. Red is the critical threshold with
+    the BRN hue as its bright; green is the ok threshold; yellow rides the
+    accent with the PAR hue as its bright (both are warm in every skin);
+    blue/magenta/cyan are the NET/SND/CMD category hues. ANSI 0 and 8 are
+    backgrounds and box drawing, not text: 0 is the cell fill, 8 sits a
+    third of the way from the rule colour to dim text.
     """
     t = skin.tokens
     th = skin.thresholds
-    out = [f"# {BANNER}", f"# Skin: {skin.name} -- ANSI from handoff turn 18b", ""]
+    out = [f"# {BANNER}",
+           f"# Skin: {skin.name} -- Console ANSI: tokens for bases, lifts for brights", ""]
     pairs = [
         ("background", t["bg"]), ("foreground", t["body"]),
         ("cursor", t["accent"]), ("cursor_text_color", t["shadow"]),
@@ -577,13 +579,13 @@ def render_kitty(skin: Skin) -> str:
         ("active_border_color", t["outer"]), ("inactive_border_color", t["inner"]),
         ("active_tab_background", t["outer"]), ("active_tab_foreground", t["window"]),
         ("inactive_tab_background", t["strip"]), ("inactive_tab_foreground", t["dim"]),
-        ("color0", t["shadow"]), ("color8", t["inner"]),
-        ("color1", th["critical"]), ("color9", "#ff8a63"),
-        ("color2", th["ok"]), ("color10", t["cmd"]),
-        ("color3", th["warn"]), ("color11", t["txt"]),
-        ("color4", "#4a86e8"), ("color12", t["net"]),
-        ("color5", t["accent"]), ("color13", t["snd"]),
-        ("color6", "#3fbfd4"), ("color14", "#7ee8f0"),
+        ("color0", t["cell"]), ("color8", mix(t["inner"], t["dim"], 0.33)),
+        ("color1", th["critical"]), ("color9", skin.thresholds.get("brn", lift(th["critical"], 0.3))),
+        ("color2", th["ok"]), ("color10", lift(th["ok"], 0.4)),
+        ("color3", t["accent"]), ("color11", skin.thresholds.get("par", lift(t["accent"], 0.3))),
+        ("color4", t["net"]), ("color12", lift(t["net"], 0.35)),
+        ("color5", t["snd"]), ("color13", lift(t["snd"], 0.33)),
+        ("color6", t["cmd"]), ("color14", lift(t["cmd"], 0.35)),
         ("color7", t["body"]), ("color15", t["text"]),
     ]
     width = max(len(k) for k, _ in pairs)

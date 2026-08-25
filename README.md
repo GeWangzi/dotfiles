@@ -34,7 +34,7 @@ cd ~/dotfiles && stow -t ~ */              # everything
 | `kitty` `starship` `zshrc` | terminal and shell |
 | `chrome` `spotify` | Wayland flags for two stubborn apps |
 | `fontconfig` | one rule, without which kitty refuses the theme's font |
-| `fonts` | Silkscreen (the creature skins' pixel face), self-hosted; Dream Land's Adwaita Sans and the terminal's DejaVu Sans Mono are packaged |
+| `fonts` | Silkscreen (the creature skins' pixel face) and IBM Plex Mono (Dream Land's Console face, also the terminal's), both self-hosted |
 | `local-bin` | scripts in `~/.local/bin` |
 | `systemd-user` | user units |
 | `wireplumber` | audio drop-in that protects the tuned mic gain |
@@ -50,9 +50,11 @@ them means git history, not a parked copy; the wallpapers themselves moved to
 ## Skins
 
 The desktop's default palette is **DREAM LAND** — the Kirby night-sky field
-with pink chrome and a warm star accent, worn plainly: Adwaita Sans for
-every face, a subtle 8px radius, the bar on the top edge, no pixel styling.
-The colours are the flavour; the furniture is quiet.
+with pink chrome and a warm star accent, worn in the **Console dress**
+(2026-08-24 redesign): IBM Plex Mono for every face, square corners, 2px
+rules, hard offset shadows, block meters, and stroke icons where a word was
+doing an icon's job. The colours are the flavour; the chrome is the
+terminal's.
 
 **The shell's native voice is plain.** Every surface's default wording and
 structure is normal — a battery is a battery, processes are processes, the
@@ -222,13 +224,11 @@ The cursor is stock Adwaita at size 24, set for Hyprland in `hyprland.lua`
 gsettings key.
 
 The `fonts` package adds **Silkscreen**, the creature skins' pixel label
-face, self-hosted rather than pulled from a package. Dream Land names
-**Adwaita Sans** for both of its faces instead, from the `adwaita-fonts`
-pacman package. Which face a surface uses is the skin's call (`font_label` /
-`font_body` behaviour tokens); the terminal sets its own in DejaVu Sans Mono
-— see *The terminal* below. Silkscreen is a pixel face and the panel runs at
-scale 1.5, so only even logical sizes land on whole physical pixels — see
-`fonts/README.md`.
+face, and **IBM Plex Mono**, Dream Land's Console face, both self-hosted.
+Which face a surface uses is the skin's call (`font_label` / `font_body`
+behaviour tokens); the terminal shares IBM Plex Mono — see *The terminal*
+below. Silkscreen is a pixel face and the panel runs at scale 1.5, so only
+even logical sizes land on whole physical pixels — see `fonts/README.md`.
 
 The old palettes (Catppuccin Mocha, the hand-maintained Ember pair) and their
 revert copies were deleted in the 2026-08 simplification; going back to any

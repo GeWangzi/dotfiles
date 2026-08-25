@@ -74,15 +74,15 @@ if [ -e "$HOME/.config/starship.toml" ]; then
     warn "~/.config/starship.toml is stale -- \$STARSHIP_CONFIG reads $skindir/starship.toml (rm it)"
 fi
 
-# kitty's body face since the Battle Terminal pass. Unlike the two above, a
-# miss here is not a graceful fallback: kitty asks fontconfig, fontconfig
-# answers Noto Sans CJK, and the whole terminal grid is sized from a
-# proportional face. fc-match rather than fc-list, because that substitution
-# is exactly what has to be caught.
-if [ "$(fc-match -f '%{family}' 'DejaVu Sans Mono' 2>/dev/null)" = "DejaVu Sans Mono" ]; then
-    ok "DejaVu Sans Mono installed"
+# kitty's body face since the Console redesign (2026-08-24), vendored in the
+# `fonts` stow package. Unlike the two above, a miss here is not a graceful
+# fallback: kitty asks fontconfig, fontconfig answers Noto Sans CJK, and the
+# whole terminal grid is sized from a proportional face. fc-match rather
+# than fc-list, because that substitution is exactly what has to be caught.
+if [ "$(fc-match -f '%{family}' 'IBM Plex Mono' 2>/dev/null)" = "IBM Plex Mono" ]; then
+    ok "IBM Plex Mono installed"
 else
-    bad "DejaVu Sans Mono missing -- kitty will size its grid from Noto Sans CJK (pacman -S ttf-dejavu)"
+    bad "IBM Plex Mono missing -- kitty will size its grid from Noto Sans CJK (stow fonts; fc-cache -f)"
 fi
 
 # Gitignored sprite art. Its absence is a degraded-but-working state, never

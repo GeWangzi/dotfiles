@@ -380,26 +380,31 @@ PanelWindow {
                 width: parent.width
                 spacing: 10
 
-                // Query line where the log box sits.
+                // Query line where the log box sits: a bare row over a
+                // 1px rule (Console dress), the search icon as the prompt.
                 Rectangle {
                     width: parent.width
                     height: queryRow.implicitHeight + 24
-                    color: Skin.strip
-                    border.width: 4
-                    border.color: Skin.inner
+                    color: "transparent"
+
+                    Rectangle {
+                        anchors.bottom: parent.bottom
+                        width: parent.width
+                        height: 1
+                        color: Skin.inner
+                    }
 
                     Row {
                         id: queryRow
                         x: 14
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 9
+                        spacing: 10
 
-                        Text {
+                        Icon {
                             anchors.verticalCenter: parent.verticalCenter
-                            text: Skin.glyph
+                            name: "search"
+                            size: 14
                             color: Skin.accent
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 12
                         }
 
                         Text {
@@ -451,7 +456,10 @@ PanelWindow {
                     }
                 }
 
-                // Result rows: 44px tag column, truncating name, status.
+                // Result rows, Console dress: a two-digit index, the name,
+                // the category tag at the right, RUNNING past it. The
+                // selected row is a filled block with the index in accent --
+                // no outline.
                 Repeater {
                     model: win.listMode ? win.pageItems : []
 
@@ -465,10 +473,34 @@ PanelWindow {
 
                         width: parent.width
                         height: 42
-                        color: Skin.cell
+                        color: active ? Skin.window : "transparent"
 
                         Text {
-                            x: 12
+                            x: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: (row.index + 1 < 10 ? "0" : "") + (row.index + 1)
+                            color: row.active ? Skin.accent : Skin.dim
+                            font.family: Skin.fontLabel
+                            font.bold: row.active
+                            font.pixelSize: 10
+                            font.letterSpacing: 10 * 0.10
+                        }
+
+                        Text {
+                            x: 52
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: parent.width - 52 - 200
+                            text: row.modelData.name
+                            color: row.active ? Skin.text : Skin.body
+                            font.family: Skin.fontLabel
+                            font.bold: row.active
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+
+                        Text {
+                            anchors.right: parent.right
+                            anchors.rightMargin: 110
                             anchors.verticalCenter: parent.verticalCenter
                             text: row.modelData.tag
                             color: Skin.categoryColor(row.modelData.tag)
@@ -478,33 +510,14 @@ PanelWindow {
                         }
 
                         Text {
-                            x: 66
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - 66 - 130
-                            text: row.modelData.name
-                            color: Skin.text
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                        }
-
-                        Text {
                             anchors.right: parent.right
-                            anchors.rightMargin: 12
+                            anchors.rightMargin: 14
                             anchors.verticalCenter: parent.verticalCenter
                             text: Apps.windowsFor(row.modelData.match) > 0 ? "RUNNING" : ""
                             color: Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
                             font.letterSpacing: 10 * 0.10
-                        }
-
-                        Rectangle {
-                            visible: row.active
-                            anchors.fill: parent
-                            color: "transparent"
-                            border.width: 3
-                            border.color: Skin.outline
                         }
 
                         TapHandler {
@@ -563,8 +576,8 @@ PanelWindow {
                     id: altQueryCell
                     width: (parent.width - 12) / 2.6
                     height: Math.max(altRight.height, 150)
-                    color: Skin.strip
-                    border.width: 4
+                    color: Skin.cell
+                    border.width: 2
                     border.color: Skin.inner
 
                     Column {
@@ -701,8 +714,8 @@ PanelWindow {
                                         visible: clipRow.active
                                         anchors.fill: parent
                                         color: "transparent"
-                                        border.width: 3
-                                        border.color: Skin.outline
+                                        border.width: 2
+                                        border.color: Skin.accent
                                     }
 
                                     TapHandler {
@@ -753,8 +766,8 @@ PanelWindow {
                                         visible: glyphCell.active
                                         anchors.fill: parent
                                         color: "transparent"
-                                        border.width: 3
-                                        border.color: Skin.outline
+                                        border.width: 2
+                                        border.color: Skin.accent
                                     }
 
                                     TapHandler {

@@ -1,35 +1,27 @@
-// The soft drop shadow behind every framed surface. Design decision
-// 2026-08-20: window borders carry ONLY soft shadows -- the hard 5px
-// shadow-token halo and the hard offset drop are retired everywhere.
+// The drop shadow behind every framed surface. Console dress (2026-08-24):
+// one hard offset slab in the skin's `shadow` token -- box-shadow
+// 8px 8px 0 <shadow>, no blur, no rings. This replaces the 2026-08-20
+// soft-shadow stack (three translucent rectangles), which lives in git
+// history; the file keeps its name so the call sites did not have to move.
 //
-// QML has no cheap blur, so "soft" is three stacked translucent rings with
-// decreasing spread -- three static rectangles, no QtQuick.Effects layer,
-// nothing for the GPU to keep warm. Size it to the face it shadows and put
-// it behind (declare it before the face, or give it z: -1 as a child).
+// Size it to the face it shadows and put it behind (declare it before the
+// face, or give it z: -1 as a child).
 
 import QtQuick
 
 Item {
     id: root
 
-    property int offsetY: 6
+    // Kept for call-site compatibility; the console drop is symmetric so the
+    // one value offsets both axes.
+    property int offsetY: 8
 
-    Repeater {
-        model: [
-            { pad: 12, a: 0.07 },
-            { pad: 7,  a: 0.12 },
-            { pad: 3,  a: 0.18 }
-        ]
-
-        Rectangle {
-            required property var modelData
-
-            x: -modelData.pad
-            y: -modelData.pad + root.offsetY
-            width: root.width + 2 * modelData.pad
-            height: root.height + 2 * modelData.pad
-            radius: Skin.radius + modelData.pad
-            color: Qt.rgba(0, 0, 0, modelData.a)
-        }
+    Rectangle {
+        x: root.offsetY
+        y: root.offsetY
+        width: root.width
+        height: root.height
+        radius: Skin.radius
+        color: Skin.shadow
     }
 }

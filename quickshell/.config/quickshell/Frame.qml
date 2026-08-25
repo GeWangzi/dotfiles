@@ -1,98 +1,91 @@
-// The frame motif, which the design reuses verbatim on the launcher, the
-// notification toast, the lock screen's save slot and the control center:
+// The frame motif, reused by the launcher, the notification toast, the power
+// menu, the calendar page and the control center. Console dress (2026-08-24):
 //
-//     border: 5px solid <outer>;
-//     border-radius: <radius>;
-//     background: <window>;
+//     border: 2px solid <inner>;
+//     background: <bg>;
+//     box-shadow: 8px 8px 0 <shadow>;   (SoftShadow.qml, hard offset)
 //
-// plus a soft drop shadow (SoftShadow.qml). The handoff's hard shadow-token
-// halo and hard offset drop were retired 2026-08-20: soft shadows only,
-// around every window border.
-//
-// The title tab overhangs the top-left corner and is the reason this is an
-// Item with unclipped children rather than a plain Rectangle.
+// plus a titlebar STRIP inside the top edge -- <cell> fill, a 2px rule under
+// it -- where the old dress hung an overhanging tab. The 5px pixel frame and
+// the soft shadows it replaced live in git history.
 
 import QtQuick
 
 Item {
     id: root
 
-    // Tab text. Empty means no tab.
+    // Titlebar text. Empty means no titlebar strip.
     property string title: ""
 
-    // Content goes inside the border and the padding.
+    // Content goes inside the border, below the titlebar, and the padding.
     default property alias content: body.data
 
     property int padTop: 36
     property int padSide: 30
     property int padBottom: 26
 
-    readonly property int frameBorder: 5
+    readonly property int frameBorder: 2
     // The toast variant recolors the border for critical urgency.
-    property color borderColor: Skin.outer
+    property color borderColor: Skin.inner
+
+    readonly property int stripHeight: title !== "" ? 28 : 0
 
     // childrenRect rather than implicitWidth/Height, because `body` is a plain
     // Item and a plain Item's implicit size is zero no matter what is inside
-    // it -- only childrenRect measures the content. Getting this wrong makes
-    // the frame collapse to a sliver while its contents draw straight through
-    // the border, since nothing here clips.
+    // it -- only childrenRect measures the content.
     implicitWidth: body.childrenRect.width + 2 * (frameBorder + padSide)
-    implicitHeight: body.childrenRect.height + 2 * frameBorder + padTop + padBottom
+    implicitHeight: body.childrenRect.height + 2 * frameBorder + stripHeight
+                    + padTop + padBottom
 
-    // Soft shadows only around window borders (design decision 2026-08-20);
-    // the hard halo + hard drop this replaced live in git history.
     SoftShadow {
         anchors.fill: parent
     }
 
     Rectangle {
         anchors.fill: parent
-        color: Skin.window
+        color: Skin.bg
         radius: Skin.radius
         border.width: root.frameBorder
         border.color: root.borderColor
     }
 
-    Item {
-        id: body
-        x: root.frameBorder + root.padSide
-        y: root.frameBorder + root.padTop
-        width: root.width - 2 * (root.frameBorder + root.padSide)
-        // Height is left to follow the content rather than being derived back
-        // from root.height, which would be a binding loop against the
-        // implicitHeight above.
-        height: childrenRect.height
-    }
-
-    // Title tab: left 22px, sitting flush ON the frame's top edge like a
-    // folder tab -- nothing pokes down past the border (user call,
-    // 2026-08-20). Its hard shadow ring went with the halo.
-    Item {
+    // Titlebar strip: inside the border, full width, ruled off underneath.
+    Rectangle {
         visible: root.title !== ""
-        x: 22
-        y: -height
-        implicitWidth: tabText.implicitWidth + 2 * 12
-        implicitHeight: tabText.implicitHeight + 2 * 5
-        width: implicitWidth
-        height: implicitHeight
+        x: root.frameBorder
+        y: root.frameBorder
+        width: root.width - 2 * root.frameBorder
+        height: root.stripHeight
+
+        color: Skin.cell
 
         Rectangle {
-            anchors.fill: parent
-            color: Skin.outer
-            radius: Skin.radius
+            anchors.bottom: parent.bottom
+            width: parent.width
+            height: root.frameBorder
+            color: root.borderColor
         }
 
         Text {
-            id: tabText
-            anchors.centerIn: parent
+            id: stripText
+            x: 14
+            anchors.verticalCenter: parent.verticalCenter
             text: root.title
-            color: Skin.window
+            color: Skin.text
             font.family: Skin.fontLabel
-            // 11-12px in the design; 12 because odd logical sizes land on half
-            // physical pixels at this monitor's 1.5 scale and a pixel font
-            // smears when they do. See fonts/README.md.
+            font.bold: true
             font.pixelSize: 12
-            font.letterSpacing: 12 * 0.18
+            font.letterSpacing: 12 * 0.10
         }
+    }
+
+    Item {
+        id: body
+        x: root.frameBorder + root.padSide
+        y: root.frameBorder + root.stripHeight + root.padTop
+        width: root.width - 2 * (root.frameBorder + root.padSide)
+        // Height follows the content rather than being derived back from
+        // root.height, which would be a binding loop against implicitHeight.
+        height: childrenRect.height
     }
 }

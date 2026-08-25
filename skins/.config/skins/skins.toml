@@ -178,14 +178,14 @@ lock_type     = "TYPE TO RELEASE"
 
 
 # ---------------------------------------------------------------------------
-# DREAM LAND -- the default. The Kirby night-sky palette under a plain,
-# modern dress (2026-08-24, user call): Adwaita Sans everywhere, because the
-# machine is read all day and a display face is not an all-day face; a small
-# 8px radius instead of the cartoon 14; no shine, no star cursor, default
-# wording, bar on the top edge. The colours are the flavour now -- the
-# furniture is quiet. It declares no voice, so it gets the shell's native
-# plain surfaces; the pixel look and the battle framing stayed with the
-# creature skins.
+# DREAM LAND -- the default. The Kirby night-sky palette under the Console
+# dress (2026-08-24 redesign, user pick from four drafted directions): IBM
+# Plex Mono everywhere, square corners, 2px rules, hard offset shadows, block
+# meters, stroke icons -- and the plain shell's surfaces themselves wear that
+# dress natively now. Default wording, bar on the top edge. The colours are
+# the flavour; the chrome is the terminal's. It declares no voice, so it gets
+# the shell's native plain surfaces; the pixel look and the battle framing
+# stayed with the creature skins.
 [[skins]]
 slug    = "dream-land"
 name    = "DREAM LAND"
@@ -207,9 +207,10 @@ txt     = "#ffb26b"
 snd     = "#ff5fa2"
 
 [skins.behavior]
-radius     = "8px"
-font_label = "Adwaita Sans"
-font_body  = "Adwaita Sans"
+radius     = "0px"
+glyph      = ">"
+font_label = "IBM Plex Mono"
+font_body  = "IBM Plex Mono"
 
 
 # ---------------------------------------------------------------------------

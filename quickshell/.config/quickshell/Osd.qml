@@ -1,7 +1,7 @@
-// The OSD, from turn 15e of the creature-shell handoff. Bottom centre,
-// framed, one 8-step meter, no interaction. Volume fills with `text`,
-// brightness with `outer`, both over the `inner` track with the tick
-// overlay.
+// The OSD, from turn 15e of the creature-shell handoff, in the Console dress:
+// bottom centre, one panel, an icon naming the channel, the block meter
+// filling with `accent` over the `inner` track, and the volume figure. No
+// interaction.
 //
 // Dismissal is four hard opacity frames with no tween -- steps(1) is the
 // design's entire animation vocabulary -- and each frame is a Timer tick,
@@ -88,60 +88,67 @@ PanelWindow {
     readonly property int value: mode === "vol" ? SysState.vol20 : SysState.bright8
 
     // Volume reads the real percent (keys move it in 5s); brightness shows
-    // no figure at all -- the bars are the whole readout. Extremes name a
-    // move, and the brightness pair get their full names.
-    readonly property string label: {
-        if (mode === "vol") {
-            if (SysState.volPct === 0) return Skin.lex("osd_vol_min", "MUTED");
-            if (SysState.volPct >= 100) return Skin.lex("osd_vol_max", "VOL 100%");
-            return "VOL " + SysState.volPct + "%";
-        }
-        if (value === 0) return Skin.lex("osd_bright_min", "BRIGHTNESS 0");
-        if (value >= 8) return Skin.lex("osd_bright_max", "BRIGHTNESS MAX");
-        return "BRIGHT";
+    // no figure at all -- the bars are the whole readout (user decision).
+    // MUTE is the one word the panel keeps: an empty meter alone cannot say
+    // whether the sink is muted or just quiet.
+    readonly property string figure: {
+        if (mode !== "vol") return "";
+        if (SysState.muted) return "MUTE";
+        return "" + SysState.volPct;
     }
 
     Item {
         anchors.fill: parent
         opacity: osd.opacities[Math.min(osd.frame, osd.opacities.length - 1)]
 
-        // Soft shadow, then the framed window (soft-shadows-only decision).
+        // Console panel: hard offset shadow, 2px rule, one row.
         Rectangle {
             x: 12
             y: 8
             width: parent.width - 24
             height: parent.height - 26
-            color: Skin.window
-            border.width: 5
-            border.color: Skin.outer
+            color: Skin.bg
+            border.width: 2
+            border.color: Skin.inner
 
             SoftShadow {
                 z: -1
                 anchors.fill: parent
             }
 
-            Column {
+            Row {
                 id: content
                 x: 25
                 y: 17
-                spacing: 8
+                spacing: 14
 
-                Text {
-                    text: osd.label
-                    color: Skin.text
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.16
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: osd.mode === "vol" ? "vol" : "sun"
+                    size: 18
+                    color: osd.mode === "vol" && SysState.muted
+                        ? Skin.critical : Skin.body
                 }
 
                 Meter {
+                    anchors.verticalCenter: parent.verticalCenter
                     blocks: osd.mode === "vol" ? 20 : 8
                     filled: osd.value
                     blockWidth: osd.mode === "vol" ? 8 : 13
                     blockHeight: 14
                     spacing: osd.mode === "vol" ? 2 : 3
-                    fillColor: osd.mode === "vol" ? Skin.text : Skin.outer
-                    ticks: true
+                    fillColor: Skin.accent
+                }
+
+                Text {
+                    visible: text !== ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: osd.figure
+                    color: osd.mode === "vol" && SysState.muted
+                        ? Skin.critical : Skin.text
+                    font.family: Skin.fontLabel
+                    font.bold: true
+                    font.pixelSize: 14
                 }
             }
         }

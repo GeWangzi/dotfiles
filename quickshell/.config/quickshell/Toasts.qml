@@ -51,7 +51,7 @@ PanelWindow {
                                                 && modelData.resultChip !== ""
 
                 width: 440
-                height: panel.height + 2 * frameBorder
+                height: panel.height + 2 * frameBorder + stripHeight
                 padTop: 0
                 padSide: 0
                 padBottom: 0
@@ -69,9 +69,9 @@ PanelWindow {
                 // extra inner panel read as border soup at this size).
                 Rectangle {
                     id: panel
-                    width: 440 - 2 * 5
+                    width: 440 - 2 * frameBorder
                     height: content.implicitHeight + 10 + 14
-                    color: Skin.window
+                    color: "transparent"
 
                     Column {
                         id: content

@@ -88,16 +88,16 @@ inlined rather than imported, so the whole file is generated; the rules live in
 `fc-cache -f` is not optional, for two reasons. The `fontconfig` package marks
 CozetteVector as a monospaced family, that edit is applied when fonts are
 scanned into the cache, and without it wofi falls back. The `fonts` package
-also installs Silkscreen, which nothing can see until the cache is rebuilt;
-Dream Land's Adwaita Sans comes from the `adwaita-fonts` package in
-`pkglist-repo.txt`. README's *Theme* section has the details.
+also installs Silkscreen and IBM Plex Mono (Dream Land's Console face, shared
+by shell and terminal), which nothing can see until the cache is rebuilt.
+README's *Theme* section has the details.
 
-kitty's body face is **DejaVu Sans Mono**, which comes from `ttf-dejavu` in
-`pkglist-repo.txt` and is the one font here that is not self-hosted. If it is
-missing, kitty does not fall back gracefully: fontconfig answers the miss with
-Noto Sans CJK, kitty sizes its cell grid from that proportional face, and the
-whole terminal comes out wide and airy. `rice-doctor` fails on this rather than
-warning, because nothing else about the terminal is right until it is fixed.
+kitty's body face is **IBM Plex Mono**, vendored in the `fonts` stow package
+since the Console redesign (2026-08-24). If it is missing, kitty does not
+fall back gracefully: fontconfig answers the miss with Noto Sans CJK, kitty
+sizes its cell grid from that proportional face, and the whole terminal comes
+out wide and airy. `rice-doctor` fails on this rather than warning, because
+nothing else about the terminal is right until it is fixed.
 
     sudo pacman -S ttf-dejavu && fc-cache -f
 

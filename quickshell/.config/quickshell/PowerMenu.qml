@@ -1,11 +1,14 @@
-// The power menu: four session actions, each with its real keybind and one
-// line on what it does. Confirmation is a red-framed log line with YES / NO
-// -- not a second menu. Plain wording by default; the creature voice (turn
-// 19a's CAPTURE DEVICE dress) comes back through the power_* lexicon keys
-// and the per-creature ball word on the tab.
+// The power menu: five session actions in a row of icon tiles (Console
+// dress), each with its real keybind, and one line under the row saying what
+// the highlighted action does. Confirmation is a red-framed log line with
+// YES / NO -- not a second menu. Plain wording by default; the creature
+// voice comes back through the power_* lexicon keys and the per-creature
+// ball word on the titlebar.
 //
-// The key hints in the cells are this machine's actual binds, not the
-// design's: LOCK is SUPER+L, LOG OUT is SUPER+SHIFT+L (hyprland.lua).
+// The key hints are this machine's actual binds, not the design's: LOCK is
+// SUPER+L, LOG OUT is SUPER+SHIFT+L (hyprland.lua). RESTART joined the row
+// with the Console redesign -- it used to be reachable only through the
+// details menu's SESSION rows, which still land here via openConfirm().
 
 import QtQuick
 import Quickshell
@@ -24,45 +27,45 @@ PanelWindow {
 
     readonly property var actions: [
         {
-            name: "LOCK", key: "SUPER + L", danger: false, confirm: false,
+            name: "LOCK", icon: "lock", key: "SUPER + L",
+            danger: false, confirm: false,
             note: Skin.lex("power_note_lock", "Stays awake."),
             run: ["loginctl", "lock-session"]
         },
         {
-            name: "SUSPEND", key: "CLOSE LID", danger: false, confirm: false,
-            note: Skin.lex("power_note_suspend", "Sleeps. Resumes where you left off."),
-            run: ["systemctl", "suspend"]
-        },
-        {
-            name: "LOG OUT", key: "SUPER + SHIFT + L", danger: false, confirm: true,
+            name: "LOG OUT", icon: "logout", key: "SUPER + SHIFT + L",
+            danger: false, confirm: true,
             note: Skin.lex("power_note_logout", "Ends the session. Open apps close."),
             run: ["hyprctl", "dispatch", "exit"]
         },
         {
-            name: "SHUT DOWN", key: "HOLD POWER", danger: true, confirm: true,
+            name: "SUSPEND", icon: "moon", key: "CLOSE LID",
+            danger: false, confirm: false,
+            note: Skin.lex("power_note_suspend", "Sleeps. Resumes where you left off."),
+            run: ["systemctl", "suspend"]
+        },
+        {
+            name: "RESTART", icon: "reboot", key: "",
+            danger: false, confirm: true,
+            note: Skin.lex("power_note_restart", "Reboots. The machine comes right back."),
+            run: ["systemctl", "reboot"]
+        },
+        {
+            name: "SHUT DOWN", icon: "power", key: "HOLD POWER",
+            danger: true, confirm: true,
             note: Skin.lex("power_note_off", "Full stop."),
             run: ["systemctl", "poweroff"]
         }
     ]
 
-    // Reachable only through `qs ipc call power confirm RESTART` (the
-    // details menu's SESSION row): not on the grid, but it confirms and
-    // runs through the same flow.
-    readonly property var extraActions: [
-        {
-            name: "RESTART", key: "", danger: false, confirm: true,
-            note: "", run: ["systemctl", "reboot"]
-        }
-    ]
-
-    // Open straight onto the confirm line for a named action. Unknown
-    // names leave the plain grid up.
+    // Open straight onto the confirm line for a named action (the details
+    // menu's SESSION rows). Unknown names leave the plain row up.
     function openConfirm(name) {
-        const all = actions.concat(extraActions);
-        for (let i = 0; i < all.length; i++) {
-            if (all[i].name === name && all[i].confirm) {
-                confirming = all[i];
+        for (let i = 0; i < actions.length; i++) {
+            if (actions[i].name === name && actions[i].confirm) {
+                confirming = actions[i];
                 confirmYes = false;
+                selected = i;
                 return;
             }
         }
@@ -104,9 +107,7 @@ PanelWindow {
         anchors.fill: parent
         focus: true
 
-        // Dismiss only on a click OUTSIDE the frame -- the empty TapHandler
-        // on the frame never actually swallowed taps (no exclusive grab), so
-        // clicking a cell both activated it and closed the menu.
+        // Dismiss only on a click OUTSIDE the frame.
         TapHandler {
             onTapped: eventPoint => {
                 const p = powerFrame.mapFromItem(keys,
@@ -139,10 +140,12 @@ PanelWindow {
             }
 
             switch (event.key) {
-            case Qt.Key_Left:  win.selected = Math.floor(win.selected / 2) * 2; break;
-            case Qt.Key_Right: win.selected = Math.floor(win.selected / 2) * 2 + 1; break;
-            case Qt.Key_Up:    win.selected = win.selected % 2; break;
-            case Qt.Key_Down:  win.selected = 2 + win.selected % 2; break;
+            case Qt.Key_Left:
+                win.selected = Math.max(0, win.selected - 1);
+                break;
+            case Qt.Key_Right:
+                win.selected = Math.min(win.actions.length - 1, win.selected + 1);
+                break;
             case Qt.Key_Return:
             case Qt.Key_Enter: win.activate(win.actions[win.selected]); break;
             case Qt.Key_Escape: win.dismissed(); break;
@@ -153,55 +156,29 @@ PanelWindow {
 
         Frame {
             id: powerFrame
-            width: 640
+            width: 720
             anchors.centerIn: parent
             // The costume tabs the menu with the creature's capture device;
             // plain, it says what it is. Ball is per-creature data, not a
             // shared word, so this is data-driven rather than a lexicon key.
             title: Skin.creature ? Skin.ballWord : "POWER"
 
-            padTop: 24
+            padTop: 18
             padSide: 18
-            padBottom: 18
+            padBottom: 16
 
             Column {
                 width: parent.width
                 spacing: 14
 
-                // Header row.
-                Item {
-                    width: parent.width
-                    height: headText.implicitHeight
-
-                    Text {
-                        id: headText
-                        text: Skin.phrase("power_header", "END OR LOCK THE SESSION",
-                                          { name: Skin.species })
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 12
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.baseline: headText.baseline
-                        text: "SUPER + ESC"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-                }
-
-                // 2x2 action grid.
-                Grid {
+                // The five tiles.
+                Row {
                     visible: win.confirming === null
-                    columns: 2
-                    columnSpacing: 12
-                    rowSpacing: 12
                     width: parent.width
+                    spacing: 12
 
-                    readonly property int cellWidth: (width - 12) / 2
+                    readonly property int tileWidth:
+                        (width - (win.actions.length - 1) * 12) / win.actions.length
 
                     Repeater {
                         model: win.actions
@@ -213,47 +190,38 @@ PanelWindow {
                             required property var modelData
 
                             readonly property bool active: win.selected === index
+                            readonly property color hue:
+                                modelData.danger ? Skin.critical : Skin.accent
 
-                            width: parent.cellWidth
-                            height: 96
-                            color: Skin.cell
-                            border.width: 3
-                            // Danger reads in the red name; the border only
-                            // goes red when the cell is highlighted, like the
-                            // YES button below -- a permanently red border
-                            // meant SHUT DOWN never showed selection at all.
-                            border.color: active
-                                ? (modelData.danger ? Skin.critical : Skin.outer)
-                                : Skin.inner
+                            width: parent.tileWidth
+                            height: 108
+                            color: active ? Skin.window : Skin.cell
+                            border.width: 2
+                            border.color: active ? hue : Skin.inner
 
                             Column {
-                                x: 14
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 28
-                                spacing: 6
+                                anchors.centerIn: parent
+                                spacing: 12
 
-                                Text {
-                                    text: cell.modelData.name
-                                    color: cell.modelData.danger ? Skin.critical : Skin.text
-                                    font.family: Skin.fontLabel
-                                    font.pixelSize: 14
+                                Icon {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    name: cell.modelData.icon
+                                    size: 24
+                                    color: cell.active ? cell.hue
+                                         : cell.modelData.danger ? Skin.critical
+                                         : Skin.body
                                 }
 
                                 Text {
-                                    text: cell.modelData.key
-                                    color: Skin.dim
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: cell.modelData.name
+                                    color: cell.active ? cell.hue
+                                         : cell.modelData.danger ? Skin.critical
+                                         : Skin.body
                                     font.family: Skin.fontLabel
+                                    font.bold: cell.active
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.12
-                                }
-
-                                Text {
-                                    width: parent.width
-                                    text: cell.modelData.note
-                                    color: Skin.body
-                                    font.family: Skin.fontBody
-                                    font.pixelSize: 16
-                                    wrapMode: Text.WordWrap
                                 }
                             }
 
@@ -267,13 +235,39 @@ PanelWindow {
                     }
                 }
 
+                // What the highlighted action does, and its real bind.
+                Item {
+                    visible: win.confirming === null
+                    width: parent.width
+                    height: noteText.implicitHeight
+
+                    Text {
+                        id: noteText
+                        text: win.actions[win.selected].note
+                        color: Skin.body
+                        font.family: Skin.fontBody
+                        font.pixelSize: 14
+                    }
+
+                    Text {
+                        anchors.right: parent.right
+                        anchors.baseline: noteText.baseline
+                        text: win.actions[win.selected].key !== ""
+                            ? win.actions[win.selected].key : "← → · ↵ · ESC"
+                        color: Skin.dim
+                        font.family: Skin.fontLabel
+                        font.pixelSize: 10
+                        font.letterSpacing: 10 * 0.14
+                    }
+                }
+
                 // Confirmation: a red-framed log line inside the menu.
                 Rectangle {
                     visible: win.confirming !== null
                     width: parent.width
                     height: confirmCol.implicitHeight + 38
-                    color: Skin.window
-                    border.width: 5
+                    color: Skin.cell
+                    border.width: 2
                     border.color: Skin.critical
 
                     Column {
@@ -299,7 +293,7 @@ PanelWindow {
                                 : ""
                             color: Skin.text
                             font.family: Skin.fontBody
-                            font.pixelSize: 18
+                            font.pixelSize: 16
                             wrapMode: Text.WordWrap
                         }
 
@@ -309,8 +303,8 @@ PanelWindow {
                             Rectangle {
                                 width: yesText.implicitWidth + 44
                                 height: yesText.implicitHeight + 18
-                                color: Skin.cell
-                                border.width: 3
+                                color: win.confirmYes ? Skin.window : Skin.cell
+                                border.width: 2
                                 border.color: win.confirmYes ? Skin.critical : Skin.inner
 
                                 Text {
@@ -319,6 +313,7 @@ PanelWindow {
                                     text: "YES"
                                     color: Skin.critical
                                     font.family: Skin.fontLabel
+                                    font.bold: win.confirmYes
                                     font.pixelSize: 12
                                 }
 
@@ -330,9 +325,9 @@ PanelWindow {
                             Rectangle {
                                 width: noText.implicitWidth + 44
                                 height: noText.implicitHeight + 18
-                                color: Skin.cell
-                                border.width: 3
-                                border.color: win.confirmYes ? Skin.inner : Skin.outer
+                                color: win.confirmYes ? Skin.cell : Skin.window
+                                border.width: 2
+                                border.color: win.confirmYes ? Skin.inner : Skin.accent
 
                                 Text {
                                     id: noText
@@ -340,6 +335,7 @@ PanelWindow {
                                     text: "NO"
                                     color: Skin.text
                                     font.family: Skin.fontLabel
+                                    font.bold: !win.confirmYes
                                     font.pixelSize: 12
                                 }
 

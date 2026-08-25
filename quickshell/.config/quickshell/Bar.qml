@@ -1,25 +1,23 @@
-// The status bar, from turn 13b of the creature-shell handoff: a 34px HP/PP
-// strip, not a tray. Which screen edge it sits on is the skin's call (the
-// `bar` behaviour token): Dream Land asks for the bottom, everything else
-// keeps the top. The 5px rule always faces the workspace.
+// The status bar. Console dress (2026-08-24): a 32px segmented strip on the
+// `shadow` field with a 2px `inner` rule facing the workspace. Cells, left to
+// right:
 //
-//   creature name, HP bar + figure, status chips (only when the condition
-//   is real), then wifi, volume and the time. LV lives on the wallpaper
-//   plate and the menus, not here (user request 2026-08-20).
+//   active workspace (a filled accent block), the other workspaces, the
+//   focused window's title -- then wifi (icon + SSID), volume, battery (the
+//   icon is the meter), and the date + clock cell.
 //
-//   The design's in-combat foe segment (`VS <FOE>`) was built and removed at
-//   the user's request (2026-08-19) -- the bar holds one state. The foe
-//   object still drives the wallpaper's foe plate.
+// Status chips (BRN, SUB) stay inline between the halves, only when the
+// condition is real and only on a skin that has chips. The species cell
+// leads on the creature costume. The battery keeps the fixed threshold
+// colours below 20% -- a warning that changes colour with the theme is not
+// a warning.
 //
-// HP is the battery -- there is no battery indicator anywhere else, and no
-// app/PP segment on the bar. Chips sit inline so the height never changes.
-// There are no workspaces on the bar either: workspaces are SUPER+number.
-//
-// Every Silkscreen size is the design's rounded up to even (9 -> 10,
-// 11 -> 12), because the panel runs at scale 1.5. See fonts/README.md.
+// Workspaces returned to the bar with the Console redesign (they left in the
+// HP-strip era); SUPER+number still switches, the cells are the readout.
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 
 PanelWindow {
     id: bar
@@ -28,7 +26,32 @@ PanelWindow {
     // surface is reached (the keybind is SUPER + N).
     signal clockActivated()
 
+    // The 1px rule between the right-hand cells.
+    component CellRule: Rectangle {
+        width: 1
+        height: parent.height
+        color: Skin.inner
+    }
+
     readonly property bool atBottom: Skin.barEdge === "bottom"
+
+    readonly property int activeWs:
+        Hyprland.focusedMonitor && Hyprland.focusedMonitor.activeWorkspace
+            ? Hyprland.focusedMonitor.activeWorkspace.id : 1
+
+    // Existing workspace ids, sorted. Special workspaces have negative ids
+    // and stay off the bar.
+    readonly property var wsIds: {
+        const out = [];
+        const all = Hyprland.workspaces.values;
+        for (let i = 0; i < all.length; i++)
+            if (all[i].id > 0) out.push(all[i].id);
+        out.sort((a, b) => a - b);
+        return out;
+    }
+
+    readonly property string windowTitle:
+        Hyprland.activeToplevel ? Hyprland.activeToplevel.title : ""
 
     anchors {
         top: !bar.atBottom
@@ -36,56 +59,94 @@ PanelWindow {
         left: true
         right: true
     }
-    implicitHeight: 34
+    implicitHeight: 32
     color: "transparent"
 
     Rectangle {
         anchors.fill: parent
-        color: Skin.strip
+        color: Skin.shadow
 
-        // The 5px outer rule, on whichever edge faces the workspace.
+        // The 2px rule, on whichever edge faces the workspace.
         Rectangle {
-            y: bar.atBottom ? 0 : parent.height - 5
+            y: bar.atBottom ? 0 : parent.height - 2
             width: parent.width
-            height: 5
-            color: Skin.outer
+            height: 2
+            color: Skin.inner
         }
 
-        // Content row, vertically centred in the 29px beside the rule.
+        readonly property int contentY: bar.atBottom ? 2 : 0
+        readonly property int contentH: height - 2
+
+        // ---- left: workspaces, title, chips
         Row {
             id: content
-            x: 12
-            y: bar.atBottom ? 5 : 0
-            height: parent.height - 5
-            spacing: 14
+            y: parent.contentY
+            height: parent.contentH
 
-            // ---- the machine itself (costume only: the plain bar leads
-            // with the battery, not a name)
+            // Active workspace: the one filled cell on the bar.
+            Rectangle {
+                width: wsText.implicitWidth + 24
+                height: parent.height
+                color: Skin.accent
+
+                Text {
+                    id: wsText
+                    anchors.centerIn: parent
+                    text: "WS " + bar.activeWs
+                    color: Skin.shadow
+                    font.family: Skin.fontLabel
+                    font.bold: true
+                    font.pixelSize: 10
+                    font.letterSpacing: 10 * 0.10
+                }
+            }
+
+            // The other workspaces, as a quiet cell.
+            Item {
+                visible: bar.wsIds.length > 1
+                width: otherWs.implicitWidth + 24
+                height: parent.height
+
+                Rectangle {
+                    anchors.right: parent.right
+                    width: 1
+                    height: parent.height
+                    color: Skin.inner
+                }
+
+                Text {
+                    id: otherWs
+                    anchors.centerIn: parent
+                    text: bar.wsIds.filter(n => n !== bar.activeWs).join(" ")
+                    color: Skin.dim
+                    font.family: Skin.fontLabel
+                    font.pixelSize: 10
+                    font.letterSpacing: 10 * 0.14
+                }
+            }
+
+            // Species cell: costume only, the machine leads with its name.
             Text {
                 visible: Skin.has("species")
                 anchors.verticalCenter: parent.verticalCenter
+                leftPadding: 12
                 text: Skin.species
                 color: Skin.text
                 font.family: Skin.fontLabel
                 font.pixelSize: 12
             }
 
-            HpBar {
-                anchors.verticalCenter: parent.verticalCenter
-                width: 150
-                height: 9
-                fraction: SysState.hp
-                fillColor: Skin.hpColor(SysState.hp)
-                alarm: SysState.hp <= 0.2
-            }
-
+            // Focused window title.
             Text {
                 anchors.verticalCenter: parent.verticalCenter
-                text: SysState.hpNum
-                color: Skin.body
+                leftPadding: 12
+                width: Math.min(implicitWidth, 420)
+                text: bar.windowTitle
+                color: Skin.dim
+                elide: Text.ElideRight
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
-                font.letterSpacing: 10 * 0.10
+                font.letterSpacing: 10 * 0.06
             }
 
             // Status conditions: filled chips, only when real (turn 19c),
@@ -112,82 +173,124 @@ PanelWindow {
             }
         }
 
-        // ---- right side: wifi, volume, clock
+        // ---- right: wifi, volume, battery, clock -- ruled cells
         Row {
             id: rightSide
             anchors.right: parent.right
-            anchors.rightMargin: 12
-            y: bar.atBottom ? 5 : 0
-            height: parent.height - 5
-            spacing: 14
+            y: parent.contentY
+            height: parent.contentH
+
+            CellRule {}
 
             Row {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
+                height: parent.height
+                spacing: 7
+                leftPadding: 12
+                rightPadding: 12
+
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: "wifi"
+                    size: 14
+                    color: SysState.wifiUp ? Skin.dim : Skin.critical
+                }
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: SysState.wifiUp ? "WIFI" : "NO LINK"
-                    color: Skin.dim
+                    text: SysState.wifiUp
+                        ? (SysState.ssid !== "" ? SysState.ssid.toUpperCase() : "WIFI")
+                        : "NO LINK"
+                    color: SysState.wifiUp ? Skin.body : Skin.critical
                     font.family: Skin.fontLabel
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.14
-                }
-
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2
-
-                    Repeater {
-                        model: 4
-
-                        Rectangle {
-                            required property int index
-                            width: 5
-                            height: 11
-                            color: index < SysState.wifiBars ? Skin.net : Skin.inner
-                        }
-                    }
+                    font.letterSpacing: 10 * 0.10
                 }
             }
 
+            CellRule {}
+
             Row {
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: 6
+                height: parent.height
+                spacing: 7
+                leftPadding: 12
+                rightPadding: 12
+
+                Icon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    name: "vol"
+                    size: 14
+                    color: Skin.dim
+                }
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "VOL"
-                    color: Skin.dim
+                    text: SysState.volPct
+                    color: Skin.text
                     font.family: Skin.fontLabel
+                    font.bold: true
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.14
-                }
-
-                Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 2
-
-                    Repeater {
-                        model: 4
-
-                        Rectangle {
-                            required property int index
-                            width: 5
-                            height: 11
-                            color: index < Math.ceil(SysState.volPct / 25)
-                                ? Skin.text : Skin.inner
-                        }
-                    }
+                    font.letterSpacing: 10 * 0.08
                 }
             }
 
-            Text {
-                anchors.verticalCenter: parent.verticalCenter
-                text: SysState.time
-                color: clockHover.hovered ? Skin.accent : Skin.text
-                font.family: Skin.fontLabel
-                font.pixelSize: 12
+            CellRule {}
+
+            Row {
+                height: parent.height
+                spacing: 7
+                leftPadding: 12
+                rightPadding: 12
+
+                BatteryIcon {
+                    anchors.verticalCenter: parent.verticalCenter
+                    fraction: SysState.hp
+                    color: Skin.dim
+                    fillColor: Skin.hpColor(SysState.hp)
+                }
+
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Math.round(SysState.hp * 100)
+                          + (SysState.charging ? " CHG" : "")
+                    color: SysState.hp <= 0.2 ? Skin.critical : Skin.text
+                    font.family: Skin.fontLabel
+                    font.bold: true
+                    font.pixelSize: 10
+                    font.letterSpacing: 10 * 0.08
+                }
+            }
+
+            CellRule {}
+
+            // Date + clock cell, on the `cell` fill. Opens the calendar page.
+            Rectangle {
+                width: clockRow.implicitWidth + 24
+                height: parent.height
+                color: clockHover.hovered ? Skin.window : Skin.cell
+
+                Row {
+                    id: clockRow
+                    anchors.centerIn: parent
+                    spacing: 8
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: SysState.date
+                        color: Skin.dim
+                        font.family: Skin.fontLabel
+                        font.pixelSize: 10
+                        font.letterSpacing: 10 * 0.10
+                    }
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: SysState.time
+                        color: clockHover.hovered ? Skin.accent : Skin.text
+                        font.family: Skin.fontLabel
+                        font.bold: true
+                        font.pixelSize: 12
+                    }
+                }
 
                 HoverHandler { id: clockHover }
                 TapHandler { onTapped: bar.clockActivated() }
