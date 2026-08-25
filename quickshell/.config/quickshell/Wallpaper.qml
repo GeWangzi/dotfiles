@@ -63,12 +63,26 @@ PanelWindow {
         color: wall.plainField ? Skin.bg : Skin.cell
     }
 
+    // The plain desk hangs ONE picture -- assets/wallpaper.jpg, the same on
+    // every workspace (user call, 2026-08-24: "just the kirby wallpaper
+    // instead of the routes"). The per-route art below stays with the
+    // creature field, whose whole conceit is that each workspace is a route.
     Image {
+        id: plainArt
+        visible: wall.plainField && status === Image.Ready
+        anchors.fill: parent
+        source: wall.assetDir + "wallpaper.jpg"
+        fillMode: Image.PreserveAspectCrop
+        smooth: true
+        asynchronous: true
+    }
+
+    Image {
+        visible: !wall.plainField && status === Image.Ready
         anchors.fill: parent
         source: wall.assetDir + "bg-" + wall.route + ".png"
         fillMode: Image.PreserveAspectCrop
         smooth: false
-        visible: status === Image.Ready
         asynchronous: true
     }
 
@@ -90,10 +104,9 @@ PanelWindow {
     // The Console desk at rest: the day of the month as a faint watermark,
     // a short rule, the date in small caps, and the workspace number in the
     // corner. Drawn only on the plain field with no art behind it -- over
-    // per-workspace art it would be clutter, and the bar already carries
-    // the time.
+    // the picture it would be clutter, and the bar already carries the time.
     Item {
-        visible: wall.plainField
+        visible: wall.plainField && !plainArt.visible
         anchors.fill: parent
 
         Column {
