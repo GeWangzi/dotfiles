@@ -176,9 +176,16 @@ ShellRoot {
         onDismissed: root.powerOpen = false
     }
 
-    // The details menu from turn 17a (SUPER + D).
+    // The details menu (SUPER + D). The skin's `menu` variant picks the
+    // dress: the plain shell gets the one-screen control deck, the creature
+    // costume keeps turn 17a's section menu (GameMenu.qml) whole.
     DetailsMenu {
-        visible: root.detailsOpen
+        visible: root.detailsOpen && Skin.variant("menu", "deck") !== "game"
+        onDismissed: root.detailsOpen = false
+    }
+
+    GameMenu {
+        visible: root.detailsOpen && Skin.variant("menu", "deck") === "game"
         onDismissed: root.detailsOpen = false
     }
 

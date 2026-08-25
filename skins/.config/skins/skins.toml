@@ -115,6 +115,7 @@ lock    = "card"
 idle    = "moves"
 field   = "creature"
 summary = "creature"
+menu    = "game"
 
 [voices.creature.features]
 foe      = true

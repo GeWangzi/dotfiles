@@ -477,9 +477,13 @@ hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(
     "&& hyprctl hyprsunset temperature 4000 " ..
     "|| hyprctl hyprsunset temperature 6000"))
 
--- Move focus with mainMod + arrow keys
-hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "left" }))
-hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
+-- Move focus with mainMod + up/down. Left/right belonged to focus too until
+-- 2026-08-24: this keyboard has no XF86 media keys, so they are the track
+-- controls now (user call -- directional focus was not missed, workspaces
+-- are the navigation habit here). SUPER+K pairs with them for play/pause.
+hl.bind(mainMod .. " + left",  hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+hl.bind(mainMod .. " + right", hl.dsp.exec_cmd("playerctl next"),     { locked = true })
+hl.bind(mainMod .. " + K",     hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
 

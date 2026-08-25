@@ -1,24 +1,26 @@
-// The details menu: the control panel, ONE layer deep -- every section
-// shows its whole contents with the controls in place, and there are no
-// drill-in pages. Plain by default (OVERVIEW / SYSTEM / MEDIA / ...); the
-// creature costume restores turn 17a's game-menu dress through the lexicon,
-// the feature gates and the `summary` variant.
+// The details menu, control-deck form (2026-08-24 redesign): ONE screen,
+// no sections, no drill-in. Three panels -- NETWORK, AUDIO, POWER -- over a
+// vitals band and a key-hint footer. Every row is either a control (return
+// applies it) or a diagnostic; nothing here is decoration. The old
+// section-based game menu survives whole as GameMenu.qml, and the skin's
+// `menu` variant picks between them (shell.qml) -- the creature costume
+// keeps its SUMMARY/STATS/... dress, the plain shell gets this deck.
 //
-// Left rail: the sections, plus the caught plate (costume only). Right
-// pane: that section's contents,
-// scrollable when it overflows (MOVES and TM list everything). Keys:
-// up/down row, left/right section, return toggles, ESC closes. `mSec` is
-// the section NAME, never an index -- an index-keyed version of this menu
-// shipped an off-by-one (decision log).
+// Keys: tab or left/right moves between panels, up/down between rows,
+// return applies, ESC closes. Focus is a (panel, row) pair; each panel
+// counts its own rows, dynamic lists (saved networks, bluetooth devices,
+// sinks) included.
 //
-// Everything shown is real: HP is the battery, the IVs are the hardware,
-// MUSIC is MPRIS, WIFI is NetworkManager, ITEMS is bluez, MOVES is the
-// process table, POWER MODE is power-profiles-daemon. The expensive figures
-// (per-process CPU, wifi detail) poll only while this surface is visible.
+// Everything shown is real: wifi is NetworkManager, bluetooth is bluez,
+// audio is Pipewire, media is MPRIS, power is UPower and
+// power-profiles-daemon, the proxy row is the sing-box unit. The saved
+// networks list shows only profiles NetworkManager already knows -- return
+// connects without a password prompt, which is why unknown networks are not
+// listed (joining one needs a password flow; that is SUPER+C nmtui's job).
 //
-// One knowing deviation: SESSION's RESTART and SHUT DOWN ask first, and the
-// asking is the power menu's red log line -- the rows here hand over to the
-// same confirm flow instead of duplicating it.
+// Root actions (proxy toggle) dismiss the menu before exec: polkit's auth
+// dialog cannot stack above the Overlay layer, so it would open invisibly
+// behind this surface. Same trap as the timezone note in GameMenu.qml.
 
 import QtQuick
 import Quickshell
@@ -34,42 +36,6 @@ PanelWindow {
 
     signal dismissed()
 
-    // Section by NAME. Never an index.
-    property string mSec: "SUMMARY"
-    property int mRow: 0
-
-    // SUMMARY and SESSION are always present; everything between is a
-    // feature the skin can drop (sec_stats .. sec_train).
-    readonly property var sections: ["SUMMARY", "STATS", "ABILITIES", "ITEMS",
-                                     "MOVES", "TM", "TRAIN", "SESSION"]
-        .filter(k => k === "SUMMARY" || k === "SESSION"
-                     || Skin.has("sec_" + k.toLowerCase()))
-
-    // What a section is CALLED, display-only. `mSec` and everything keyed on
-    // it -- the filter above, rowCount, the pane Loader switch, toggle() --
-    // stay on the raw names: renaming a key reintroduced an off-by-one class
-    // of bug once already (see the header). The plain shell names the
-    // sections after their contents; the creature voice restores the game
-    // menu words through the lexicon.
-    function secLabel(name) {
-        const plain = {
-            "SUMMARY": "OVERVIEW", "STATS": "SYSTEM", "ABILITIES": "MEDIA",
-            "ITEMS": "BLUETOOTH", "MOVES": "PROCESSES", "TM": "APPS",
-            "TRAIN": "CONTROLS", "SESSION": "SESSION"
-        };
-        return Skin.lex("sec_" + name.toLowerCase(), plain[name] || name);
-    }
-
-    readonly property int rowCount: {
-        switch (mSec) {
-        case "ABILITIES": return 2;
-        case "ITEMS":     return 1;
-        case "TRAIN":     return 4;
-        case "SESSION":   return 2;
-        default:          return 0;
-        }
-    }
-
     anchors {
         top: true
         bottom: true
@@ -83,19 +49,39 @@ PanelWindow {
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
     WlrLayershell.namespace: "rpg-details"
 
+    // ---------------------------------------------------------------- focus
+
+    // (panel, row). Panels: 0 NETWORK, 1 AUDIO, 2 POWER. Rows are counted
+    // per panel below; the vitals band and footer take no focus.
+    property int pIdx: 0
+    property int rIdx: 0
+
+    function foc(p, r) { return pIdx === p && rIdx === r; }
+
+    readonly property int rowCount: {
+        switch (pIdx) {
+        case 0: return 1 + savedNearby.length + 1 + btDevices.length + 1;
+        case 1: return sinkList.length + 3;
+        default: return 5;
+        }
+    }
+
     onVisibleChanged: {
         SysState.menuWants = visible;
         if (visible) {
-            mSec = "SUMMARY";
-            mRow = 0;
+            pIdx = 0;
+            rIdx = 0;
             keys.forceActiveFocus();
             refresh();
         }
     }
 
     function refresh() {
-        if (!topProcs.running) topProcs.running = true;
         if (!wifiDetail.running) wifiDetail.running = true;
+        if (!nearbyScan.running) nearbyScan.running = true;
+        if (!proxyQuery.running) proxyQuery.running = true;
+        if (!warmQuery.running) warmQuery.running = true;
+        if (!limitQuery.running) limitQuery.running = true;
         if (!tzQuery.running) tzQuery.running = true;
     }
 
@@ -106,101 +92,190 @@ PanelWindow {
         onTriggered: win.refresh()
     }
 
-    // ---------------------------------------------------------------- gated data
+    // ---------------------------------------------------------------- network data
 
-    // Processes by CPU, every one of them (the pane scrolls). One ps per
-    // refresh tick, menu-visible only.
-    property var procRows: []
-
-    Process {
-        id: topProcs
-        command: ["ps", "-eo", "comm=,pcpu=,rss="]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const byName = {};
-                text.split("\n").forEach(line => {
-                    const parts = line.trim().split(/\s+/);
-                    if (parts.length < 3) return;
-                    const rss = parseInt(parts[parts.length - 1], 10) || 0;
-                    const cpu = parseFloat(parts[parts.length - 2]) || 0;
-                    const name = parts.slice(0, parts.length - 2).join(" ");
-                    if (!byName[name]) byName[name] = { name: name, cpu: 0, rss: 0 };
-                    byName[name].cpu += cpu;
-                    byName[name].rss += rss;
-                });
-                // pcpu is per-thread lifetime usage, so a busy multi-threaded
-                // process can sum past 100 for a moment; the figure is capped
-                // because "134%" reads as a bug, not a stat.
-                win.procRows = Object.values(byName)
-                    .map(r => ({ name: r.name, rss: r.rss, cpu: Math.min(100, r.cpu) }))
-                    .sort((a, b) => b.cpu - a.cpu || b.rss - a.rss);
-            }
-        }
-    }
-
-    // Wifi detail beyond the bar's link/signal: rate and IP.
-    property string wifiRate: ""
     property string wifiIp: "—"
 
     Process {
         id: wifiDetail
         command: ["sh", "-c",
-            "nmcli -t -f ACTIVE,RATE,CHAN dev wifi | grep '^yes' | head -1; " +
             "nmcli -t -g IP4.ADDRESS device show 2>/dev/null | grep -m1 ."]
         stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = text.trim().split("\n");
-                if (lines.length > 0 && lines[0].startsWith("yes")) {
-                    const parts = lines[0].split(":");
-                    win.wifiRate = (parts[1] || "") + " — CHANNEL " + (parts[2] || "?");
-                } else {
-                    win.wifiRate = SysState.wifiUp ? "" : "RADIO OFF";
-                }
-                win.wifiIp = lines.length > 1 ? lines[1].split("/")[0] : "—";
-            }
+            onStreamFinished: win.wifiIp = text.trim() !== ""
+                ? text.trim().split("/")[0] : "—"
         }
     }
 
-    // Months since the machine was caught (the root filesystem's birth).
-    property string caught: "CAUGHT — UNKNOWN"
+    // Saved profiles that are in range right now. Two nmcli calls behind one
+    // marker line; the intersection happens here because nmcli cannot join
+    // them itself.
+    property var savedNearby: []
 
     Process {
-        id: caughtQuery
-        command: ["stat", "-c", "%W", "/"]
-        running: true
+        id: nearbyScan
+        command: ["sh", "-c",
+            "nmcli -t -f NAME,TYPE connection show; echo ---; " +
+            "nmcli -t -f SSID,SIGNAL dev wifi list"]
         stdout: StdioCollector {
             onStreamFinished: {
-                const born = parseInt(text.trim(), 10);
-                if (!born || born <= 0) return;
-                const months = Math.floor((Date.now() / 1000 - born) / 2629800);
-                win.caught = "CAUGHT " + months + " MONTHS AGO";
+                const halves = text.split("---\n");
+                if (halves.length < 2) { win.savedNearby = []; return; }
+                const saved = new Set();
+                halves[0].trim().split("\n").forEach(line => {
+                    const i = line.lastIndexOf(":");
+                    if (i > 0 && line.slice(i + 1).includes("wireless"))
+                        saved.add(line.slice(0, i).replace(/\\:/g, ":"));
+                });
+                const best = {};
+                halves[1].trim().split("\n").forEach(line => {
+                    const i = line.lastIndexOf(":");
+                    if (i <= 0) return;
+                    const ssid = line.slice(0, i).replace(/\\:/g, ":");
+                    const sig = parseInt(line.slice(i + 1), 10) || 0;
+                    if (ssid === "" || ssid === SysState.ssid) return;
+                    if (!saved.has(ssid)) return;
+                    if (!best[ssid] || best[ssid] < sig) best[ssid] = sig;
+                });
+                win.savedNearby = Object.keys(best)
+                    .map(name => ({ name: name, sig: best[name] }))
+                    .sort((a, b) => b.sig - a.sig)
+                    .slice(0, 3);
             }
         }
     }
 
-    // TMs: installed, teachable, not running. All of them -- the TM page
-    // scrolls.
-    readonly property var tmRows: {
-        const apps = DesktopEntries.applications.values;
-        const out = [];
-        for (let i = 0; i < apps.length; i++) {
-            const entry = apps[i];
-            if (entry.noDisplay) continue;
-            const match = Apps.processName(entry);
-            if (match !== "" && Apps.windowsFor(match) > 0) continue;
-            out.push({ name: (entry.name || "").toUpperCase(),
-                       tag: Apps.categoryOf(entry) });
+    // Proxy: the sing-box unit. is-active needs no privilege; the toggle
+    // goes through polkit (see the header note about the dialog).
+    property bool proxyOn: false
+
+    Process {
+        id: proxyQuery
+        command: ["systemctl", "is-active", "sing-box"]
+        stdout: StdioCollector {
+            onStreamFinished: win.proxyOn = text.trim() === "active"
         }
-        out.sort((a, b) => a.name.localeCompare(b.name));
-        return out;
     }
 
-    // Timezone. A short curated ring, not the whole zoneinfo database --
-    // left/right through six hundred zones is not a control. timedatectl
-    // goes through polkit; without the rule from
-    // system/etc/polkit-1/rules.d/49-rpg-shell.rules installed, the auth
-    // dialog opens behind this menu (regular windows cannot stack above
-    // the Overlay layer) and the chip appears to do nothing.
+    function toggleProxy() {
+        const cmd = win.proxyOn ? "stop" : "start";
+        win.dismissed();
+        Quickshell.execDetached(["systemctl", cmd, "sing-box"]);
+    }
+
+    // Bluetooth. Paired devices, connected first, capped so the panel
+    // cannot overflow.
+    readonly property var btAdapter: Bluetooth.defaultAdapter
+    readonly property var btDevices: {
+        const out = [];
+        const devs = Bluetooth.devices.values;
+        for (let i = 0; i < devs.length; i++)
+            if (devs[i].paired || devs[i].connected) out.push(devs[i]);
+        out.sort((a, b) => (b.connected ? 1 : 0) - (a.connected ? 1 : 0));
+        return out.slice(0, 3);
+    }
+
+    // ---------------------------------------------------------------- audio data
+
+    readonly property var sinkList: {
+        const out = [];
+        const nodes = Pipewire.nodes.values;
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            if (n.isSink && !n.isStream) out.push(n);
+        }
+        return out.slice(0, 3);
+    }
+
+    readonly property var source: Pipewire.defaultAudioSource
+    readonly property bool micMuted: source && source.audio
+        ? source.audio.muted : false
+
+    readonly property var player: {
+        const players = Mpris.players.values;
+        for (let i = 0; i < players.length; i++)
+            if (players[i].playbackState === MprisPlaybackState.Playing)
+                return players[i];
+        return players.length > 0 ? players[0] : null;
+    }
+
+    // ---------------------------------------------------------------- power data
+
+    readonly property var battery: UPower.displayDevice
+
+    readonly property string batterySub: {
+        if (!battery || !battery.ready) return "";
+        const limit = win.chargeLimit > 0 ? " · LIMIT " + win.chargeLimit + "%" : "";
+        if (SysState.charging) {
+            const s = battery.timeToFull;
+            if (s && s > 0)
+                return Math.floor(s / 3600) + ":"
+                    + (Math.floor((s % 3600) / 60) < 10 ? "0" : "")
+                    + Math.floor((s % 3600) / 60) + " TO FULL" + limit;
+            return "CHARGING" + limit;
+        }
+        if (!SysState.onBattery) return "PLUGGED IN" + limit;
+        const s = battery.timeToEmpty;
+        if (s && s > 0)
+            return Math.floor(s / 3600) + ":"
+                + (Math.floor((s % 3600) / 60) < 10 ? "0" : "")
+                + Math.floor((s % 3600) / 60) + " LEFT" + limit;
+        return "ON BATTERY" + limit;
+    }
+
+    property int chargeLimit: 0
+
+    Process {
+        id: limitQuery
+        command: ["sh", "-c",
+            "cat /sys/class/power_supply/BAT*/charge_control_end_threshold 2>/dev/null | head -1"]
+        stdout: StdioCollector {
+            onStreamFinished: win.chargeLimit = parseInt(text.trim(), 10) || 0
+        }
+    }
+
+    readonly property var perfModes: [
+        { label: "QUIET",    profile: PowerProfile.PowerSaver },
+        { label: "BALANCED", profile: PowerProfile.Balanced },
+        { label: "PERF",     profile: PowerProfile.Performance }
+    ]
+
+    function cyclePerf() {
+        const cur = PowerProfiles.profile;
+        for (let i = 0; i < perfModes.length; i++) {
+            if (perfModes[i].profile === cur) {
+                PowerProfiles.profile
+                    = perfModes[(i + 1) % perfModes.length].profile;
+                return;
+            }
+        }
+        PowerProfiles.profile = PowerProfile.Balanced;
+    }
+
+    // Night light. Same round-trippable query/toggle as SUPER+SHIFT+N in
+    // hyprland.lua -- identity would latch (see the comment there), so the
+    // off state is temperature 6000.
+    property bool warm: false
+
+    Process {
+        id: warmQuery
+        command: ["hyprctl", "hyprsunset", "temperature"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const t = parseInt(text.trim(), 10);
+                if (t > 0) win.warm = t < 5000;
+            }
+        }
+    }
+
+    function toggleWarm() {
+        Quickshell.execDetached(["hyprctl", "hyprsunset", "temperature",
+                                 win.warm ? "6000" : "4000"]);
+        win.warm = !win.warm;
+    }
+
+    // Timezone ring, unchanged from the game menu (and the same polkit
+    // caveat: without the 49-rpg-shell rule the auth dialog opens behind
+    // this surface).
     readonly property var timezones: ["Asia/Shanghai", "Asia/Tokyo", "UTC",
                                       "Europe/London", "America/New_York",
                                       "America/Chicago", "America/Los_Angeles"]
@@ -214,90 +289,68 @@ PanelWindow {
         }
     }
 
-    function setTimezone(zone) {
+    function cycleTimezone() {
+        const i = timezones.indexOf(timezone);
+        const zone = timezones[(i + 1) % timezones.length];
         Quickshell.execDetached(["timedatectl", "set-timezone", zone]);
         win.timezone = zone;
     }
 
-    function cycleTimezone() {
-        const i = timezones.indexOf(timezone);
-        setTimezone(timezones[(i + 1) % timezones.length]);
+    readonly property string uptimeStr: {
+        const s = SysState.uptimeSec;
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return h + ":" + (m < 10 ? "0" : "") + m;
     }
 
-    // MPRIS.
-    readonly property var player: {
-        const players = Mpris.players.values;
-        for (let i = 0; i < players.length; i++)
-            if (players[i].playbackState === MprisPlaybackState.Playing) return players[i];
-        return players.length > 0 ? players[0] : null;
-    }
+    // ---------------------------------------------------------------- apply
 
-    function mmss(s) {
-        if (!s || s < 0) return "0:00";
-        return Math.floor(s / 60) + ":" + (Math.floor(s % 60) < 10 ? "0" : "") + Math.floor(s % 60);
-    }
-
-    // Bluetooth.
-    readonly property var btAdapter: Bluetooth.defaultAdapter
-    readonly property var btDevices: {
-        const out = [];
-        if (!btAdapter || !btAdapter.enabled) return out;
-        const devs = Bluetooth.devices.values;
-        for (let i = 0; i < devs.length; i++)
-            if (devs[i].connected) out.push(devs[i]);
-        return out;
-    }
-
-    // Power mode.
-    readonly property var perfModes: [
-        { label: Skin.lex("perf_saver", "QUIET"), profile: PowerProfile.PowerSaver,
-          note: Skin.lex("perf_saver_note", "Fans quiet. Clocks capped. Battery lasts longest.") },
-        { label: Skin.lex("perf_balanced", "BALANCED"), profile: PowerProfile.Balanced,
-          note: Skin.lex("perf_balanced_note", "Default. Clock scales with load.") },
-        { label: Skin.lex("perf_performance", "PERFORMANCE"), profile: PowerProfile.Performance,
-          note: Skin.lex("perf_performance_note", "All cores unlocked. Fans loud, battery drains faster.") }
-    ]
-
-    function cyclePerf() {
-        const cur = PowerProfiles.profile;
-        for (let i = 0; i < perfModes.length; i++) {
-            if (perfModes[i].profile === cur) {
-                PowerProfiles.profile = perfModes[(i + 1) % perfModes.length].profile;
-                return;
-            }
-        }
-        PowerProfiles.profile = PowerProfile.Balanced;
-    }
-
-    // ---------------------------------------------------------------- toggle
-
-    function toggle() {
-        switch (mSec) {
-        case "ABILITIES":
-            if (mRow === 0 && player) player.togglePlaying();
-            else if (mRow === 1)
+    function apply() {
+        const r = rIdx;
+        if (pIdx === 0) {
+            const nSaved = savedNearby.length;
+            if (r === 0) {
                 Quickshell.execDetached(["nmcli", "radio", "wifi",
                                          SysState.wifiUp ? "off" : "on"]);
-            break;
-        case "ITEMS":
-            if (btAdapter) btAdapter.enabled = !btAdapter.enabled;
-            break;
-        case "TRAIN":
-            if (mRow === 0) SysState.setVolPct(
-                SysState.volPct >= 100 ? 0 : SysState.volPct + 5);
-            else if (mRow === 1) SysState.setBright8((SysState.bright8 % 8) + 1);
-            else if (mRow === 2) cyclePerf();
-            else cycleTimezone();
-            break;
-        case "SESSION": {
-            // Both rows ask first -- on the power menu's red log line,
-            // which owns that flow and opens straight onto it.
-            const act = mRow === 0 ? "RESTART" : "SHUT DOWN";
-            win.dismissed();
-            Quickshell.execDetached(["qs", "ipc", "call", "power", "confirm", act]);
-            break;
+            } else if (r <= nSaved) {
+                Quickshell.execDetached(["nmcli", "con", "up", "id",
+                                         savedNearby[r - 1].name]);
+            } else if (r === nSaved + 1) {
+                if (btAdapter) btAdapter.enabled = !btAdapter.enabled;
+            } else if (r <= nSaved + 1 + btDevices.length) {
+                const dev = btDevices[r - nSaved - 2];
+                dev.connected = !dev.connected;
+            } else {
+                toggleProxy();
+            }
+        } else if (pIdx === 1) {
+            const nSinks = sinkList.length;
+            if (r < nSinks) {
+                Pipewire.preferredDefaultAudioSink = sinkList[r];
+            } else if (r === nSinks) {
+                SysState.setVolPct(SysState.volPct >= 100 ? 0 : SysState.volPct + 5);
+            } else if (r === nSinks + 1) {
+                if (source && source.audio) source.audio.muted = !source.audio.muted;
+            } else {
+                if (player) player.togglePlaying();
+            }
+        } else {
+            switch (r) {
+            case 0: cyclePerf(); break;
+            case 1: SysState.setBright8((SysState.bright8 % 8) + 1); break;
+            case 2: toggleWarm(); break;
+            case 3: Notifs.toggleDnd(); break;
+            case 4: cycleTimezone(); break;
+            }
         }
-        }
+    }
+
+    // Mouse path: focus the row, then apply -- one tap does both, and the
+    // gold border follows the pointer the same way it follows the keys.
+    function tapRow(p, r) {
+        pIdx = p;
+        rIdx = r;
+        apply();
     }
 
     // ---------------------------------------------------------------- input
@@ -307,47 +360,36 @@ PanelWindow {
         anchors.fill: parent
         focus: true
 
-        // Dismiss only on a click OUTSIDE the frame. The old empty
-        // TapHandler on the frame did not actually swallow taps -- default
-        // gesturePolicy takes no exclusive grab, so this handler fired too
-        // and every click anywhere closed the menu.
         TapHandler {
             onTapped: eventPoint => {
-                const p = menuFrame.mapFromItem(keys,
+                const p = deck.mapFromItem(keys,
                     eventPoint.position.x, eventPoint.position.y);
-                if (p.x < 0 || p.y < 0 || p.x > menuFrame.width || p.y > menuFrame.height)
+                if (p.x < 0 || p.y < 0 || p.x > deck.width || p.y > deck.height)
                     win.dismissed();
             }
         }
 
         Keys.onPressed: event => {
             switch (event.key) {
-            case Qt.Key_Left:
-            case Qt.Key_Right: {
-                const step = event.key === Qt.Key_Right ? 1 : -1;
-                const i = win.sections.indexOf(win.mSec);
-                win.mSec = win.sections[(i + step + win.sections.length) % win.sections.length];
-                win.mRow = 0;
+            case Qt.Key_Tab:
+            case Qt.Key_Right:
+                win.pIdx = (win.pIdx + 1) % 3;
+                win.rIdx = 0;
                 break;
-            }
+            case Qt.Key_Backtab:
+            case Qt.Key_Left:
+                win.pIdx = (win.pIdx + 2) % 3;
+                win.rIdx = 0;
+                break;
             case Qt.Key_Up:
-                // Sections with no rows scroll instead.
-                if (win.rowCount === 0)
-                    paneScroll.contentY = Math.max(0, paneScroll.contentY - 72);
-                else
-                    win.mRow = Math.max(0, win.mRow - 1);
+                win.rIdx = Math.max(0, win.rIdx - 1);
                 break;
             case Qt.Key_Down:
-                if (win.rowCount === 0)
-                    paneScroll.contentY = Math.min(
-                        Math.max(0, paneScroll.contentHeight - paneScroll.height),
-                        paneScroll.contentY + 72);
-                else
-                    win.mRow = Math.min(Math.max(0, win.rowCount - 1), win.mRow + 1);
+                win.rIdx = Math.min(win.rowCount - 1, win.rIdx + 1);
                 break;
             case Qt.Key_Return:
             case Qt.Key_Enter:
-                win.toggle();
+                win.apply();
                 break;
             case Qt.Key_Escape:
                 win.dismissed();
@@ -358,853 +400,186 @@ PanelWindow {
             event.accepted = true;
         }
 
-        Frame {
-            id: menuFrame
-            width: 940
+        // ------------------------------------------------------------ frame
+
+        SoftShadow {
+            x: deck.x
+            y: deck.y
+            width: deck.width
+            height: deck.height
+            offsetY: 10
+        }
+
+        Rectangle {
+            id: deck
+            width: 1060
+            height: 620
             anchors.centerIn: parent
-            // A creature titles the menu with its species; the plain shell
-            // names it for what it is.
-            title: Skin.creature ? Skin.species : Skin.lex("details_title", "SETTINGS")
+            color: Skin.bg
+            border.width: 2
+            border.color: Skin.inner
+            radius: Skin.radius
 
-            padTop: 26
-            padSide: 20
-            padBottom: 18
-
-            Column {
-                width: parent.width
-                spacing: 14
-
-                // ---- header: crumb + key state
-                Item {
-                    width: parent.width
-                    height: crumbRow.implicitHeight + 12
-
-                    Row {
-                        id: crumbRow
-                        spacing: 12
-
-                        Blink {
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: crumbCursor.implicitWidth
-                            height: crumbCursor.implicitHeight
-
-                            Text {
-                                id: crumbCursor
-                                text: Skin.glyph
-                                color: Skin.accent
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 14
-                            }
-                        }
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            text: (Skin.creature ? Skin.species
-                                                 : Skin.lex("details_title", "SETTINGS"))
-                                  + " · " + win.secLabel(win.mSec)
-                            color: Skin.text
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 16
-                        }
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: crumbRow.verticalCenter
-                        text: Skin.lex("keys_armed", "ESC CLOSES")
-                        color: Skin.accent
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.16
-                    }
-
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        width: parent.width
-                        height: 4
-                        color: Skin.inner
-                    }
-                }
-
-                // ---- rail + pane
-                Row {
-                    width: parent.width
-                    spacing: 16
-
-                    // left rail
-                    Column {
-                        id: rail
-                        width: 196
-                        spacing: 8
-
-                        Repeater {
-                            model: win.sections
-
-                            Rectangle {
-                                id: tab
-
-                                required property string modelData
-
-                                readonly property bool active: win.mSec === modelData
-
-                                width: rail.width
-                                height: 38
-                                color: active ? Skin.accent : Skin.cell
-                                border.width: 3
-                                border.color: active ? Skin.accent : Skin.inner
-
-                                Rectangle {
-                                    z: -1
-                                    y: 4
-                                    width: parent.width
-                                    height: parent.height
-                                    color: Skin.shadow
-                                }
-
-                                Row {
-                                    x: 12
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    spacing: 9
-
-                                    Text {
-                                        text: Skin.glyph
-                                        color: tab.active ? Skin.shadow : Skin.dim
-                                        font.family: Skin.fontLabel
-                                        font.pixelSize: 12
-                                    }
-
-                                    Text {
-                                        text: win.secLabel(tab.modelData)
-                                        color: tab.active ? Skin.shadow : Skin.body
-                                        font.family: Skin.fontLabel
-                                        font.pixelSize: 12
-                                        font.letterSpacing: 12 * 0.10
-                                    }
-                                }
-
-                                TapHandler {
-                                    onTapped: {
-                                        win.mSec = tab.modelData;
-                                        win.mRow = 0;
-                                    }
-                                }
-                            }
-                        }
-
-                        // caught plate (the nature line moved to STATS,
-                        // where it names the power mode)
-                        Rectangle {
-                            visible: Skin.has("caught")
-                            width: rail.width
-                            height: caughtText.implicitHeight + 22
-                            color: Skin.strip
-                            border.width: 3
-                            border.color: Skin.inner
-
-                            Text {
-                                id: caughtText
-                                x: 12
-                                y: 11
-                                text: win.caught
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
-                            }
-                        }
-                    }
-
-                    // right pane
-                    Rectangle {
-                        id: pane
-                        width: parent.width - rail.width - 16
-                        // Capped: a section that overflows (MOVES, TM) scrolls
-                        // inside the pane instead of growing the frame off
-                        // the panel.
-                        height: Math.max(rail.implicitHeight + 120,
-                                         Math.min(540, paneLoader.implicitHeight + 40))
-                        color: Skin.strip
-                        border.width: 4
-                        border.color: Skin.inner
-
-                        // inset 0 0 0 2px shadow keyline
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            color: "transparent"
-                            border.width: 2
-                            border.color: Skin.shadow
-                        }
-
-                        // floating tab naming the section
-                        Rectangle {
-                            x: 14
-                            y: -9
-                            width: paneTab.implicitWidth + 18
-                            height: paneTab.implicitHeight + 6
-                            color: Skin.inner
-
-                            Text {
-                                id: paneTab
-                                anchors.centerIn: parent
-                                text: win.secLabel(win.mSec)
-                                color: Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.2
-                            }
-                        }
-
-                        Flickable {
-                            id: paneScroll
-                            x: 18
-                            y: 20
-                            width: parent.width - 36
-                            height: parent.height - 40
-                            contentWidth: width
-                            contentHeight: paneLoader.implicitHeight
-                            clip: true
-                            interactive: contentHeight > height
-                            boundsBehavior: Flickable.StopAtBounds
-
-                            Loader {
-                                id: paneLoader
-                                width: paneScroll.width
-                                onLoaded: paneScroll.contentY = 0
-                                sourceComponent: {
-                                    switch (win.mSec) {
-                                    case "SUMMARY":
-                                        return Skin.variant("summary", "plain") === "creature"
-                                            ? summaryCreature : summaryPlain;
-                                    case "STATS":     return statsSec;
-                                    case "ABILITIES": return abilitiesSec;
-                                    case "ITEMS":     return itemsSec;
-                                    case "MOVES":     return movesSec;
-                                    case "TM":        return tmSec;
-                                    case "TRAIN":     return trainSec;
-                                    default:          return sessionSec;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ---- key legend
-                Row {
-                    width: parent.width
-                    spacing: 10
-
-                    Rectangle {
-                        width: parent.width
-                        height: 4
-                        color: Skin.inner
-                        visible: false
-                    }
-
-                    Repeater {
-                        model: [
-                            { key: "↑ ↓", what: "ROW" },
-                            { key: "← →", what: "SECTION" },
-                            { key: "↵", what: "TOGGLE" },
-                            { key: "ESC", what: "CLOSE" }
-                        ]
-
-                        Row {
-                            required property var modelData
-                            spacing: 8
-
-                            Rectangle {
-                                width: legendKey.implicitWidth + 16
-                                height: legendKey.implicitHeight + 8
-                                color: Skin.cell
-                                border.width: 3
-                                border.color: Skin.inner
-
-                                Text {
-                                    id: legendKey
-                                    anchors.centerIn: parent
-                                    text: parent.parent.modelData.key
-                                    color: Skin.body
-                                    font.family: Skin.fontLabel
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.14
-                                }
-                            }
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: parent.modelData.what
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.14
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // ================================================================ sections
-
-    // ---------------- OVERVIEW (the plain SUMMARY: the battery, nothing else)
-    Component {
-        id: summaryPlain
-
-        Column {
-            spacing: 12
-
-            Row {
-                width: parent.width
-                spacing: 10
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: Skin.lex("hp", "BATTERY")
-                    color: Skin.outer
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.16
-                }
-
-                HpBar {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - 220
-                    height: 12
-                    fraction: SysState.hp
-                    fillColor: Skin.hpColor(SysState.hp)
-                    alarm: SysState.hp <= 0.2
-                }
-
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: SysState.hpNum
-                    color: Skin.body
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 12
-                    font.letterSpacing: 12 * 0.12
-                }
-            }
-        }
-    }
-
-    // ---------------- SUMMARY (the creature costume's version)
-    Component {
-        id: summaryCreature
-
-        Row {
-            spacing: 18
-
-            // portrait
+            // Titlebar: name left, uptime and clock right.
             Rectangle {
-                width: 216
-                height: 196
+                id: strip
+                x: 2
+                y: 2
+                width: parent.width - 4
+                height: 32
                 color: Skin.cell
-                border.width: 3
-                border.color: Skin.inner
-
-                Image {
-                    id: portrait
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    source: Quickshell.env("HOME") + "/.config/quickshell/assets/ally-front.png"
-                    fillMode: Image.PreserveAspectFit
-                    smooth: false
-                    visible: status === Image.Ready
-                    asynchronous: true
-                }
-
-                DashedSlot {
-                    anchors.fill: parent
-                    anchors.margins: 8
-                    label: "PORTRAIT"
-                    visible: !portrait.visible
-                }
-            }
-
-            Column {
-                width: parent.width - 216 - 18
-                spacing: 11
-
-                Item {
-                    width: parent.width
-                    height: sumName.implicitHeight
-
-                    Text {
-                        id: sumName
-                        text: Skin.species
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 20
-                    }
-
-                    Text {
-                        x: sumName.implicitWidth + 10
-                        visible: Skin.has("lv")
-                        anchors.baseline: sumName.baseline
-                        text: "LV " + SysState.level
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 12
-                        font.letterSpacing: 12 * 0.14
-                    }
-
-                    Row {
-                        visible: Skin.has("types") && Skin.type1 !== ""
-                        anchors.right: parent.right
-                        spacing: 7
-
-                        Rectangle {
-                            width: sumT1.implicitWidth + 16
-                            height: sumT1.implicitHeight + 6
-                            color: Skin.type1Hue
-
-                            Text {
-                                id: sumT1
-                                anchors.centerIn: parent
-                                text: Skin.type1
-                                color: Skin.shadow
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.18
-                            }
-                        }
-
-                        Rectangle {
-                            visible: Skin.type2 !== "" && Skin.type2 !== "-"
-                            width: sumT2.implicitWidth + 16
-                            height: sumT2.implicitHeight + 6
-                            color: Skin.type2Hue
-
-                            Text {
-                                id: sumT2
-                                anchors.centerIn: parent
-                                text: Skin.type2
-                                color: Skin.shadow
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.18
-                            }
-                        }
-                    }
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: 10
-
-                    Text {
-                        id: sumHpLabel
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "HP"
-                        color: Skin.outer
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.16
-                    }
-
-                    HpBar {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - sumHpLabel.implicitWidth - sumHpNum.implicitWidth - 20
-                        height: 11
-                        fraction: SysState.hp
-                        fillColor: Skin.hpColor(SysState.hp)
-                        alarm: SysState.hp <= 0.2
-                    }
-
-                    Text {
-                        id: sumHpNum
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: SysState.hpNum
-                        color: Skin.body
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-                }
-
-                Row {
-                    visible: Skin.has("exp")
-                    width: parent.width
-                    spacing: 10
-
-                    Text {
-                        id: sumExpLabel
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "EXP"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.16
-                    }
-
-                    Rectangle {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - sumExpLabel.implicitWidth - sumExpNum.implicitWidth - 20
-                        height: 6
-                        color: Skin.inner
-
-                        Rectangle {
-                            // Uptime, wrapping at 24 hours awake -- the same
-                            // rule as the wallpaper and the lock screen (this
-                            // row used to run on time-of-day instead).
-                            width: Math.round(parent.width * SysState.expFrac)
-                            height: parent.height
-                            color: Skin.net
-                        }
-                    }
-
-                    Text {
-                        id: sumExpNum
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "EXP TO NEXT LV — "
-                              + (100 - Math.round(SysState.expFrac * 100)) + "%"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-                }
-
-                Grid {
-                    columns: 2
-                    columnSpacing: 10
-                    rowSpacing: 6
-
-                    // A skin without an ability drops the pair on its data.
-                    Text {
-                        visible: Skin.ability !== ""
-                        width: 84
-                        text: "ABILITY"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-                    Text {
-                        visible: Skin.ability !== ""
-                        text: Skin.ability
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-
-                    // On charge the row disappears -- LEFTOVERS on the wire
-                    // told the user nothing (their request, 2026-08-21).
-                    Text {
-                        visible: SysState.onBattery && Skin.has("held")
-                        width: 84
-                        text: "HELD"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-                    Text {
-                        visible: SysState.onBattery && Skin.has("held")
-                        text: SysState.heldItem + " — ON BATTERY"
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-
-                    Text {
-                        visible: Skin.has("chips")
-                        width: 84
-                        text: "STATUS"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-                    Row {
-                        visible: Skin.has("chips")
-                        spacing: 5
-
-                        Repeater {
-                            model: SysState.chips
-                            Chip {
-                                required property var modelData
-                                label: modelData.label
-                                hue: modelData.hue
-                            }
-                        }
-
-                        Chip {
-                            visible: SysState.sub
-                            label: "SUB"
-                            hue: Skin.accent
-                            fieldEffect: true
-                        }
-
-                        Text {
-                            visible: SysState.chips.length === 0 && !SysState.sub
-                            text: "NONE"
-                            color: Skin.dim
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                        }
-                    }
-                }
-
-                Text {
-                    width: parent.width
-                    text: Skin.crNote
-                    color: Skin.body
-                    font.family: Skin.fontBody
-                    font.pixelSize: 16
-                    wrapMode: Text.WordWrap
-                }
-            }
-        }
-    }
-
-    // ---------------- STATS
-    Component {
-        id: statsSec
-
-        Column {
-            spacing: 10
-
-            Repeater {
-                model: SysState.statRows
 
                 Rectangle {
-                    required property var modelData
-
+                    anchors.bottom: parent.bottom
                     width: parent.width
-                    height: 44
-                    color: Skin.cell
+                    height: 2
+                    color: Skin.inner
+                }
 
-                    Column {
-                        x: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 96
-                        spacing: 2
+                Text {
+                    x: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: Skin.lex("details_title", "SYSTEM")
+                    color: Skin.text
+                    font.family: Skin.fontLabel
+                    font.bold: true
+                    font.pixelSize: 12
+                    font.letterSpacing: 12 * 0.10
+                }
 
-                        Text {
-                            text: parent.parent.modelData.label
-                            color: Skin.text
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 12
-                        }
+                Row {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
 
-                        Text {
-                            // Hidden when the plain label already says the
-                            // same thing (BATTERY over BATTERY stutters).
-                            visible: parent.parent.modelData.sub
-                                     !== parent.parent.modelData.label
-                            text: parent.parent.modelData.sub
-                            color: Skin.dim
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.10
-                        }
-                    }
-
-                    HpBar {
-                        x: 118
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 118 - 160
-                        height: 11
-                        fraction: parent.modelData.frac
-                        fillColor: parent.modelData.hue
+                    Text {
+                        text: "UP " + win.uptimeStr + " · " + SysState.date + " ·"
+                        color: Skin.dim
+                        font.family: Skin.fontLabel
+                        font.pixelSize: 11
+                        font.letterSpacing: 11 * 0.10
                     }
 
                     Text {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 10
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: parent.modelData.val
-                        color: Skin.body
+                        text: SysState.time
+                        color: Skin.text
                         font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.06
+                        font.bold: true
+                        font.pixelSize: 11
+                        font.letterSpacing: 11 * 0.10
                     }
                 }
             }
 
-            // Nature IS the power mode: CALM saves power, HARDY is balanced,
-            // MODEST runs hot. Changed in TRAIN. Costume furniture -- the
-            // plain shell already names the mode in CONTROLS.
-            Text {
-                visible: Skin.has("nature")
-                text: SysState.nature + " NATURE — "
-                      + (SysState.nature === "CALM" ? "QUIET, HP DRAINS SLOWEST"
-                         : SysState.nature === "MODEST" ? "MEGA, HP DRAINS FASTER"
-                         : "BALANCED")
-                color: Skin.accent
-                font.family: Skin.fontLabel
-                font.pixelSize: 10
-                font.letterSpacing: 10 * 0.12
-            }
+            // ------------------------------------------------------ panels
 
             Row {
-                visible: Skin.has("chips")
-                spacing: 9
+                id: panels
+                x: 16
+                y: strip.y + strip.height + 14
+                spacing: 12
 
-                Text {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "CONDITIONS"
-                    color: Skin.dim
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.18
-                }
+                readonly property int colW: (deck.width - 32 - 24) / 3
+                readonly property int colH: deck.height - strip.height - 2
+                                            - 28 - vitals.height - 12
+                                            - footer.height - 12
 
-                Repeater {
-                    model: SysState.chips
-                    Chip {
-                        required property var modelData
-                        anchors.verticalCenter: parent.verticalCenter
-                        label: modelData.label
-                        hue: modelData.hue
-                    }
-                }
+                // ---------------------------------------- NETWORK
+                Panel {
+                    width: panels.colW
+                    height: panels.colH
+                    title: "NETWORK"
+                    chipText: SysState.wifiUp ? "WIFI ON" : "WIFI OFF"
+                    chipColor: SysState.wifiUp ? Skin.cmd : Skin.dim
+                    onChipTapped: win.tapRow(0, 0)
 
-                Text {
-                    visible: Skin.has("chips")
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "BRN — THERMAL THROTTLE · SLP — SUSPEND · SUB — DO NOT DISTURB"
-                    color: Skin.dim
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.10
-                }
-            }
-        }
-    }
-
-    // ---------------- ABILITIES
-    Component {
-        id: abilitiesSec
-
-        Column {
-            spacing: 12
-
-            // MUSIC -- full width, own controls. The ability toggle lives on
-            // the header row only.
-            Rectangle {
-                width: parent.width
-                height: musicCol.implicitHeight + 26
-                color: Skin.cell
-                border.width: 3
-                border.color: win.mSec === "ABILITIES" && win.mRow === 0
-                    ? Skin.outline : Skin.inner
-
-                Column {
-                    id: musicCol
-                    x: 14
-                    y: 13
-                    width: parent.width - 28
-                    spacing: 11
-
-                    Item {
+                    Column {
                         width: parent.width
-                        height: musicName.implicitHeight + 6
 
-                        Row {
-                            spacing: 10
+                        // Current network; return toggles the radio.
+                        FocusRow {
+                            width: parent.width
+                            height: 52
+                            active: win.foc(0, 0)
+                            onTapped: win.tapRow(0, 0)
 
-                            Text {
+                            Column {
+                                x: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: Skin.glyph
-                                color: win.mRow === 0 ? Skin.accent : Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
+                                spacing: 3
 
-                            Text {
-                                id: musicName
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "MUSIC"
-                                color: Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-                        }
+                                Row {
+                                    spacing: 8
 
-                        Rectangle {
-                            anchors.right: parent.right
-                            width: musicChip.implicitWidth + 14
-                            height: musicChip.implicitHeight + 6
-                            color: win.player && win.player.playbackState === MprisPlaybackState.Playing
-                                ? Skin.accent : Skin.inner
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        name: "wifi"
+                                        size: 14
+                                        color: SysState.wifiUp ? Skin.body : Skin.critical
+                                    }
 
-                            Text {
-                                id: musicChip
-                                anchors.centerIn: parent
-                                text: win.player && win.player.playbackState === MprisPlaybackState.Playing
-                                    ? "PLAYING" : "IDLE"
-                                color: win.player && win.player.playbackState === MprisPlaybackState.Playing
-                                    ? Skin.shadow : Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.14
-                            }
-
-                            TapHandler {
-                                onTapped: if (win.player) win.player.togglePlaying()
-                            }
-                        }
-                    }
-
-                    Item {
-                        width: parent.width
-                        height: Math.max(trackCol.implicitHeight, transport.implicitHeight)
-
-                        Column {
-                            id: trackCol
-                            width: parent.width - transport.implicitWidth - 14
-                            spacing: 6
-
-                            Text {
-                                width: parent.width
-                                text: win.player ? (win.player.trackTitle || "NOTHING QUEUED").toUpperCase() : "NO PLAYER"
-                                color: Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                                elide: Text.ElideRight
-                            }
-
-                            Text {
-                                width: parent.width
-                                text: win.player ? (win.player.trackArtist || "").toUpperCase() : ""
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
-                                elide: Text.ElideRight
-                            }
-
-                            Row {
-                                width: parent.width
-                                spacing: 9
-
-                                Rectangle {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - npTime.implicitWidth - 9
-                                    height: 7
-                                    color: Skin.inner
-
-                                    Rectangle {
-                                        width: {
-                                            const p = win.player;
-                                            if (!p || !p.length || p.length <= 0) return 0;
-                                            return Math.round(parent.width
-                                                * Math.max(0, Math.min(1, p.position / p.length)));
-                                        }
-                                        height: parent.height
-                                        color: Skin.snd
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: SysState.wifiUp
+                                            ? SysState.ssid.toUpperCase() : "NO LINK"
+                                        color: SysState.wifiUp ? Skin.text : Skin.critical
+                                        font.family: Skin.fontLabel
+                                        font.bold: true
+                                        font.pixelSize: 12
                                     }
                                 }
 
                                 Text {
-                                    id: npTime
+                                    text: win.wifiIp
+                                    color: Skin.dim
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: SysState.wifiUp ? (SysState.wifiBars * 25) + "%" : ""
+                                color: Skin.dim
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+
+                        SubLabel { text: "SAVED NEARBY · ⏎ CONNECTS" }
+
+                        Repeater {
+                            model: win.savedNearby
+
+                            FocusRow {
+                                required property var modelData
+                                required property int index
+
+                                width: parent.width
+                                height: 26
+                                active: win.foc(0, 1 + index)
+                                onTapped: win.tapRow(0, 1 + index)
+
+                                Text {
+                                    x: 12
                                     anchors.verticalCenter: parent.verticalCenter
-                                    text: win.player
-                                        ? win.mmss(win.player.position) + " / " + win.mmss(win.player.length)
-                                        : ""
+                                    text: parent.modelData.name.toUpperCase()
+                                    color: Skin.body
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 11
+                                }
+
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: parent.modelData.sig + "%"
                                     color: Skin.dim
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
@@ -1212,379 +587,688 @@ PanelWindow {
                             }
                         }
 
-                        Row {
-                            id: transport
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 8
-
-                            Repeater {
-                                model: [
-                                    { glyph: "◀◀", accent: false },
-                                    { glyph: "▶⏸", accent: true },
-                                    { glyph: "▶▶", accent: false }
-                                ]
-
-                                Rectangle {
-                                    required property var modelData
-                                    required property int index
-
-                                    width: 42
-                                    height: 34
-                                    color: Skin.strip
-                                    border.width: 3
-                                    border.color: modelData.accent ? Skin.accent : Skin.inner
-
-                                    Rectangle {
-                                        z: -1
-                                        y: 4
-                                        width: parent.width
-                                        height: parent.height
-                                        color: Skin.shadow
-                                    }
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: parent.modelData.glyph
-                                        color: parent.modelData.accent ? Skin.accent : Skin.body
-                                        font.family: Skin.fontLabel
-                                        font.pixelSize: 10
-                                    }
-
-                                    TapHandler {
-                                        onTapped: {
-                                            if (!win.player) return;
-                                            if (parent.index === 0) win.player.previous();
-                                            else if (parent.index === 1) win.player.togglePlaying();
-                                            else win.player.next();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    Item {
-                        width: parent.width
-                        height: outLabel.implicitHeight
-
-                        Row {
-                            spacing: 10
-
-                            Text {
-                                id: outLabel
-                                text: "OUT"
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.16
-                            }
-
-                            Text {
-                                text: SysState.sink && SysState.sink.description
-                                    ? SysState.sink.description.toUpperCase() : "—"
-                                color: Skin.body
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                            }
-                        }
-
                         Text {
-                            anchors.right: parent.right
-                            text: SysState.volPct === 0 ? Skin.lex("osd_vol_min", "MUTED")
-                                : SysState.volPct >= 100 ? Skin.lex("osd_vol_max", "VOL 100%")
-                                : SysState.volPct + "%"
-                            color: Skin.text
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                        }
-                    }
-
-                    // MUSIC's own volume meter: 20 bars of 5%, clicking a
-                    // block sets it.
-                    StepMeter {
-                        width: parent.width
-                        height: 16
-                        steps: 20
-                        value: SysState.vol20
-                        onStepClicked: n => SysState.setVolPct(n * 5)
-                    }
-                }
-            }
-
-            // WIFI
-            Rectangle {
-                width: parent.width
-                height: wifiCol.implicitHeight + 26
-                color: Skin.cell
-                border.width: 3
-                border.color: win.mSec === "ABILITIES" && win.mRow === 1
-                    ? Skin.outline : Skin.inner
-
-                Column {
-                    id: wifiCol
-                    x: 14
-                    y: 13
-                    width: parent.width - 28
-                    spacing: 10
-
-                    Item {
-                        width: parent.width
-                        height: wifiTitle.implicitHeight + 6
-
-                        Row {
-                            spacing: 10
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: Skin.glyph
-                                color: win.mRow === 1 ? Skin.accent : Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-
-                            Text {
-                                id: wifiTitle
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "WIFI"
-                                color: Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-                        }
-
-                        Rectangle {
-                            anchors.right: parent.right
-                            width: wifiChip.implicitWidth + 14
-                            height: wifiChip.implicitHeight + 6
-                            color: SysState.wifiUp ? Skin.accent : Skin.inner
-
-                            Text {
-                                id: wifiChip
-                                anchors.centerIn: parent
-                                text: SysState.wifiUp ? "CONNECTED" : "OFF"
-                                color: SysState.wifiUp ? Skin.shadow : Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.14
-                            }
-
-                            TapHandler {
-                                onTapped: Quickshell.execDetached(
-                                    ["nmcli", "radio", "wifi", SysState.wifiUp ? "off" : "on"])
-                            }
-                        }
-                    }
-
-                    Row {
-                        spacing: 4
-
-                        Repeater {
-                            model: 4
-
-                            Rectangle {
-                                required property int index
-                                anchors.bottom: parent.bottom
-                                width: 12
-                                height: [10, 16, 22, 26][index]
-                                color: index < SysState.wifiBars ? Skin.accent : Skin.inner
-                            }
-                        }
-
-                        Column {
-                            anchors.verticalCenter: parent.verticalCenter
-                            leftPadding: 10
-                            spacing: 3
-
-                            Text {
-                                text: SysState.wifiUp ? SysState.ssid.toUpperCase() : "NO LINK"
-                                color: Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-
-                            Text {
-                                text: win.wifiRate
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.10
-                            }
-                        }
-                    }
-
-                    Row {
-                        spacing: 10
-
-                        Text {
-                            width: 52
-                            text: "IP"
+                            visible: win.savedNearby.length === 0
+                            x: 12
+                            topPadding: 4
+                            bottomPadding: 6
+                            text: "NONE IN RANGE"
                             color: Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.14
+                            font.letterSpacing: 10 * 0.12
                         }
 
-                        Text {
-                            text: win.wifiIp
-                            color: Skin.body
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // ---------------- ITEMS
-    Component {
-        id: itemsSec
-
-        Column {
-            spacing: 12
-
-            // radio toggle at the top; ABILITIES holds only MUSIC and WIFI.
-            Rectangle {
-                width: parent.width
-                height: 44
-                color: Skin.cell
-                border.width: 3
-                border.color: win.mSec === "ITEMS" && win.mRow === 0
-                    ? Skin.outline : Skin.inner
-
-                Row {
-                    x: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 10
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Skin.glyph
-                        color: win.mRow === 0 ? Skin.accent : Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 12
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "BLUETOOTH RADIO"
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 12
-                    }
-                }
-
-                Rectangle {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 12
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: btChip.implicitWidth + 14
-                    height: btChip.implicitHeight + 6
-                    color: win.btAdapter && win.btAdapter.enabled ? Skin.accent : Skin.inner
-
-                    Text {
-                        id: btChip
-                        anchors.centerIn: parent
-                        text: win.btAdapter && win.btAdapter.enabled ? "ON" : "OFF"
-                        color: win.btAdapter && win.btAdapter.enabled ? Skin.shadow : Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-                }
-
-                TapHandler {
-                    onTapped: if (win.btAdapter) win.btAdapter.enabled = !win.btAdapter.enabled
-                }
-            }
-
-            // held items: what the machine connected to. Radio off empties
-            // the list -- the machine holds nothing it is not connected to.
-            Repeater {
-                model: win.btDevices
-
-                Rectangle {
-                    required property var modelData
-
-                    width: parent.width
-                    height: itemCol.implicitHeight + 24
-                    color: Skin.cell
-                    border.width: 3
-                    border.color: Skin.inner
-
-                    Column {
-                        id: itemCol
-                        x: 12
-                        y: 12
-                        width: parent.width - 24
-                        spacing: 9
-
-                        Item {
+                        // Bluetooth: the strip row is the adapter toggle.
+                        FocusRow {
                             width: parent.width
-                            height: itemName.implicitHeight
+                            height: 26
+                            active: win.foc(0, 1 + win.savedNearby.length)
+                            baseColor: Skin.cell
+                            onTapped: win.tapRow(0, 1 + win.savedNearby.length)
 
                             Text {
-                                id: itemName
-                                text: (parent.parent.parent.modelData.name || "DEVICE").toUpperCase()
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "BLUETOOTH"
                                 color: Skin.text
                                 font.family: Skin.fontLabel
-                                font.pixelSize: 12
+                                font.bold: true
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
                             }
 
                             Text {
                                 anchors.right: parent.right
-                                anchors.baseline: itemName.baseline
-                                text: "CONNECTED"
-                                color: Skin.dim
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: win.btAdapter && win.btAdapter.enabled ? "ON" : "OFF"
+                                color: win.btAdapter && win.btAdapter.enabled
+                                    ? Skin.cmd : Skin.dim
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
                             }
                         }
 
-                        Row {
+                        Repeater {
+                            model: win.btDevices
+
+                            FocusRow {
+                                required property var modelData
+                                required property int index
+
+                                width: parent.width
+                                height: 28
+                                active: win.foc(0, 2 + win.savedNearby.length + index)
+                                onTapped: win.tapRow(0, 2 + win.savedNearby.length + index)
+
+                                Row {
+                                    x: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 8
+
+                                    Icon {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        name: "bt"
+                                        size: 12
+                                        color: parent.parent.modelData.connected
+                                            ? Skin.body : Skin.dim
+                                    }
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: (parent.parent.modelData.name || "?").toUpperCase()
+                                        color: parent.parent.modelData.connected
+                                            ? Skin.text : Skin.body
+                                        font.family: Skin.fontLabel
+                                        font.bold: parent.parent.modelData.connected
+                                        font.pixelSize: 11
+                                    }
+                                }
+
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: parent.modelData.connected
+                                        ? (parent.modelData.batteryAvailable
+                                           ? Math.round(parent.modelData.battery * 100) + "% · CONN"
+                                           : "CONN")
+                                        : "PAIRED"
+                                    color: parent.modelData.connected ? Skin.cmd : Skin.dim
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                    font.letterSpacing: 10 * 0.10
+                                }
+                            }
+                        }
+
+                        // Proxy pins to the panel's bottom edge via the
+                        // spacer math below being unnecessary -- the column
+                        // just runs on; the divider keeps it read as its
+                        // own block.
+                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+
+                        FocusRow {
                             width: parent.width
-                            spacing: 10
-                            visible: parent.parent.modelData.batteryAvailable
+                            height: 30
+                            active: win.foc(0, 2 + win.savedNearby.length
+                                               + win.btDevices.length)
+                            onTapped: win.tapRow(0, 2 + win.savedNearby.length
+                                                    + win.btDevices.length)
 
-                            Text {
-                                id: chargeLabel
+                            Row {
+                                x: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "CHARGE"
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.16
+                                spacing: 8
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "globe"
+                                    size: 13
+                                    color: Skin.body
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "PROXY · SING-BOX"
+                                    color: Skin.body
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                    font.letterSpacing: 10 * 0.12
+                                }
                             }
 
-                            HpBar {
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - chargeLabel.implicitWidth - chargePct.implicitWidth - 20
-                                height: 10
-                                fraction: parent.parent.parent.modelData.battery
-                                fillColor: Skin.hpColor(parent.parent.parent.modelData.battery)
+                                text: win.proxyOn ? "ON" : "OFF"
+                                color: win.proxyOn ? Skin.cmd : Skin.dim
+                                font.family: Skin.fontLabel
+                                font.bold: win.proxyOn
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
+                            }
+                        }
+                    }
+                }
+
+                // ---------------------------------------- AUDIO
+                Panel {
+                    width: panels.colW
+                    height: panels.colH
+                    title: "AUDIO"
+                    chipText: win.micMuted ? "MIC MUTED" : "MIC LIVE"
+                    chipColor: win.micMuted ? Skin.critical : Skin.cmd
+                    onChipTapped: win.tapRow(1, win.sinkList.length + 1)
+
+                    Column {
+                        width: parent.width
+
+                        SubLabel { text: "OUTPUT" }
+
+                        Repeater {
+                            model: win.sinkList
+
+                            FocusRow {
+                                required property var modelData
+                                required property int index
+
+                                readonly property bool isDefault:
+                                    SysState.sink === modelData
+
+                                width: parent.width
+                                height: 28
+                                active: win.foc(1, index)
+                                onTapped: win.tapRow(1, index)
+
+                                Text {
+                                    x: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 60
+                                    elide: Text.ElideRight
+                                    text: (parent.modelData.description
+                                           || parent.modelData.name || "?").toUpperCase()
+                                    color: parent.isDefault ? Skin.text : Skin.body
+                                    font.family: Skin.fontLabel
+                                    font.bold: parent.isDefault
+                                    font.pixelSize: 11
+                                }
+
+                                Text {
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: parent.isDefault ? "◀" : ""
+                                    color: Skin.accent
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                }
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+
+                        // Volume: return steps +5%, clicking a block sets it.
+                        FocusRow {
+                            width: parent.width
+                            height: 38
+                            active: win.foc(1, win.sinkList.length)
+                            onTapped: win.tapRow(1, win.sinkList.length)
+
+                            Row {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 24
+                                spacing: 10
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "vol"
+                                    size: 15
+                                    color: SysState.muted ? Skin.critical : Skin.body
+                                }
+
+                                StepMeter {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 15 - 10 - 34
+                                    height: 12
+                                    steps: 20
+                                    value: SysState.vol20
+                                    fillColor: Skin.accent
+                                    onStepClicked: n => SysState.setVolPct(n * 5)
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 24
+                                    horizontalAlignment: Text.AlignRight
+                                    text: SysState.muted ? "M" : SysState.volPct
+                                    color: Skin.text
+                                    font.family: Skin.fontLabel
+                                    font.bold: true
+                                    font.pixelSize: 12
+                                }
+                            }
+                        }
+
+                        // Mic mute.
+                        FocusRow {
+                            width: parent.width
+                            height: 26
+                            active: win.foc(1, win.sinkList.length + 1)
+                            onTapped: win.tapRow(1, win.sinkList.length + 1)
+
+                            Text {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "MICROPHONE"
+                                color: Skin.body
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
                             }
 
                             Text {
-                                id: chargePct
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: Math.round(parent.parent.parent.modelData.battery * 100) + "%"
-                                color: Skin.hpColor(parent.parent.parent.modelData.battery)
+                                text: win.micMuted ? "MUTED" : "LIVE"
+                                color: win.micMuted ? Skin.critical : Skin.cmd
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+
+                        SubLabel {
+                            text: win.player
+                                ? (win.player.playbackState === MprisPlaybackState.Playing
+                                   ? "PLAYING" : "PAUSED")
+                                  + (win.player.identity
+                                     ? " · " + win.player.identity.toUpperCase() : "")
+                                : "NO PLAYER"
+                        }
+
+                        // Now playing; return (or tap) toggles play/pause.
+                        FocusRow {
+                            width: parent.width
+                            height: 54
+                            active: win.foc(1, win.sinkList.length + 2)
+                            onTapped: win.tapRow(1, win.sinkList.length + 2)
+
+                            Column {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 56
+                                spacing: 3
+
+                                Text {
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    text: win.player && win.player.trackTitle
+                                        ? win.player.trackTitle : "—"
+                                    color: Skin.text
+                                    font.family: Skin.fontLabel
+                                    font.bold: true
+                                    font.pixelSize: 12
+                                }
+
+                                Text {
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    text: win.player && win.player.trackArtist
+                                        ? win.player.trackArtist : ""
+                                    color: Skin.dim
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                }
+                            }
+
+                            // Play/pause state glyph, drawn not typed.
+                            Item {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 14
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 12
+                                height: 14
+
+                                readonly property bool playing: win.player
+                                    && win.player.playbackState === MprisPlaybackState.Playing
+
+                                Row {
+                                    visible: parent.playing
+                                    anchors.centerIn: parent
+                                    spacing: 4
+                                    Rectangle { width: 3; height: 14; color: Skin.text }
+                                    Rectangle { width: 3; height: 14; color: Skin.text }
+                                }
+
+                                Canvas {
+                                    visible: !parent.playing
+                                    anchors.fill: parent
+                                    onPaint: {
+                                        const c = getContext("2d");
+                                        c.reset();
+                                        c.fillStyle = Skin.dim;
+                                        c.beginPath();
+                                        c.moveTo(1, 0);
+                                        c.lineTo(width, height / 2);
+                                        c.lineTo(1, height);
+                                        c.closePath();
+                                        c.fill();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ---------------------------------------- POWER
+                Panel {
+                    width: panels.colW
+                    height: panels.colH
+                    title: "POWER"
+                    chipText: SysState.charging ? "CHARGING"
+                        : SysState.onBattery ? "BATTERY" : "PLUGGED"
+                    chipColor: SysState.charging ? Skin.accent : Skin.dim
+
+                    Column {
+                        width: parent.width
+
+                        // Battery: display only, no focus.
+                        Item {
+                            width: parent.width
+                            height: 56
+
+                            Row {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 12
+
+                                BatteryIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 30
+                                    height: 16
+                                    fraction: SysState.hp
+                                    color: Skin.body
+                                    fillColor: Skin.hpColor(SysState.hp)
+                                }
+
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 2
+
+                                    Text {
+                                        text: Math.round(SysState.hp * 100) + "%"
+                                        color: Skin.text
+                                        font.family: Skin.fontLabel
+                                        font.bold: true
+                                        font.pixelSize: 20
+                                    }
+
+                                    Text {
+                                        text: win.batterySub
+                                        color: Skin.dim
+                                        font.family: Skin.fontLabel
+                                        font.pixelSize: 10
+                                        font.letterSpacing: 10 * 0.08
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+
+                        SubLabel { text: "PROFILE" }
+
+                        // Three cells; return (or a tap on one) cycles /
+                        // picks. The active cell is the gold one.
+                        FocusRow {
+                            width: parent.width
+                            height: 36
+                            active: win.foc(2, 0)
+                            onTapped: win.tapRow(2, 0)
+
+                            Row {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 6
+
+                                Repeater {
+                                    model: win.perfModes
+
+                                    Rectangle {
+                                        required property var modelData
+
+                                        readonly property bool current:
+                                            PowerProfiles.profile === modelData.profile
+
+                                        width: (panels.colW - 24 - 12) / 3
+                                        height: 24
+                                        color: current ? Skin.window : "transparent"
+                                        border.width: current ? 2 : 1
+                                        border.color: current ? Skin.accent : Skin.inner
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: parent.modelData.label
+                                            color: parent.current ? Skin.text : Skin.dim
+                                            font.family: Skin.fontLabel
+                                            font.bold: parent.current
+                                            font.pixelSize: 9
+                                            font.letterSpacing: 9 * 0.10
+                                        }
+
+                                        TapHandler {
+                                            onTapped: {
+                                                win.pIdx = 2;
+                                                win.rIdx = 0;
+                                                PowerProfiles.profile
+                                                    = parent.modelData.profile;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Brightness: bars only, deliberately no number
+                        // (backlight percent is meaningless; the OSD says
+                        // the same).
+                        FocusRow {
+                            width: parent.width
+                            height: 34
+                            active: win.foc(2, 1)
+                            onTapped: win.tapRow(2, 1)
+
+                            Row {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 24
+                                spacing: 10
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "sun"
+                                    size: 15
+                                    color: Skin.body
+                                }
+
+                                StepMeter {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: parent.width - 15 - 10
+                                    height: 12
+                                    steps: 8
+                                    value: SysState.bright8
+                                    fillColor: Skin.accent
+                                    onStepClicked: n => SysState.setBright8(n)
+                                }
+                            }
+                        }
+
+                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+
+                        FocusRow {
+                            width: parent.width
+                            height: 28
+                            active: win.foc(2, 2)
+                            onTapped: win.tapRow(2, 2)
+
+                            Row {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "moon"
+                                    size: 13
+                                    color: Skin.body
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "NIGHT LIGHT"
+                                    color: Skin.body
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                    font.letterSpacing: 10 * 0.12
+                                }
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: win.warm ? "WARM" : "OFF"
+                                color: win.warm ? Skin.accent : Skin.dim
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
+                            }
+                        }
+
+                        FocusRow {
+                            width: parent.width
+                            height: 28
+                            active: win.foc(2, 3)
+                            onTapped: win.tapRow(2, 3)
+
+                            Row {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
+
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "bellOff"
+                                    size: 13
+                                    color: Skin.body
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "DO NOT DISTURB"
+                                    color: Skin.body
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                    font.letterSpacing: 10 * 0.12
+                                }
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: Notifs.dnd ? "ON" : "OFF"
+                                color: Notifs.dnd ? Skin.accent : Skin.dim
+                                font.family: Skin.fontLabel
+                                font.bold: Notifs.dnd
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
+                            }
+                        }
+
+                        FocusRow {
+                            width: parent.width
+                            height: 28
+                            active: win.foc(2, 4)
+                            onTapped: win.tapRow(2, 4)
+
+                            Text {
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "TIMEZONE"
+                                color: Skin.body
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
+                            }
+
+                            Text {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: win.timezone.toUpperCase() || "—"
+                                color: Skin.text
+                                font.family: Skin.fontLabel
+                                font.bold: true
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.08
                             }
                         }
                     }
                 }
             }
 
+            // ------------------------------------------------------ vitals
+
+            Rectangle {
+                id: vitals
+                x: 16
+                y: panels.y + panels.height + 12
+                width: deck.width - 32
+                height: 62
+                color: "transparent"
+                border.width: 2
+                border.color: Skin.inner
+
+                Row {
+                    x: 2
+                    y: 2
+                    height: parent.height - 4
+
+                    Vital {
+                        label: "CPU"
+                        value: Math.round(SysState.cpuPct * 100) + "%"
+                        frac: SysState.cpuPct
+                    }
+
+                    Rectangle { width: 1; height: parent.height; color: Skin.inner }
+
+                    Vital {
+                        label: "MEM"
+                        value: ((SysState.memTotalKb - SysState.memAvailKb) / 1048576).toFixed(1)
+                               + " / " + Math.round(SysState.memTotalKb / 1048576) + "G"
+                        frac: 1 - SysState.memFreeFraction
+                    }
+
+                    Rectangle { width: 1; height: parent.height; color: Skin.inner }
+
+                    Vital {
+                        label: "TEMP"
+                        value: SysState.tempC + "°C"
+                        frac: SysState.tempC / 90
+                        hue: SysState.tempC >= 90 ? Skin.critical
+                             : SysState.tempC >= 75 ? Skin.warn : Skin.accent
+                    }
+
+                    Rectangle { width: 1; height: parent.height; color: Skin.inner }
+
+                    Vital {
+                        label: "DISK"
+                        value: (SysState.diskSizeG - SysState.diskAvailG)
+                               + " / " + SysState.diskSizeG + "G"
+                        frac: SysState.diskSizeG > 0
+                            ? (SysState.diskSizeG - SysState.diskAvailG) / SysState.diskSizeG
+                            : 0
+                    }
+                }
+            }
+
+            // ------------------------------------------------------ footer
+
             Text {
-                text: win.btAdapter && win.btAdapter.enabled
-                    ? (win.btDevices.length === 0
-                       ? Skin.lex("items_empty", "NO DEVICES CONNECTED")
-                       : "NO OTHER DEVICE PAIRED")
-                    : Skin.lex("items_off", "RADIO OFF")
+                id: footer
+                x: 16
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 12
+                text: "TAB PANEL · ↑↓ ROW · ⏎ APPLY · ESC CLOSE"
                 color: Skin.dim
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
@@ -1593,515 +1277,144 @@ PanelWindow {
         }
     }
 
-    // ---------------- MOVES
-    Component {
-        id: movesSec
+    // ---------------------------------------------------------------- pieces
 
-        Column {
-            spacing: 9
+    // A bordered panel with a titlebar strip and a state chip on its right.
+    component Panel: Rectangle {
+        id: panel
 
-            Repeater {
-                model: win.procRows
+        property string title: ""
+        property string chipText: ""
+        property color chipColor: Skin.dim
+        signal chipTapped()
+        default property alias content: body.data
 
-                Rectangle {
-                    required property var modelData
+        color: "transparent"
+        border.width: 2
+        border.color: Skin.inner
 
-                    width: parent.width
-                    height: moveCol.implicitHeight + 22
-                    color: Skin.cell
-                    border.width: 3
-                    border.color: Skin.inner
+        Rectangle {
+            id: panelStrip
+            x: 2
+            y: 2
+            width: parent.width - 4
+            height: 26
+            color: Skin.cell
 
-                    Column {
-                        id: moveCol
-                        x: 12
-                        y: 11
-                        width: parent.width - 24
-                        spacing: 8
-
-                        Item {
-                            width: parent.width
-                            height: procName.implicitHeight
-
-                            Text {
-                                id: procName
-                                text: parent.parent.parent.modelData.name.toUpperCase()
-                                color: Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-
-                            Text {
-                                visible: Skin.has("pp")
-                                anchors.right: parent.right
-                                anchors.baseline: procName.baseline
-                                text: Apps.ppForCpu(parent.parent.parent.modelData.cpu)
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.10
-                            }
-                        }
-
-                        Row {
-                            width: parent.width
-                            spacing: 8
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 44
-                                text: "CPU"
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.14
-                            }
-
-                            HpBar {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: (parent.width - 44 - 58 - 44 - 58 - 40) / 2
-                                height: 8
-                                fraction: Math.min(1, parent.parent.parent.modelData.cpu / 100)
-                                fillColor: Skin.cmd
-                            }
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 58
-                                horizontalAlignment: Text.AlignRight
-                                text: Math.round(parent.parent.parent.modelData.cpu) + "%"
-                                color: Skin.body
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                            }
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 44
-                                text: "MEM"
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.14
-                            }
-
-                            HpBar {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: (parent.width - 44 - 58 - 44 - 58 - 40) / 2
-                                height: 8
-                                fraction: SysState.memTotalKb > 0
-                                    ? parent.parent.parent.modelData.rss / SysState.memTotalKb : 0
-                                fillColor: Skin.dim
-                            }
-
-                            Text {
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 58
-                                horizontalAlignment: Text.AlignRight
-                                text: (parent.parent.parent.modelData.rss / 1024 / 1024).toFixed(1) + "G"
-                                color: Skin.body
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                            }
-                        }
-                    }
-                }
+            Rectangle {
+                anchors.bottom: parent.bottom
+                width: parent.width
+                height: 1
+                color: Skin.inner
             }
 
-        }
-    }
-
-    // ---------------- TM
-    // Installed apps, teachable, not running. Moved off MOVES into its own
-    // page (user request 2026-08-21); the pane scrolls, so all of them.
-    Component {
-        id: tmSec
-
-        Column {
-            spacing: 10
+            Text {
+                x: 12
+                anchors.verticalCenter: parent.verticalCenter
+                text: panel.title
+                color: Skin.text
+                font.family: Skin.fontLabel
+                font.bold: true
+                font.pixelSize: 10
+                font.letterSpacing: 10 * 0.12
+            }
 
             Text {
-                text: Skin.lex("tm_note", "INSTALLED — NOT RUNNING")
-                color: Skin.dim
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                text: panel.chipText
+                color: panel.chipColor
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
-                font.letterSpacing: 10 * 0.18
-            }
+                font.letterSpacing: 10 * 0.12
 
-            Flow {
-                width: parent.width
-                spacing: 7
-
-                Repeater {
-                    model: win.tmRows
-
-                    Rectangle {
-                        required property var modelData
-
-                        width: tmRow.implicitWidth + 16
-                        height: tmRow.implicitHeight + 10
-                        color: Skin.cell
-                        border.width: 3
-                        border.color: Skin.inner
-
-                        Row {
-                            id: tmRow
-                            anchors.centerIn: parent
-                            spacing: 7
-
-                            Text {
-                                text: parent.parent.modelData.tag
-                                color: Skin.categoryColor(parent.parent.modelData.tag)
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.14
-                            }
-
-                            Text {
-                                text: parent.parent.modelData.name
-                                color: Skin.body
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                            }
-                        }
-                    }
+                TapHandler {
+                    onTapped: panel.chipTapped()
                 }
             }
         }
+
+        Item {
+            id: body
+            x: 2
+            y: panelStrip.y + panelStrip.height
+            width: parent.width - 4
+            height: parent.height - panelStrip.height - 4
+            clip: true
+        }
     }
 
-    // ---------------- TRAIN
-    Component {
-        id: trainSec
+    // A focusable row: gold 2px border and window fill while (panel, row)
+    // focus sits on it; tap moves focus here and applies.
+    component FocusRow: Rectangle {
+        property bool active: false
+        property color baseColor: "transparent"
+        signal tapped()
+
+        color: active ? Skin.window : baseColor
+        border.width: active ? 2 : 0
+        border.color: Skin.accent
+
+        TapHandler {
+            onTapped: parent.tapped()
+        }
+    }
+
+    component SubLabel: Text {
+        x: 12
+        topPadding: 7
+        bottomPadding: 3
+        color: Skin.dim
+        font.family: Skin.fontLabel
+        font.pixelSize: 9
+        font.letterSpacing: 9 * 0.14
+    }
+
+    // One vitals cell: label, figure, 8-block meter.
+    component Vital: Item {
+        property string label: ""
+        property string value: ""
+        property real frac: 0
+        property color hue: Skin.accent
+
+        width: (vitals.width - 4 - 3) / 4
+        height: parent.height
 
         Column {
-            spacing: 16
+            x: 12
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - 24
+            spacing: 6
 
-            Column {
+            Item {
                 width: parent.width
-                spacing: 6
-
-                Item {
-                    width: parent.width
-                    height: volLabel.implicitHeight
-
-                    Row {
-                        spacing: 10
-
-                        Text {
-                            id: volLabel
-                            text: "VOLUME"
-                            color: win.mRow === 0 ? Skin.text : Skin.body
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.14
-                        }
-
-                        Text {
-                            text: SysState.vol20 + " / 20"
-                            color: Skin.dim
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.10
-                        }
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        text: SysState.volPct === 0 ? Skin.lex("osd_vol_min", "MUTED")
-                            : SysState.volPct >= 100 ? Skin.lex("osd_vol_max", "VOL 100%")
-                            : SysState.volPct + "%"
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-                }
-
-                StepMeter {
-                    width: parent.width
-                    height: 22
-                    steps: 20
-                    value: SysState.vol20
-                    outlined: win.mRow === 0
-                    onStepClicked: n => SysState.setVolPct(n * 5)
-                }
-            }
-
-            Column {
-                width: parent.width
-                spacing: 6
-
-                Item {
-                    width: parent.width
-                    height: brLabel.implicitHeight
-
-                    Row {
-                        spacing: 10
-
-                        Text {
-                            id: brLabel
-                            text: "BRIGHTNESS"
-                            color: win.mRow === 1 ? Skin.text : Skin.body
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.14
-                        }
-
-                        Text {
-                            text: SysState.bright8 + " / 8"
-                            color: Skin.dim
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.10
-                        }
-                    }
-
-                    // Brightness shows no percent -- the bars are the
-                    // readout; only the extremes get a name.
-                    Text {
-                        anchors.right: parent.right
-                        text: SysState.bright8 === 0 ? Skin.lex("osd_bright_min", "BRIGHTNESS 0")
-                            : SysState.bright8 >= 8 ? Skin.lex("osd_bright_max", "BRIGHTNESS MAX")
-                            : ""
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-                }
-
-                StepMeter {
-                    width: parent.width
-                    height: 22
-                    value: SysState.bright8
-                    fillColor: Skin.outer
-                    outlined: win.mRow === 1
-                    onStepClicked: n => SysState.setBright8(n)
-                }
-            }
-
-            Column {
-                width: parent.width
-                spacing: 9
+                height: 12
 
                 Text {
-                    text: "POWER MODE"
-                    color: win.mRow === 2 ? Skin.text : Skin.dim
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.18
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: 9
-
-                    Repeater {
-                        model: win.perfModes
-
-                        Rectangle {
-                            required property var modelData
-
-                            readonly property bool active: PowerProfiles.profile === modelData.profile
-
-                            width: (parent.width - 18) / 3
-                            height: 40
-                            color: active ? Skin.accent : Skin.cell
-                            border.width: 3
-                            border.color: active ? Skin.accent : Skin.inner
-
-                            Rectangle {
-                                z: -1
-                                y: 4
-                                width: parent.width
-                                height: parent.height
-                                color: Skin.shadow
-                            }
-
-                            Text {
-                                anchors.centerIn: parent
-                                text: parent.modelData.label
-                                color: parent.active ? Skin.shadow : Skin.body
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-
-                            TapHandler {
-                                onTapped: PowerProfiles.profile = parent.modelData.profile
-                            }
-                        }
-                    }
-                }
-
-                Text {
-                    width: parent.width
-                    text: {
-                        for (let i = 0; i < win.perfModes.length; i++)
-                            if (win.perfModes[i].profile === PowerProfiles.profile)
-                                return win.perfModes[i].note;
-                        return "";
-                    }
+                    text: label
                     color: Skin.dim
                     font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.12
-                    elide: Text.ElideRight
+                    font.pixelSize: 9
+                    font.letterSpacing: 9 * 0.14
+                }
+
+                Text {
+                    anchors.right: parent.right
+                    text: value
+                    color: Skin.text
+                    font.family: Skin.fontLabel
+                    font.bold: true
+                    font.pixelSize: 11
                 }
             }
 
-            Column {
+            StepMeter {
                 width: parent.width
-                spacing: 9
-
-                Item {
-                    width: parent.width
-                    height: tzLabel.implicitHeight
-
-                    Text {
-                        id: tzLabel
-                        text: "TIMEZONE"
-                        color: win.mRow === 3 ? Skin.text : Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.18
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        text: win.timezone.toUpperCase()
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                    }
-                }
-
-                Flow {
-                    width: parent.width
-                    spacing: 7
-
-                    Repeater {
-                        model: win.timezones
-
-                        Rectangle {
-                            required property string modelData
-
-                            readonly property bool active: win.timezone === modelData
-
-                            width: tzText.implicitWidth + 16
-                            height: tzText.implicitHeight + 10
-                            color: active ? Skin.accent : Skin.cell
-                            border.width: 3
-                            border.color: active ? Skin.accent
-                                : win.mRow === 3 ? Skin.outline : Skin.inner
-
-                            Text {
-                                id: tzText
-                                anchors.centerIn: parent
-                                // The city half is the name; the region is
-                                // noise at chip size.
-                                text: parent.modelData.split("/").pop()
-                                      .replace(/_/g, " ").toUpperCase()
-                                color: parent.active ? Skin.shadow : Skin.body
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.10
-                            }
-
-                            TapHandler {
-                                onTapped: win.setTimezone(parent.modelData)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // ---------------- SESSION
-    Component {
-        id: sessionSec
-
-        Column {
-            spacing: 12
-
-            Grid {
-                columns: 2
-                columnSpacing: 10
-                rowSpacing: 10
-                width: parent.width
-
-                Repeater {
-                    // Only the two the lid and the keyboard don't already
-                    // cover (user request 2026-08-20) -- lock and sleep
-                    // live on SUPER+L and the lid.
-                    model: [
-                        { name: "RESTART", key: "SUPER + ESC", danger: false },
-                        { name: "SHUT DOWN", key: "SUPER + ESC", danger: true }
-                    ]
-
-                    Rectangle {
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool active:
-                            win.mSec === "SESSION" && win.mRow === index
-
-                        width: (parent.width - 10) / 2
-                        height: 62
-                        color: Skin.cell
-                        border.width: 3
-                        // Danger reads in the red name; the border stays
-                        // normal until highlighted, then goes red -- same
-                        // grammar as the power menu's YES button.
-                        border.color: active
-                            ? (modelData.danger ? Skin.critical : Skin.outline)
-                            : Skin.inner
-
-                        Rectangle {
-                            z: -1
-                            y: 4
-                            width: parent.width
-                            height: parent.height
-                            color: Skin.shadow
-                        }
-
-                        Column {
-                            x: 12
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 5
-
-                            Text {
-                                text: parent.parent.modelData.name
-                                color: parent.parent.modelData.danger ? Skin.critical : Skin.text
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                            }
-
-                            Text {
-                                text: parent.parent.modelData.key
-                                color: Skin.dim
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
-                            }
-                        }
-
-                        TapHandler {
-                            onTapped: {
-                                win.mRow = parent.index;
-                                win.toggle();
-                            }
-                        }
-                    }
-                }
-            }
-
-            Text {
-                width: parent.width
-                text: Skin.lex("session_note", "Restart and shut down ask first.")
-                color: Skin.body
-                font.family: Skin.fontBody
-                font.pixelSize: 16
-                wrapMode: Text.WordWrap
+                height: 8
+                steps: 8
+                value: Math.max(0, Math.min(8, Math.round(frac * 8)))
+                fillColor: hue
             }
         }
     }
