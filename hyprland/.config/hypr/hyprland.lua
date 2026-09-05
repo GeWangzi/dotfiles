@@ -197,9 +197,11 @@ hl.env("HYPRSHOT_DIR", os.getenv("HOME") .. "/Pictures/clipboard")
 hl.config({
     general = {
         -- Simple pass (user request 2026-08-21, replacing the chunky pass):
-        -- no gaps, plain flat border. Back to 6/12/4 plus the gradient below
+        -- plain flat border, no outer gap. A small inner gap came back on
+        -- 2026-09-05 so tiled windows read as separate frames instead of
+        -- sharing one border line. Back to 6/12/4 plus the gradient below
         -- for the chunky look.
-        gaps_in  = 0,
+        gaps_in  = 5,
         gaps_out = 0,
 
         -- 3 rather than 2: at the panel's scale 2 read as a hairline against
