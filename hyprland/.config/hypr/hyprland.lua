@@ -521,11 +521,6 @@ hl.bind("XF86AudioMicMute",      hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_
 hl.bind("XF86MonBrightnessUp",   hl.dsp.exec_cmd("qs ipc call trainable brightup || brightnessctl set 12%+"), { locked = true, repeating = true })
 hl.bind("XF86MonBrightnessDown", hl.dsp.exec_cmd("qs ipc call trainable brightdown || brightnessctl set 12%-"), { locked = true, repeating = true })
 
--- Cycle ASUS platform profile: quiet -> balanced -> performance.
--- Calls a root helper via a NOPASSWD sudoers rule and shows a notification.
--- If you later find which keycode Fn+F5 emits, rebind this to that instead.
-hl.bind(mainMod .. " + F5", hl.dsp.exec_cmd("/home/naidoq/.local/bin/profile-cycle-notify"))
-
 -- Requires playerctl (was bindl -> { locked = true })
 hl.bind("XF86AudioNext",  hl.dsp.exec_cmd("playerctl next"),       { locked = true })
 hl.bind("XF86AudioPause", hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
