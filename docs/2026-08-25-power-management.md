@@ -5,9 +5,6 @@ while the laptop had been on battery since boot. The answer turned out to be les
 interesting than what it revealed about how power management is wired on this
 machine, so both are recorded here.
 
-The raw question-and-answer transcript is in
-`2026-08-25-upower-session-transcript.md`.
-
 ## Who manages what
 
 Five layers, one policy daemon.

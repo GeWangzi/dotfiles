@@ -1,2 +1,0 @@
-cd "$HOME/sandbox/ai/bitBybit1" || exit
-code .

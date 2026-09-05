@@ -36,3 +36,6 @@ claude/.claude/*
 !claude/.claude/commands/
 !claude/.claude/skills/
 !claude/.claude/templates/
+
+# Mozilla add-on upload id written by web-ext sign. Not config.
+.amo-upload-uuid

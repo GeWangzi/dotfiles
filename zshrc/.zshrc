@@ -29,8 +29,6 @@ export PGHOST="/var/run/postgresql"
 typeset -U path PATH
 
 export PATH="$HOME/.local/bin:$PATH"
-export PATH="$HOME/bin:$PATH"
-export PATH="$PATH:/usr/local/go/bin"
 
 # GDK_SCALE only accepts integers; fractional scaling is GDK_DPI_SCALE. The
 # Hyprland monitor scale of 1.5 already handles GTK apps through the Wayland
