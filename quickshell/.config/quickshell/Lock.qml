@@ -1,6 +1,8 @@
-// The lock screen. Plain by default: the frame on the void, the clock and
-// date, a battery line, and a centred password field. The creature costume
-// (skin variant lock = "card") loads LockCard.qml on top -- the recoloured
+// The lock screen. Plain by default: the desk's wallpaper, blurred under a
+// light scrim, with the clock and date and a centred password field on top
+// and nothing else (the inset frame, lock glyph, and user/battery footer
+// left on 2026-09-05). The creature costume (skin variant lock = "card")
+// loads LockCard.qml on top of its own framed window -- the recoloured
 // capture device, the creature card, and the four moves that resume on wake,
 // from turn 13a of the creature-shell handoff.
 //
@@ -19,6 +21,7 @@
 // Typing anywhere types the password: the field is the prompt.
 
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Services.Pam
@@ -42,10 +45,11 @@ WlSessionLock {
 
         color: Skin.bg
 
-        // The plain (Console) lock inset-frames the whole screen at 22px;
-        // the card costume keeps the 44px window its layout was drawn on.
-        readonly property int frameX: plainLock ? 22 : 44
-        readonly property int frameY: plainLock ? 22 : 44
+        // The card costume keeps the 44px window its layout was drawn on.
+        // The plain lock draws no frame; its figures are placed against the
+        // screen, not the frame.
+        readonly property int frameX: 44
+        readonly property int frameY: 44
         readonly property int frameW: width - 2 * frameX
         readonly property int frameH: height - 2 * frameY
 
@@ -107,10 +111,53 @@ WlSessionLock {
                 event.accepted = true;
             }
 
-            // ---------------- frame
-            // Plain (Console dress): a 2px inset rule on the void, broken
-            // top-centre by the lock glyph -- the icon IS the "locked" label.
-            // Card costume: the shadowed window the card layout was drawn on.
+            // ---------------- background (plain only)
+            // The desk's wallpaper (the same file Wallpaper.qml hangs),
+            // blurred, under a light `bg` scrim so the type reads on any
+            // picture. The whole stack sits in one cached layer: MultiEffect
+            // re-runs its shader on every scene-graph frame, and the caret
+            // blinks every second, so without the layer the blur would be
+            // recomputed once a second for nothing. With it the blur renders
+            // once and the blinks only composite a texture.
+            //
+            // If the file is absent (fresh clone, no `skinctl wallpaper` yet)
+            // this stays hidden and the surface's flat `bg` shows, the same
+            // fallback the desk has.
+            Item {
+                visible: surf.plainLock && wallArt.status === Image.Ready
+                anchors.fill: parent
+                layer.enabled: visible
+
+                Image {
+                    id: wallArt
+                    visible: false
+                    anchors.fill: parent
+                    source: surf.plainLock
+                        ? Quickshell.env("HOME") + "/.config/quickshell/assets/wallpaper.jpg"
+                        : ""
+                    fillMode: Image.PreserveAspectCrop
+                    smooth: true
+                    asynchronous: true
+                }
+
+                MultiEffect {
+                    anchors.fill: parent
+                    source: wallArt
+                    blurEnabled: true
+                    blur: 0.6
+                    blurMax: 48
+                    autoPaddingEnabled: false
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: Skin.bg
+                    opacity: 0.35
+                }
+            }
+
+            // ---------------- frame (card only)
+            // The shadowed window the card layout was drawn on.
             SoftShadow {
                 visible: !surf.plainLock
                 x: surf.frameX
@@ -120,29 +167,14 @@ WlSessionLock {
             }
 
             Rectangle {
+                visible: !surf.plainLock
                 x: surf.frameX
                 y: surf.frameY
                 width: surf.frameW
                 height: surf.frameH
-                color: surf.plainLock ? "transparent" : Skin.window
-                border.width: surf.plainLock ? 2 : 5
-                border.color: surf.plainLock ? Skin.inner : Skin.outer
-            }
-
-            Rectangle {
-                visible: surf.plainLock
-                anchors.horizontalCenter: parent.horizontalCenter
-                y: surf.frameY - height / 2
-                width: 52
-                height: 30
-                color: Skin.bg
-
-                Icon {
-                    anchors.centerIn: parent
-                    name: "lock"
-                    size: 18
-                    color: Skin.dim
-                }
+                color: Skin.window
+                border.width: 5
+                border.color: Skin.outer
             }
 
             // Card costume keeps its text tab.
@@ -195,68 +227,6 @@ WlSessionLock {
                 sourceComponent: LockCard {
                     frameX: surf.frameX
                     frameW: surf.frameW
-                }
-            }
-
-            // ---------------- footer (plain only -- the card carries HP)
-            // A ruled strip along the frame's bottom edge: who is locked out
-            // on the left, the battery's own words on the right.
-            Item {
-                visible: surf.plainLock
-                x: surf.frameX + 2
-                y: surf.frameY + surf.frameH - 42
-                width: surf.frameW - 4
-                height: 40
-
-                Rectangle {
-                    width: parent.width
-                    height: 2
-                    color: Skin.inner
-                }
-
-                Row {
-                    x: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
-
-                    Icon {
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: "user"
-                        size: 13
-                        color: Skin.dim
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: (Quickshell.env("USER") || "").toUpperCase()
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
-                    }
-                }
-
-                Row {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 16
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
-
-                    BatteryIcon {
-                        anchors.verticalCenter: parent.verticalCenter
-                        fraction: SysState.hp
-                        color: Skin.dim
-                        fillColor: Skin.hpColor(SysState.hp)
-                    }
-
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: SysState.hpNum
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.10
-                    }
                 }
             }
 
