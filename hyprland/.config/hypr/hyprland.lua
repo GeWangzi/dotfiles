@@ -80,8 +80,9 @@ hl.monitor({
 -- hyprlang's $vars are just Lua locals now.
 local terminal    = "kitty"
 local fileManager = "nautilus"
--- The application menu is the Quickshell launcher now, bound below; wofi is
--- still installed for the clipboard picker on SUPER + V. Restore
+-- The application menu is the Quickshell launcher now, bound below. wofi is
+-- still installed only because the smoke-test hyprland.conf uses it as its
+-- launcher (skinctl keeps rendering its stylesheet for that). Restore
 -- `local menu = "wofi --show drun"` and point SUPER + space back at it to
 -- undo that.
 
@@ -387,8 +388,7 @@ hl.bind(mainMod .. " + B",      hl.dsp.exec_cmd("firefox"))
 -- four favourites and searches every installed .desktop entry as soon as you
 -- type, so it replaces what wofi was bound here for.
 --
--- Was: hl.dsp.exec_cmd(menu), i.e. `wofi --show drun`. wofi is still
--- installed but only as cliphist-wofi's fallback picker -- both the
+-- Was: hl.dsp.exec_cmd(menu), i.e. `wofi --show drun`. Both the
 -- application menu and the SUPER + V clipboard moved into the shell.
 hl.bind(mainMod .. " + space",  hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 hl.bind(mainMod .. " + F",      hl.dsp.window.fullscreen())
@@ -415,9 +415,10 @@ hl.bind(mainMod .. " + SHIFT + L", hl.dsp.exit())
 hl.bind("PRINT",         hl.dsp.exec_cmd('PATH="$HOME/.local/bin:$PATH" hyprshot -m window'))
 hl.bind("SHIFT + PRINT", hl.dsp.exec_cmd('PATH="$HOME/.local/bin:$PATH" hyprshot -m region'))
 
--- Clipboard history, now the launcher's list mode (handoff turn 25d).
--- cliphist-wofi stays in ~/.local/bin as the fallback picker; only the bind
--- moved. The glyph picker (25e) rides the same surface on G.
+-- Clipboard history, the launcher's list mode (handoff turn 25d). The old
+-- cliphist-wofi picker is gone (git history); `cliphist list | cliphist
+-- decode` from a terminal is the fallback if the shell is down. The glyph
+-- picker (25e) rides the same surface on G.
 hl.bind(mainMod .. " + V", hl.dsp.exec_cmd("qs ipc call launcher clipboard"))
 hl.bind(mainMod .. " + G", hl.dsp.exec_cmd("qs ipc call launcher glyphs"))
 

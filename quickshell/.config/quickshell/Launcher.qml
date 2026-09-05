@@ -70,8 +70,9 @@ PanelWindow {
     property var clipEntries: []
 
     // Image entries list as "[[ binary data 948 KiB png 1920x1080 ]]"; those
-    // rows render a thumbnail instead. Thumbs share cliphist-wofi's cache
-    // (id-keyed, so existing files are reused, never re-decoded).
+    // rows render a thumbnail instead. Thumbs are cached under
+    // ~/.cache/cliphist/thumbs (id-keyed, so existing files are reused,
+    // never re-decoded).
     readonly property string thumbDir:
         (Quickshell.env("XDG_CACHE_HOME") || Quickshell.env("HOME") + "/.cache")
         + "/cliphist/thumbs"
