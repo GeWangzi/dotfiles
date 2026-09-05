@@ -555,11 +555,12 @@ that profile.
 
 ## What in this repo is hardware-specific
 
-Safe anywhere — the stow packages. Configs for Hyprland, the Quickshell
-shell, kitty, zsh, starship, and the scripts in `local-bin`. Worst case a
-keybind refers to hardware that is not there.
+Safe anywhere — the stow packages, with the one `.zprofile` exception in the
+table. Configs for Hyprland, the Quickshell shell, kitty, zsh, starship, and
+the scripts in `local-bin`. Worst case a keybind refers to hardware that is
+not there.
 
-Tied to this laptop — most of `system/`:
+Tied to this laptop — most of `system/`, plus one line of `.zprofile`:
 
 | File | Tied to |
 |---|---|
@@ -567,6 +568,7 @@ Tied to this laptop — most of `system/`:
 | `systemd/system/panel-od-off.service` | an ASUS `asus-nb-wmi` sysfs path |
 | `systemd/system/battery-charge-limit.service` | the ASUS `asus_wmi` charge-threshold node |
 | `wireplumber` soft-mixer drop-in | the ALC285 node name |
+| `.zprofile` `AQ_DRM_DEVICES` | the AMD iGPU's PCI address, `/dev/dri/by-path/pci-0000:04:00.0-card`; resolves to nothing and is skipped on other hardware |
 | `rootfstype=ext4` in the grub cmdline | this machine's root filesystem |
 
 `system/install.sh` checks the DMI product name and refuses to run on non-G14
