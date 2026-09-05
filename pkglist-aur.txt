@@ -1,6 +1,5 @@
 cozette-ttf
 google-chrome
-hyprevents-git
 hyprprop-git
 lib32-gst-plugins-base-libs
 lib32-gstreamer

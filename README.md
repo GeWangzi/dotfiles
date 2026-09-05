@@ -219,9 +219,6 @@ grid sized from that proportional face — a wide, gappy terminal.
 kitty resolves fonts once at startup, so already-open windows keep the old
 font until they are restarted.
 
-wofi additionally lists CaskaydiaCove behind Cozette in its font stack, so a
-missing font degrades there rather than breaking.
-
 The cursor is stock Adwaita at size 24, set for Hyprland in `hyprland.lua`
 (`XCURSOR_THEME`) and for GTK apps in `gtk-3.0/settings.ini` plus the
 gsettings key.

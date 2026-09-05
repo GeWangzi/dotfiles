@@ -91,7 +91,6 @@ starship
 steam
 stow
 thunderbird
-ttf-cascadia-code-nerd
 ttf-dejavu
 unzip
 vim
@@ -106,10 +105,8 @@ wireless_tools
 wireplumber
 wl-clip-persist
 wl-clipboard
-woff2-font-awesome
 wofi
 wpa_supplicant
-wtype
 xdg-desktop-portal-hyprland
 xdg-utils
 xorg-server

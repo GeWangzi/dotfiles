@@ -24,7 +24,7 @@
 * {
     /* Console redesign (2026-08-24): the shell's own face, with the old
        Cozette stack behind it for the icons Plex does not carry. */
-    font-family: "IBM Plex Mono", "CozetteVector", "CaskaydiaCove Nerd Font", monospace;
+    font-family: "IBM Plex Mono", "CozetteVector", monospace;
     font-size: 16px;
     font-weight: bold;
 }
