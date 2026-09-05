@@ -350,9 +350,38 @@ Singleton {
 
     property int gpuBusy: 0
 
+    // The amdgpu sysfs node, resolved once at startup. cardN numbering is
+    // not stable across boots (the NVIDIA card sometimes enumerates first;
+    // .zprofile has the same problem with AQ_DRM_DEVICES), so the card is
+    // taken from the stable by-path node of the iGPU's PCI address
+    // (MACHINE.md hardware table), falling back to whichever card the amdgpu
+    // driver claims. Empty when neither resolves: the GPU row then shows no
+    // value at all rather than another card's number.
+    property string gpuPath: ""
+
+    Process {
+        id: gpuResolve
+        running: true
+        command: ["sh", "-c",
+            "c=$(readlink -e /dev/dri/by-path/pci-0000:04:00.0-card 2>/dev/null)\n"
+            + "f=/sys/class/drm/${c##*/}/device/gpu_busy_percent\n"
+            + "[ -n \"$c\" ] && [ -r \"$f\" ] && { echo \"$f\"; exit 0; }\n"
+            + "for d in /sys/class/drm/card*/device/driver; do\n"
+            + "  [ -e \"$d\" ] || continue\n"
+            + "  case $(readlink \"$d\") in *amdgpu)\n"
+            + "    f=${d%/driver}/gpu_busy_percent\n"
+            + "    [ -r \"$f\" ] && { echo \"$f\"; exit 0; };;\n"
+            + "  esac\n"
+            + "done\n"
+            + "exit 0"]
+        stdout: StdioCollector {
+            onStreamFinished: root.gpuPath = text.trim()
+        }
+    }
+
     FileView {
         id: gpuFile
-        path: "/sys/class/drm/card1/device/gpu_busy_percent"
+        path: root.gpuPath
         printErrors: false
         onLoaded: root.gpuBusy = parseInt(text(), 10) || 0
     }
@@ -367,7 +396,7 @@ Singleton {
             meminfo.reload();
             thermal.reload();
             cpuCurFile.reload();
-            gpuFile.reload();
+            if (root.gpuPath !== "") gpuFile.reload();
             if (!dfQuery.running) dfQuery.running = true;
             if (!dfFull.running) dfFull.running = true;
         }
@@ -415,8 +444,9 @@ Singleton {
         { label: Skin.lex("stat_defense", "TEMPERATURE"), sub: "THERMALS",
           val: tempC + "°C",
           frac: Math.max(0, Math.min(1, 1 - tempC / 90)), hue: Skin.net },
-        { label: Skin.lex("stat_spatk", "GPU"), sub: "GPU LOAD", val: gpuBusy + "%",
-          frac: gpuBusy / 100, hue: Skin.snd },
+        { label: Skin.lex("stat_spatk", "GPU"), sub: "GPU LOAD",
+          val: gpuPath !== "" ? gpuBusy + "%" : "",
+          frac: gpuPath !== "" ? gpuBusy / 100 : 0, hue: Skin.snd },
         { label: Skin.lex("stat_spdef", "DISK"), sub: "DISK FREE",
           val: diskAvailG + " / " + diskSizeG + " GB",
           frac: diskSizeG > 0 ? diskAvailG / diskSizeG : 0, hue: Skin.txt },

@@ -27,10 +27,14 @@ Captured 2026-08-17. Anything with a number in it drifts, so treat the figures a
 
 **Graphics — two GPUs, and this matters more than anything else here.**
 
-| Bus | Device | Driver |
-|---|---|---|
-| `01:00.0` | NVIDIA GA106M, GeForce RTX 3060 Mobile / Max-Q | `nvidia-open` 610.43.03 |
-| `04:00.0` | AMD Cezanne, Radeon Vega integrated | amdgpu (in-kernel) |
+| Bus | Device | Driver | Stable node |
+|---|---|---|---|
+| `01:00.0` | NVIDIA GA106M, GeForce RTX 3060 Mobile / Max-Q | `nvidia-open` 610.43.03 | `/dev/dri/by-path/pci-0000:01:00.0-card` |
+| `04:00.0` | AMD Cezanne, Radeon Vega integrated | amdgpu (in-kernel) | `/dev/dri/by-path/pci-0000:04:00.0-card` |
+
+`/sys/class/drm/cardN` numbering is not stable across boots; anything that needs
+a specific card resolves it from the by-path node above (`.zprofile` for
+`AQ_DRM_DEVICES`, `SysState.qml` for the GPU load figure).
 
 The session deliberately runs on the AMD iGPU only. `~/.zprofile` sets
 `AQ_DRM_DEVICES` to the AMD card's stable by-path node before launching Hyprland,
