@@ -98,13 +98,36 @@ install_file() {
   act install -D -m 0644 -o root -g root "$src" "$dst"
 }
 
+# Remove a file this repo used to install, once its settings have moved
+# elsewhere. Backed up first, same as an overwrite, so a bad run is undoable.
+retire_file() {
+  local rel="$1"
+  local dst="/etc/$rel"
+
+  [[ -e "$dst" ]] || return 0
+
+  say "  back up $dst -> $dst.bak-$STAMP"
+  act cp -p "$dst" "$dst.bak-$STAMP"
+  say "  remove $dst (superseded)"
+  act rm -f "$dst"
+}
+
 say "Installing /etc configuration from $SRC"
 say ""
 
-say "NetworkManager (iwd backend, wifi powersave, DNS):"
-install_file NetworkManager/conf.d/wifi-backend.conf
-install_file NetworkManager/conf.d/wifi-powersave.conf
-install_file NetworkManager/conf.d/dns.conf
+# NetworkManager is deliberately left alone. It runs stock: the wpa_supplicant
+# backend, no drop-in configuration, and wpa_supplicant started on demand
+# through D-Bus activation rather than an enabled unit.
+#
+# The drop-ins below are ones older revisions of this repo installed. They are
+# removed rather than installed, so a machine set up by an older revision
+# converges on the stock setup. See the git history for why they existed.
+say "NetworkManager (stock -- removing drop-ins this repo used to install):"
+retire_file NetworkManager/conf.d/local.conf
+retire_file NetworkManager/conf.d/wifi-backend.conf
+retire_file NetworkManager/conf.d/wifi-powersave.conf
+retire_file NetworkManager/conf.d/dns.conf
+retire_file NetworkManager/conf.d/wifi-dhcp.conf
 
 say ""
 say "sysctl (full SysRq, so a hung system can be rebooted cleanly):"
@@ -201,9 +224,17 @@ Done. Nothing has been started -- these take effect at the next boot.
 
 Still to do by hand, in rough order:
 
+0. Apply the NetworkManager settings without waiting for a reboot:
+
+     sudo nmcli general reload conf
+     NetworkManager --print-config        # confirm what actually took effect
+
+   This is safe on a live system: it re-reads the config files and does not
+   drop the current connection.
+
 1. Enable the services. None of them are enabled by this script.
 
-     sudo systemctl enable NetworkManager iwd bluetooth panel-od-off
+     sudo systemctl enable NetworkManager bluetooth panel-od-off
      sudo systemctl enable power-profiles-daemon battery-charge-limit
      sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
      sudo systemctl enable docker        # optional
@@ -231,10 +262,8 @@ Still to do by hand, in rough order:
    is /root/nm-backup-2026-08-16.tar.gz. Restore it as root, or just re-enter
    the few networks that matter.
 
-   Note the eduroam profile uses PEAP/MSCHAPv2 and has never been tested under
-   the iwd backend, which validates server certificates more strictly than
-   wpa_supplicant did. If it will not associate on campus, set 802-1x.ca-cert
-   and 802-1x.domain-suffix-match on that profile.
+   The eduroam profile uses PEAP/MSCHAPv2. If it will not associate on campus,
+   set 802-1x.ca-cert and 802-1x.domain-suffix-match on that profile.
 
 4. Microphone gain is tuned per codec and is not portable as a file. On an
    ALC285, install alsa-utils, then in alsamixer (F4 for the capture view) set

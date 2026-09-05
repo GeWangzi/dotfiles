@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Ads skipped</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --fg: #16181c;
+        --dim: #6b7280;
+        --bg: #ffffff;
+        --line: #e2e5ea;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fg: #e8eaed;
+          --dim: #9aa0a6;
+          --bg: #1b1d20;
+          --line: #33363b;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 18px 20px 16px;
+        width: 220px;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, sans-serif;
+      }
+      .count {
+        font-size: 46px;
+        font-weight: 600;
+        line-height: 1;
+        font-variant-numeric: tabular-nums;
+      }
+      .label {
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .saved {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--line);
+        font-size: 13px;
+        color: var(--dim);
+      }
+      .saved strong {
+        color: var(--fg);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      button {
+        margin-top: 14px;
+        width: 100%;
+        padding: 6px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--dim);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      button:hover {
+        color: var(--fg);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="count" id="count">0</div>
+    <div class="label">ads skipped</div>
+    <div class="saved"><strong id="saved">0s</strong> of ad time fast-forwarded</div>
+    <button id="reset" type="button">Reset</button>
+    <script src="popup.js"></script>
+  </body>
+</html>

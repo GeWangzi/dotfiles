@@ -55,7 +55,7 @@ PanelWindow {
                 padTop: 0
                 padSide: 0
                 padBottom: 0
-                borderColor: modelData.critical ? Skin.critical : Skin.outer
+                borderColor: modelData.critical ? Skin.critical : Skin.inner
 
                 // Non-critical, non-actionable toasts expire on their own.
                 Timer {

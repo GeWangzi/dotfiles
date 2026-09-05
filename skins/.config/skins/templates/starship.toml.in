@@ -8,51 +8,33 @@
 
 "$schema" = "https://starship.rs/config-schema.json"
 
-# The live prompt from the "W4 -- spine + full greeting" handoff (Retro RPG
-# launcher concepts #5), section 3:
+# Plain prompt (2026-08-25). The creature-era terminal -- the W4 spine, the
+# closing status row (rpg-spine.zsh) and the shell greeting (rpg-greet) -- is
+# gone; all three live in git history. What those surfaces carried that was
+# actually useful moved into the prompt itself, as starship's own modules:
 #
-#     ▌ …/dotfiles ⑂ master !2 ?1 █
+#     17:42 ~/dotfiles master !2 ?1 ❯
 #
-# The spine, the directory, the branch, the dirty counts, then the cursor. No
-# caret glyph -- the block cursor is the design's terminal cursor, sitting
-# where you type.
+# and after a failed or slow command:
 #
-# The clock is an addition to the handoff, which has no clock on the prompt. It
-# sits at the left, immediately after the spine, rather than right-aligned: the
-# prompt is a single line and you type at the end of it, so anything pushed to
-# the right edge would have the command typed straight past it. At the left it
-# also stamps every block in the scrollback with the time the command was
-# entered, which is the useful half of having a clock here at all.
+#     17:42 ~/dotfiles master 12.8s 101 ❯
 #
-# There is still no battery: the handoff puts HP in the greeting and says there
-# is no separate battery indicator anywhere. To add one, append `$fill$battery`
-# and restore the [fill] and [battery] sections from git history.
-#
-# The rest of the block -- the status-coloured row that closes it -- is
-# ~/.config/zsh/rpg-spine.zsh, because a prompt cannot colour a spine by an
-# exit status it has not seen yet.
-#
-# add_newline is off: the shell-owned lines then stack directly against each
-# other and the gutter reads as one column rather than as detached stubs. It is
-# the closest a terminal gets to the mock's full-height spine.
-#
-# The previous Ember prompt is kept as ~/.config/starship-ember.toml, which is
-# still stowed and still hand-written. To go back, point $STARSHIP_CONFIG at it
-# in ~/.zshrc instead of at the generated file.
+# The exit code renders only on failure, the duration only above 2s, and the
+# caret itself flips from ok-green to critical-red on failure -- the same two
+# fixed threshold colours the spine used, for the same reason: a status colour
+# that moves with the theme stops reading as a status. Everything structural
+# still follows the skin through the palette below, which skinctl fills in.
 
-add_newline = false
+add_newline = true
 
-format = "[▌ ](fg:live)$time$directory$git_branch$git_status$git_state"
+format = "$time$directory$git_branch$git_status$git_state$cmd_duration$status$character"
 
-palette = "battle"
+palette = "skin"
 
-# The handoff's "Design Tokens", mapped onto the active skin rather than
-# copied out of the design. skinctl's prompt_colors() is where each of these
-# is decided and why; the short version is that everything structural follows
-# the skin and the two status colours (ok, warn) stay pinned to the fixed
-# thresholds, because a status that changes colour with the theme stops
-# reading as a status.
-[palettes.battle]
+# skinctl's prompt_colors() is where each of these is decided and why. The
+# short version: structural colours follow the skin; ok / warn / critical are
+# pinned to the fixed thresholds.
+[palettes.skin]
 field = "@@field@@"  # background
 panel = "@@panel@@"
 panel_alt = "@@panel_alt@@"
@@ -63,36 +45,36 @@ body = "@@body@@"
 dim = "@@dim@@"
 dimmest = "@@dimmest@@"
 accent = "@@accent@@"
-live = "@@live@@"  # the creature's primary type hue; the live spine
+live = "@@live@@"
 secondary = "@@secondary@@"
-ok = "@@ok@@"  # git branch -- fixed threshold
+ok = "@@ok@@"  # git branch, success caret -- fixed threshold
 warn = "@@warn@@"  # dirty counts -- fixed threshold
 yellow = "@@yellow@@"
-critical = "@@critical@@"
-info = "@@info@@"  # EXP
+critical = "@@critical@@"  # exit code, failure caret -- fixed threshold
+info = "@@info@@"
 mint = "@@mint@@"
 
 [directory]
 style = "fg:accent"
 format = "[$path]($style)[$read_only]($read_only_style) "
-truncation_length = 1
+truncation_length = 3
 truncation_symbol = "…/"
-truncate_to_repo = false
+truncate_to_repo = true
 read_only = " RO"
 read_only_style = "bold fg:critical"
 
-# U+2442, the fork glyph the design draws. Only Adwaita Mono and FreeMono carry
-# it on this machine, so kitty renders it out of the fallback rather than out
-# of DejaVu. Swap to the Nerd Font "" if that fallback ever looks wrong.
+# Branch as plain text, no glyph: the ⑂ of the creature prompt rendered out
+# of a fallback font (only Adwaita Mono and FreeMono carry U+2442 here) and a
+# plain word reads fine without it.
 [git_branch]
-symbol = "⑂ "
+symbol = ""
 style = "fg:ok"
-format = "[$symbol$branch]($style) "
+format = "[$branch]($style) "
 truncation_length = 24
 truncation_symbol = "…"
 
 # "!2 ?1". Counters render only when they are real -- a clean repo shows
-# nothing at all, which is what the handoff asks for.
+# nothing at all.
 [git_status]
 style = "fg:warn"
 format = "([$all_status$ahead_behind]($style))"
@@ -108,8 +90,7 @@ staged = "+${count} "
 renamed = "»${count} "
 deleted = "✘${count} "
 
-# Mid-operation state: rebase, merge, bisect. Bold, so kitty draws it in
-# Silkscreen -- these are labels in the design, not body text.
+# Mid-operation state: rebase, merge, bisect.
 [git_state]
 style = "bold fg:critical"
 format = "[$state( $progress_current/$progress_total)]($style) "
@@ -121,9 +102,29 @@ bisect = "BISECT"
 am = "AM"
 am_or_rebase = "AM/REBASE"
 
-# Dim, so it sits behind the directory rather than competing with it.
+# Dim, so it sits behind the directory rather than competing with it. Stamps
+# every command in the scrollback with the time it was entered.
 [time]
 disabled = false
 time_format = "%R"
 format = "[$time ]($style)"
 style = "fg:dim"
+
+# Replaces the closing row's duration. min_time is starship's 2s default --
+# above the spine's old 100ms on purpose, so the line only appears when the
+# number is worth reading.
+[cmd_duration]
+min_time = 2000
+style = "fg:dim"
+format = "[$duration ]($style)"
+
+# Replaces the closing row's exit code. Renders only on failure.
+[status]
+disabled = false
+style = "bold fg:critical"
+format = "[$status ]($style)"
+
+# The caret carries the last exit status, like the spine did.
+[character]
+success_symbol = "[❯](fg:ok)"
+error_symbol = "[❯](fg:critical)"

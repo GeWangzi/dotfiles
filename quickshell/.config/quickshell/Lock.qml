@@ -305,21 +305,34 @@ WlSessionLock {
                             }
                         }
 
-                        Rectangle {
+                        // The caret blinks like the launcher's, so a solid
+                        // accent block never sits still pretending to be a
+                        // typed character.
+                        Blink {
                             visible: !surf.checking
                             width: 9
                             height: 17
                             anchors.verticalCenter: parent.verticalCenter
-                            color: Skin.accent
+
+                            Rectangle {
+                                width: 9
+                                height: 17
+                                color: Skin.accent
+                            }
                         }
                     }
 
-                    Rectangle {
+                    Blink {
                         visible: surf.password === "" && !surf.checking
                         anchors.centerIn: parent
                         width: 9
                         height: 17
-                        color: Skin.accent
+
+                        Rectangle {
+                            width: 9
+                            height: 17
+                            color: Skin.accent
+                        }
                     }
                 }
 

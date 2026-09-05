@@ -83,15 +83,29 @@ If soft-mixer is on and the values are wrong, the fix is to set them once and ru
 service to re-apply after WirePlumber starts is the fix for the *other* failure and
 would be treating the wrong cause here.
 
-**Wifi** — MediaTek MT7921 (`02:00.0`, `mt7921e`), driven through NetworkManager
-with the **iwd** backend rather than wpa_supplicant, set in
-`/etc/NetworkManager/conf.d/wifi-backend.conf`. That drop-in is the only place
-the backend is named: the main `NetworkManager.conf` used to carry a stale
-`wifi.backend=wpa_supplicant` that the drop-in silently overrode, and it is gone
-as of 2026-08-21. Keep it that way — two files naming a backend is one deleted
-drop-in away from falling back to a `wpa_supplicant` that is not even enabled,
-which presents as dead wifi rather than as a config error. A backend change
-needs a full `systemctl restart NetworkManager`, not a reload.
+**Wifi** — MediaTek MT7921 (`02:00.0`, `mt7921e`), interface **`wlp2s0`**, driven
+through NetworkManager on its stock **wpa_supplicant** backend.
+
+The interface was `wlan0` until 2026-08-25. iwd ships `80-iwd.link`, which pins
+kernel names; removing the package removed that file, so systemd's predictable
+naming took over on the next boot (`mt7921e 0000:02:00.0 wlp2s0: renamed from
+wlan0`). Nothing here hardcodes the name any more — `wifi-doctor` and
+`netcheck.sh` both walk `/sys/class/net/*/wireless` — but it is the first thing
+to suspect if some older script suddenly reports no wifi.
+
+Wifi power saving is **on**, which is NetworkManager's default. It was forced off
+until 2026-08-25 because the MT7921 had latency spikes on an idle link. If that
+returns — wifi dies when idle, revives on the first ping — the fix is one drop-in
+with `[connection] wifi.powersave=2` and nothing else. There is no drop-in configuration at all:
+`/etc/NetworkManager/conf.d/` is empty and `NetworkManager.conf` is the packaged
+file, untouched. `wpa_supplicant.service` is *not* enabled — NetworkManager starts
+it on demand through D-Bus activation (`fi.w1.wpa_supplicant1`), which is how Arch
+ships it. Enabling that unit by hand is a divergence, not a fix.
+
+Keep it empty. Every setting that used to live in `conf.d` was a workaround for
+something else, each drop-in silently overrode the one before it alphabetically,
+and the net effect was a wifi stack nobody could reason about. If a setting is
+genuinely needed, one file with one setting and a comment saying why.
 
 `networkmanager` is explicitly installed and listed in `pkglist-repo.txt`. It
 was dep-marked until 2026-08-21, when removing `network-manager-applet` with
@@ -247,7 +261,7 @@ only option, and the journal recovery is unavoidable rather than a mistake.
 Enabled at the system level:
 
 ```
-NetworkManager  iwd  bluetooth  docker
+NetworkManager  bluetooth  docker
 sing-box  panel-od-off  power-profiles-daemon  battery-charge-limit
 nvidia-suspend  nvidia-resume  nvidia-hibernate
 ```
@@ -447,21 +461,25 @@ for interactive shells).
 session died this way and a reboot appeared to fix it, but the logs showed wlan0
 stayed associated and held its DHCP lease throughout — what had stalled was
 sing-box's VLESS outbound, with connections hanging 1m21s to 1m41s and DNS failing
-for `api.anthropic.com`. The same stalls appear in the 18-hour boot before the iwd
-switch (30 of them, one at 4m8s), so this predates iwd and is not caused by it.
+for `api.anthropic.com`. The same stalls appear across boots going back to
+2026-08-15 (30 of them, one at 4m8s), so this is long-standing and unrelated to
+any wifi change.
 
 `systemctl is-active sing-box` is useless for diagnosing it — the service reports
 active while the tunnel passes no traffic. Run `netcheck.sh` instead: it tests the
-link, then pings the gateway and 1.1.1.1 with `-I wlan0` to bypass `tun0`, then
+link, then pings the gateway and 1.1.1.1 with `-I` on the wifi interface to
+bypass `tun0`, then
 makes a real HTTPS request through the tunnel. Layers 0-2 passing with layer 3
 failing means `sudo systemctl restart sing-box`, not a reboot.
 
 **When it really is the network, `wifi-doctor` says which layer.** `netcheck.sh`
 answers one question — link or tunnel — and answers it well. `wifi-doctor` covers
-the six rungs below the tunnel: rfkill and driver, iwd and NetworkManager running,
+the six rungs below the tunnel: rfkill and driver, NetworkManager and its
+supplicant running,
 association and signal quality, the DHCP lease and default route, the gateway, and
 the internet. It stops at the first broken rung and prints the fix for that rung
-only, and like `netcheck.sh` it pings with `-I wlan0` so a dead `tun0` cannot
+only, and like `netcheck.sh` it pings with `-I` on the wifi interface so a dead
+`tun0` cannot
 masquerade as dead wifi. When all six pass it hands off to `netcheck.sh`.
 
 `wifi-doctor --log` is the half that matters after the fact, since a reboot erases
@@ -509,8 +527,8 @@ a reliability problem, not a guaranteed daily outage, and `netcheck.sh` rather t
 the presence of the log line is what says whether it matters on a given day.
 
 `After=network-online.target` buys nothing here, because wait-online waits for
-NetworkManager *startup-complete*, and under the iwd backend NM declares startup
-done before wlan0 associates. As of 2026-08-17 the only drop-in actually present is
+NetworkManager *startup-complete*, which NM can declare before wifi associates.
+As of 2026-08-17 the only drop-in actually present is
 `sing-box.service.d/override.conf` containing `Wants=network-online.target`, which
 for the same reason does not fix it. **Treat this as still open.** A working fix
 needs wait-online overridden to `nm-online -q --timeout=60` and an `ExecStartPre`
@@ -531,17 +549,9 @@ straight into the boot race above. When they fail the rule sets are simply absen
 and all China-destined traffic silently routes through the proxy instead of direct —
 slow, and it presents as a proxy problem rather than a config one.
 
-**Harmless iwd log lines, not worth chasing:** `IWD device named wlan0 is not a Wifi
-device` (a NetworkManager/iwd startup race that self-corrects) and `error setting
-IPv4 forwarding` on the `/net/connman/iwd/0` P2P device.
-
-**Gone under iwd,** though nothing here used them: WiFi Direct / Miracast, and
-`nmcli device wifi hotspot`.
-
-**The eduroam profile has never been tested under iwd.** It is PEAP/MSCHAPv2, and
-iwd validates server certificates more strictly than wpa_supplicant did. If it will
+**The eduroam profile is PEAP/MSCHAPv2 and has not been used recently.** If it will
 not associate on campus, set `802-1x.ca-cert` and `802-1x.domain-suffix-match` on
-that profile, or revert to wpa_supplicant for the trip.
+that profile.
 
 ## What in this repo is hardware-specific
 

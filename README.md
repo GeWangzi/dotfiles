@@ -236,187 +236,64 @@ of them means checking them out of git history.
 
 ## The terminal
 
-kitty, starship, a pair of zsh hooks and the shell greeting are one design: the
-*W4 — spine + full greeting* handoff. The machine is the creature. Battery is
-HP, uptime is EXP, and there is deliberately no separate battery indicator and
-no uptime row, because HP and EXP already are those things.
+The creature-era terminal — the *W4 — spine + full greeting* design, with its
+gutter spine, closing status row (`rpg-spine.zsh`) and shell-start greeting
+(`rpg-greet`) — was removed on 2026-08-25. All three files are in git history.
+What remains is a plain terminal that keeps the useful information those
+surfaces carried:
 
 | | |
 |---|---|
-| `kitty/.config/kitty/kitty.conf` | the two faces, the block cursor, the blink |
-| `skins/.config/skins/templates/starship.toml.in` | the live prompt — spine, directory, branch, dirty counts |
-| `zshrc/.config/zsh/rpg-spine.zsh` | the row that closes each command block, with exit code and duration |
-| `local-bin/.local/bin/rpg-greet` | the shell-start greeting — art, stat block, HP and EXP meters |
+| `kitty/.config/kitty/kitty.conf` | IBM Plex Mono at 11, block cursor, 2px borders |
+| `skins/.config/skins/templates/starship.toml.in` | the prompt — time, directory, branch, dirty counts, duration, exit code |
 
-### The font
-
-Body text is **DejaVu Sans Mono**, which is what the handoff's mock sets its
-terminal output in. It is the one font here that is packaged rather than
-self-hosted, and the one whose absence is fatal rather than cosmetic: see
-INSTALL.md.
-
-The handoff also sets every label in **Silkscreen**. That was tried and
-reverted. kitty cannot switch face per prompt segment, but it can per SGR
-attribute, so `bold_font Silkscreen` put every bold run in Silkscreen — which
-is what `rpg-greet` and `rpg-spine.zsh` emit their labels as. Two things came
-out of it worth recording:
-
-- kitty only accepts a `bold_font` that fontconfig reports as monospaced, and
-  Silkscreen declares no spacing property, so the line was **silently dropped**
-  and DejaVuSansMono-Bold loaded instead. No warning of any kind; kitty's debug
-  font fallback flag is what shows it. A fontconfig `spacing=100` rule at scan
-  time fixed that, exactly as the CozetteVector rule next to it does.
-- With it rendering, it looked wrong. Silkscreen is genuinely proportional —
-  five advance widths across ASCII, 0.375em to 0.875em — so kitty scales
-  anything wider than the 0.602em cell down to fit. `M`, `N`, `W` and `%`
-  shrink visibly while narrow letters do not, and `GENGAR` comes out reading
-  `GEnGAR`. A pixel face on a fixed grid is not the same face.
-
-So bold is DejaVu's own bold. Labels still read as labels, and the design's
-pixel type lives in the QML shell, which has real proportional layout and can
-use Silkscreen properly. `kitty.conf` says how to try the mapping again.
-
-Silkscreen carries no braille, no box drawing and no Nerd glyphs, so it could
-not have been the body face in any case — the greeting's art is braille.
-
-### The command block
-
-Each command in the design is a block with a 4px spine down its whole left
-edge, coloured by the exit status. A terminal cannot draw that, and it is worth
-saying exactly why, because three separate routes were tried:
-
-- **Filter the output.** Piping each command's stdout makes `isatty` false, so
-  every program drops its colour and its pager and full-screen ones break
-  outright. Running each command under a pty keeps `isatty` but a two-column
-  prefix then corrupts every cursor address a full-screen program emits.
-- **Paint column 1 afterwards.** Ask the terminal for the cursor row before and
-  after the command, then go back and draw the spine on those rows. It works,
-  and it overwrites the first character of every output line, because output
-  starts in column 1.
-- **Move output out of column 1.** DECSLRM left/right margins would do exactly
-  that at the emulator level, with no interception at all. kitty does not
-  implement them: with `\033[?69h\033[5;40s` set, text still starts in column 1
-  and still runs the full width.
-
-The handoff anticipates this and names its own fallback — *a neutral gutter
-with a status-coloured first line*. So the spine renders on the lines the shell
-itself owns, and the status row closes the block instead of opening it, which
-is the one reordering the shell forces:
+The prompt is one line:
 
 ```
-▌ …/dotfiles ⑂ master !2 ?1 cargo build --release
-error[E0308]: mismatched types
-  --> src/session/pair.rs:142:23
-▌                                                                    101  12.8s
+17:42 …/dotfiles master !2 ?1 ❯
 ```
 
-`add_newline` is off in `starship.toml` so the shell-owned lines stack directly
-against each other: back-to-back commands give one unbroken column rather than
-detached stubs.
-
-The prompt line is starship: the live spine in `#9C6BFF`, then the directory,
-the branch and the dirty counts, then the block cursor sitting where you type.
-There is no caret glyph, because in the design the cursor *is* the end of the
-prompt. There is no clock and no battery either — the handoff puts HP in the
-greeting and says there is no separate battery indicator anywhere. The comment
-at the top of `starship.toml` says how to put them back.
-
-The closing row is `rpg-spine.zsh`, a `preexec`/`precmd` pair, and it follows
-the handoff's two cases exactly. Success is one dim `#6A5A8C` string —
-`…/dotfiles ⑂ master · 0.4s`. Failure is the exit code as a Silkscreen mark in
-`#FF4A1F` and then the duration, with no context. A duration renders only above
-100ms, and it is written as `0.4s` and `12.8s`, one decimal under a minute,
-which is finer than starship's own `cmd_duration` can render. The branch comes
-from reading `.git/HEAD` directly rather than running git, so the row costs no
-forks: starship is already paying for a full `git status` one line above.
-
-The cursor is pinned in `kitty.conf` rather than left to the skin, because the
-handoff makes it a design element: a block in `#F4EDFF` blinking at 0.55s. The
-blink is `steps(1)` in the design and kitty always animates it, so `linear` is
-as square as it gets.
-
-### The greeting
-
-`rpg-greet` runs once per interactive shell from the end of `.zshrc`. It reads
-sysfs and `/proc` and forks three times, so it costs nothing measurable at
-shell start; `COLUMNS` and `ZSH_VERSION` are passed in because neither is
-exported. `RPG_GREET=0` skips it.
-
-The stat rows are spaced a blank line apart. The design puts a 7px gap between
-them, a little under half a line at the body's 13px/1.4, and a terminal cannot
-do half a line — so the choice is none or one, and one is right, because it
-also spreads the nine stat rows down the sixteen rows of art instead of
-bunching them against the top. The right column then runs one line longer than
-the art, so both columns are collected first and the paste walks whichever is
-taller, padding the short one.
-
-Width is spent in the same spirit. The column gap and the label column each
-have a roomy value and a tight one, and the meters are `flex: 1; max-width:
-300px` in the design, so they absorb whatever is left — 32 cells down to 10.
-The layout takes the roomy pair, falls back to the tight pair if the meter no
-longer fits, and only below about 69 columns, where even a 10-cell meter will
-not fit, collapses to a one-liner rather than wrapping:
-
-```
-GENGAR · archlinux · x86_64 · Hyprland   HP 79%
-```
-
-That flexing is not decoration. DejaVu Sans Mono's cell is **1.33× wider** than
-CozetteVector's at the same `font_size` — 11.33px against 8.50px, measured by
-dividing a real window's pixel width by the columns kitty reported — so the
-same window carries a third fewer columns than it did before the font change.
-At `font_size 13` a 1014px window fell from 117 columns to 88, and a fixed
-width threshold tuned against the old cell then collapsed the greeting on a
-window that had room for it.
-
-`font_size 10` undoes that: the cell lands at 8.72px, within a fifth of a pixel
-of Cozette's 8.50, so the terminal is back to the width it has always been in
-the design's font. For reference, 11 gives 104 columns, 12 gives 95, 13 gives
-88.
-
-HP is the battery on the same thresholds the shell uses — warn at 30, critical
-at 15 — so one battery cannot read *warning* in the bar and *fine* in the shell.
-Time remaining is computed from `energy_now` and `power_now` and is simply
-absent when there is no draw, which is what the standing charge limit produces.
-EXP is uptime against a nominal twelve-hour level.
+The duration renders only above 2s and the exit code only on failure, both as
+starship's own `cmd_duration` and `status` modules; the `❯` caret flips from
+green to red on failure. Branch green, dirty-count amber and failure red are
+pinned to the fixed `ok` / `warn` / `critical` thresholds rather than to skin
+tokens, because a status colour that moves with the theme stops reading as a
+status. Everything else follows the skin.
 
 ### Following the skin
 
-All three files began by hardcoding the handoff's tokens as literal truecolor,
-on the grounds that the creature's colours were fixed by the design. That was
-reversed: switching skins left the terminal purple while everything else
-moved, which reads as a surface that forgot to update rather than as a
-deliberate constant. So the handoff palette became a *mapping* onto the
-sixteen tokens, and `skinctl` renders all three.
-
-Under the GENGAR skin this reproduces the handoff almost exactly, because that
-skin's tokens are the handoff's palette. Two colours drift on purpose: the git
-branch and the dirty counters are pinned to the fixed `ok` and `warn`
-thresholds rather than to tokens, for the same reason the battery blocks are —
-a status colour that moves with the theme stops reading as a status. Branch
-green is now the same green a successful command's spine is drawn in.
-
-The mechanism is not the one every other consumer uses, because starship has
-no include directive and reads exactly one file. There is nowhere to put a
-generated palette that a hand-written config could pull in, so the whole
-config is the template — `skins/templates/starship.toml.in`, with `@@token@@`
-placeholders — and `skinctl` renders it to
+starship has no include directive and reads exactly one file. There is nowhere
+to put a generated palette that a hand-written config could pull in, so the
+whole config is the template — `skins/templates/starship.toml.in`, with
+`@@token@@` placeholders — and `skinctl` renders it to
 `~/.local/state/skins/starship.toml`. `$STARSHIP_CONFIG` in `.zshrc` points
 there. **`~/.config/starship.toml` is no longer stowed and should not exist**;
 if one is lying around it is not being read, and `rice-doctor` says so.
+`skinctl`'s `prompt_colors()` is where each palette entry is decided and why.
 
-`rpg-greet` and `rpg-spine.zsh` are cheaper: they source
-`~/.local/state/skins/skin.sh`, which skinctl writes as SGR triplets, since
-both of them only ever paste a colour into an escape sequence. That file
-carries the creature's identity too, so the greeting says WOOPER under the
-wooper skin and shows a WATER badge instead of GHOST and POISON. A skin with
-no creature block shows its own name and no badges at all. The braille art
-does not change — it is one creature drawn by hand, and there is no second
-drawing to switch to.
+The prompt recolours immediately on `skinctl set`, because starship re-reads
+its config on every prompt.
 
-Both scripts read `skin.sh` once, when a shell starts, so `skinctl set`
-recolours the next shell rather than the ones already open. The prompt does
-change immediately, because starship re-reads its config on every prompt.
+The greeting survives, rebuilt small as `zshrc/.config/zsh/greet.zsh`: the
+skin's braille art (when it ships one — `skins/art/<slug>.txt`; gengar and
+wooper are rescued from the old notes.txt in git history, dream-land is a
+warp star in a field of ✦ ✧ ⋆ glyphs, which greet.zsh renders dim as
+background scenery), then the skin's name with its type badges, then one dim
+status line:
+
+```
+▌ GENGAR  GHOST POISON
+  naidoq@archlinux · zsh 5.9.2 · up 6h 48m · bat 68%
+```
+
+Everything is fork-free — colours and identity from
+`~/.local/state/skins/skin.sh` (SGR triplets, written by `skinctl`), the art a
+`$(<file)` read, battery and uptime plain reads from sysfs and `/proc`. Only
+the battery number carries colour, on the fixed warn-30/crit-15 thresholds.
+`SKIN_GREET=0` skips it. A skin with no art file gets just the name and status
+lines. It doubles as real information: skin.sh is read once at shell start, so
+it says which skin this shell's colours belong to when an old shell survives a
+`skinctl set`.
 
 ## Not in here
 

@@ -6,13 +6,14 @@
 # actually broken, so the answer is one layer rather than a shrug and a reboot.
 #
 #   0  rfkill / driver / interface exists
-#   1  iwd and NetworkManager running
+#   1  NetworkManager and wpa_supplicant running
 #   2  associated to an AP, with usable signal
 #   3  DHCP gave us an address and a default route
 #   4  gateway reachable        (LAN works)
 #   5  internet reachable       (upstream/ISP works)
 #
-# Layers 4 and 5 ping with -I so they leave through wlan0 rather than tun0.
+# Layers 4 and 5 ping with -I so they leave through the wifi interface
+# rather than tun0.
 # Without that, sing-box's auto_route makes a dead tunnel look like dead wifi,
 # which is the single most common misdiagnosis on this laptop. Anything above
 # layer 5 is not a wifi problem and gets handed to netcheck.sh.
@@ -63,8 +64,10 @@ die() {
 
 # --- which interface -------------------------------------------------------
 
-# Not hardcoded to wlan0: a udev rule or a swapped card renames it, and a tool
-# that reports "no wifi" because it looked at the wrong name is worse than none.
+# Not hardcoded: removing iwd on 2026-08-25 removed its 80-iwd.link, which had
+# pinned kernel names, and the interface went from wlan0 to wlp2s0 on the next
+# boot. A tool that reports "no wifi" because it looked at a stale name is
+# worse than none.
 IFACE="${WIFI_DOCTOR_IFACE:-}"
 if [ -z "$IFACE" ]; then
     for d in /sys/class/net/*/wireless; do
@@ -91,7 +94,7 @@ scan_logs() {
     trap 'rm -f "$snap"' EXIT INT TERM
     { journalctl -b "$boot" --no-pager -o short-unix -k
       journalctl -b "$boot" --no-pager -o short-unix \
-                 -u NetworkManager -u iwd -u systemd-timesyncd
+                 -u NetworkManager -u wpa_supplicant -u systemd-timesyncd
     } 2>/dev/null | sort -n -k1,1 > "$snap"
 
     if [ ! -s "$snap" ]; then
@@ -147,15 +150,13 @@ scan_logs() {
     sig 'deauthenticated from|deauthenticating from .*by AP' \
         'the AP kicked us off'
     sig 'disconnect from AP .* for new auth' \
-        'roamed between APs (breaks DHCP)'
+        'roamed to another AP'
     sig 'Timed out waiting for reply from .*:123' \
         'NTP timeouts -- upstream warning'
     sig 'deauthenticating from .* by local choice' \
         'we left (suspend, reboot, manual)'
     [ "$found" -eq 0 ] && ok "no known failure signature in this boot"
-    printf '        %siwd "invalid HE capabilities" lines are neighbours%s\n' "$C_DIM" "$C_OFF"
-    printf '        %swith broken beacons. Cosmetic. Ignored on purpose.%s\n' "$C_DIM" "$C_OFF"
-    printf '\n  full detail:  journalctl -b %s -o short-precise -g '"'"'wlan0|NetworkManager|iwd'"'"'\n\n' "$boot"
+    printf '\n  full detail:  journalctl -b %s -o short-precise -g '"'"'%s|NetworkManager|wpa_supplicant'"'"'\n\n' "$boot" "$IFACE"
 }
 
 # --- argument handling -----------------------------------------------------
@@ -167,7 +168,7 @@ case "${1:-}" in
         exit 0 ;;
     --watch|-w)
         printf 'following wifi logs -- reproduce the failure now, Ctrl-C to stop\n\n'
-        exec journalctl -f -o short-precise -k -u NetworkManager -u iwd
+        exec journalctl -f -o short-precise -k -u NetworkManager -u wpa_supplicant
         ;;
     --help|-h)
         sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
@@ -223,23 +224,22 @@ fi
 
 head_ "layer 1: daemons"
 
-for unit in iwd NetworkManager; do
-    if systemctl is-active --quiet "$unit" 2>/dev/null; then
-        ok "$unit running"
-    else
-        die "$unit is not running" "sudo systemctl start $unit" \
-            "systemctl status $unit --no-pager"
-    fi
-done
+if systemctl is-active --quiet NetworkManager 2>/dev/null; then
+    ok "NetworkManager running"
+else
+    die "NetworkManager is not running" "sudo systemctl start NetworkManager" \
+        "systemctl status NetworkManager --no-pager"
+fi
 
-# wpa_supplicant and iwd both claim the card and neither wins cleanly. The
-# backend is named in exactly one place now (conf.d/wifi-backend.conf), so a
-# both-running state should not arise from config any more -- but the package
-# is still installed as the eduroam fallback, and something starting it by
-# hand is exactly the failure this catches.
+# wpa_supplicant is not an enabled unit. NetworkManager starts it on demand
+# through D-Bus activation, so "not running" here means NetworkManager has not
+# needed it yet -- which is normal before the first association and a real
+# symptom after it.
 if systemctl is-active --quiet wpa_supplicant 2>/dev/null; then
-    warn "wpa_supplicant is running alongside iwd -- they fight over $IFACE"
-    note "sudo systemctl disable --now wpa_supplicant"
+    ok "wpa_supplicant running"
+else
+    warn "wpa_supplicant not running (NetworkManager starts it on demand)"
+    note "systemctl status wpa_supplicant --no-pager"
 fi
 
 # --- layer 2: association ---------------------------------------------------
@@ -253,13 +253,13 @@ case "$link" in
         if [ "${nearby:-0}" -eq 0 ]; then
             die "not associated, and the scan found no APs at all" \
                 "iw dev $IFACE scan | grep SSID     # confirm by hand" \
-                "sudo systemctl restart iwd         # supplicant may be wedged" \
+                "sudo systemctl restart NetworkManager" \
                 "sudo modprobe -r mt7921e && sudo modprobe mt7921e"
         fi
         die "not associated to any AP (but $nearby APs are in range)" \
             "nmcli device wifi list" \
             "nmcli device connect $IFACE" \
-            "journalctl -u iwd -b | tail -30    # look for a rejected PSK"
+            "journalctl -u wpa_supplicant -b | tail -30   # look for a rejected PSK"
         ;;
 esac
 
@@ -292,12 +292,15 @@ elif [ -n "${retries:-}" ]; then
 fi
 
 # Powersave parks the radio between beacons and is the classic cause of "wifi
-# dies when idle and comes back the moment I ping something". Kept off on this
-# machine by wifi-powersave.conf; check it rather than assume it held.
+# dies when idle and comes back the moment I ping something". It is ON here,
+# which is NetworkManager's default -- this machine deliberately carries no
+# drop-in config. Reported, not flagged: it is only a suspect if the symptom is
+# idle-only, and the fix is one line if it ever proves to be the cause.
 ps=$(iw dev "$IFACE" get power_save 2>/dev/null | sed -n 's/.*Power save: \(.*\)/\1/p')
 if [ "$ps" = "on" ]; then
-    warn "power save is ON -- known cause of idle disconnects"
-    note "expected off here; check /etc/NetworkManager/conf.d/wifi-powersave.conf"
+    ok "power save on (NetworkManager default)"
+    note "only suspect this if wifi dies when idle and revives on the first ping;" \
+         "then: [connection] wifi.powersave=2 in a conf.d drop-in"
 else
     ok "power save off"
 fi
@@ -309,7 +312,7 @@ head_ "layer 3: address and route"
 addr=$(ip -4 -o addr show "$IFACE" 2>/dev/null | awk '{print $4}' | head -1)
 if [ -z "$addr" ]; then
     die "associated but no IPv4 address -- DHCP never completed" \
-        "nmcli device reconnect $IFACE" \
+        "nmcli device disconnect $IFACE && nmcli device connect $IFACE" \
         "sudo nmcli device reapply $IFACE" \
         "journalctl -u NetworkManager -b -g dhcp4 | tail -20" \
         "power-cycle the router if this repeats -- its DHCP server is dropping requests"
@@ -320,7 +323,7 @@ gw=$(ip route show default dev "$IFACE" 2>/dev/null | awk '{print $3; exit}')
 if [ -z "$gw" ]; then
     die "have an address but no default route via $IFACE" \
         "ip route                            # is something else holding the default" \
-        "nmcli device reconnect $IFACE"
+        "nmcli device disconnect $IFACE && nmcli device connect $IFACE"
 fi
 ok "default route via $gw"
 
@@ -335,7 +338,7 @@ if ping -c2 -W2 -I "$IFACE" "$gw" >/dev/null 2>&1; then
     ok "gateway $gw replies (${rtt:-?} ms average)"
 else
     die "gateway $gw does not reply -- associated to the AP but no working LAN" \
-        "nmcli device reconnect $IFACE" \
+        "nmcli device disconnect $IFACE && nmcli device connect $IFACE" \
         "sudo systemctl restart NetworkManager" \
         "power-cycle the router" \
         "if another device on the same network works, it is this laptop; if not, it is the router"

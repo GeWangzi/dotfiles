@@ -14,7 +14,21 @@
 #
 # Usage: bash ~/netcheck.sh
 
-WLAN=wlan0
+# Not hardcoded: removing iwd removed its 80-iwd.link, which had pinned kernel
+# names, so on 2026-08-25 this interface went from wlan0 to wlp2s0. A script
+# that reports "wifi down" because it looked at a stale name is worse than none.
+WLAN="${NETCHECK_IFACE:-}"
+if [[ -z "$WLAN" ]]; then
+    for d in /sys/class/net/*/wireless; do
+        [[ -e "$d" ]] || continue
+        WLAN=$(basename "$(dirname "$d")")
+        break
+    done
+fi
+if [[ -z "$WLAN" ]]; then
+    printf '  \033[31mFAIL\033[0m no wireless interface found\n'
+    exit 1
+fi
 GW=$(ip route show default dev "$WLAN" 2>/dev/null | awk '{print $3; exit}')
 SRC=$(ip -4 -o addr show "$WLAN" 2>/dev/null | awk '{print $4}' | cut -d/ -f1)
 
@@ -29,8 +43,8 @@ if [[ "$state" == "connected" ]]; then
     pass "$WLAN connected to '${ssid:-?}' with address ${SRC:-none}"
 else
     fail "$WLAN state is '${state:-unknown}'"
-    echo "  -> wifi itself is down. Check: journalctl -u iwd -b | tail -30"
-    echo "  -> if it stays broken, revert the backend: sudo bash ~/revert-to-wpa_supplicant.sh"
+    echo "  -> wifi itself is down. Run wifi-doctor for the layer, or check:"
+    echo "     journalctl -u NetworkManager -u wpa_supplicant -b | tail -30"
     exit 1
 fi
 

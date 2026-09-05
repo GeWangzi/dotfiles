@@ -154,7 +154,8 @@ Singleton {
     // implementation for any name it does not know, so an unknown pick
     // degrades rather than blanks the surface. Slots today: lock ("plain" /
     // "card"), idle ("plain" / "moves"), field ("plain" / "creature"),
-    // summary ("plain" / "creature").
+    // summary ("plain" / "creature"), menu ("deck" / "game"),
+    // meter ("flat" / "blocks").
     readonly property var variants: data.variants || null
 
     function variant(slot, fallback) {

@@ -116,6 +116,7 @@ idle    = "moves"
 field   = "creature"
 summary = "creature"
 menu    = "game"
+meter   = "blocks"
 
 [voices.creature.features]
 foe      = true
@@ -205,7 +206,7 @@ outline = "#ff5fa2"
 cmd     = "#7de3c8"
 net     = "#6aa8ff"
 txt     = "#ffb26b"
-snd     = "#ff5fa2"
+snd     = "#ff86d0"
 
 [skins.behavior]
 radius     = "0px"

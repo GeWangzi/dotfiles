@@ -11,8 +11,10 @@ that cannot be automated: credentials, wifi profiles, and audio tuning.
 
 ## 1. Get online
 
-The reference machine has no ethernet port, so `iwctl` from the installer or a TTY
-is the only way in:
+The reference machine has no ethernet port, so wifi from the installer is the
+only way in. The Arch ISO ships `iwctl` for this; it is a property of the
+installer image, not of the installed system, which runs NetworkManager with
+wpa_supplicant:
 
 ```
 iwctl
@@ -20,6 +22,8 @@ iwctl
 [iwd]# station wlan0 scan
 [iwd]# station wlan0 connect <SSID>
 ```
+
+Once the system is installed and booted, use `nmtui` or `nmcli` instead.
 
 Check it worked before moving on — everything below downloads something:
 
@@ -159,7 +163,7 @@ cmdline there instead.
 Nothing above enables anything. System level:
 
 ```bash
-sudo systemctl enable NetworkManager iwd bluetooth panel-od-off
+sudo systemctl enable NetworkManager bluetooth panel-od-off
 sudo systemctl enable power-profiles-daemon battery-charge-limit
 sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
 sudo systemctl enable docker          # optional
@@ -256,7 +260,7 @@ when it sees a login shell on tty1. Then:
 rice-doctor                                         # shell up, fonts seen, log clean
 bash ~/.local/bin/netcheck.sh                       # link, then proxy, layer by layer
 sudo smartctl -a /dev/nvme0n1 | grep -i "power cycles"   # baseline for the NVMe fix
-iw dev wlan0 get power_save                         # expect: off
+iw dev                                              # wifi interface name
 amixer -c 2 sget 'Internal Mic Boost'               # expect: 1 [10.00dB]
 ```
 

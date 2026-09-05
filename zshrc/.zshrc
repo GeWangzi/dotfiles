@@ -7,7 +7,6 @@
 # state rather than in ~/.config. starship reads exactly one file and has no
 # include directive, which is why the whole config is rendered from
 # ~/.config/skins/templates/starship.toml.in instead of only its palette.
-# To go back to the pre-creature prompt, point this at ~/.config/starship-ember.toml.
 export STARSHIP_CONFIG=${XDG_STATE_HOME:-$HOME/.local/state}/skins/starship.toml
 eval "$(starship init zsh)"
 [ -f ~/.config/user-dirs.dirs ] && source ~/.config/user-dirs.dirs
@@ -104,21 +103,14 @@ alias grep='grep --color=auto'
 # it is. Install with `pacman -S fzf`, which ships its own zsh key bindings.
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-# ---- the command block ----
-# The W4 gutter spine: a status-coloured row that closes each command block,
-# with the exit code and the duration. Hooks only, no ZLE wrapping, so it is
-# safe after the syntax highlighter. Read the file for why the spine closes the
-# block instead of opening it.
-[ -f ~/.config/zsh/rpg-spine.zsh ] && source ~/.config/zsh/rpg-spine.zsh
+# The creature-era command block (rpg-spine.zsh) and shell greeting (rpg-greet)
+# were removed 2026-08-25; both are in git history. Their useful parts -- exit
+# code, duration -- moved into the starship prompt as native modules.
 
 # ---- greeting ----
-# The Battle Terminal greeting from the design handoff: the creature, the stat
-# block, HP (battery) and EXP (uptime). Last in the file so it prints below
-# anything the lines above have to say.
-#
-# COLUMNS and ZSH_VERSION are passed in rather than looked up: neither is
-# exported, so without this the script forks `tput` for the width and has no
-# way at all to name the shell version. Set RPG_GREET=0 to skip it.
-if [[ -o interactive ]] && [[ ${RPG_GREET:-1} == 1 ]] && (( $+commands[rpg-greet] )); then
-    COLUMNS=$COLUMNS RPG_SHELL="zsh $ZSH_VERSION" rpg-greet
+# The skin's art (from ~/.config/skins/art/<slug>.txt), its name and type
+# badges, and one dim status line -- all fork-free, all in the skin's own
+# colours. See the file for the details. SKIN_GREET=0 skips it.
+if [[ -o interactive && ${SKIN_GREET:-1} == 1 && -f ~/.config/zsh/greet.zsh ]]; then
+    source ~/.config/zsh/greet.zsh
 fi

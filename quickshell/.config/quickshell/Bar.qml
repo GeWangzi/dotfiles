@@ -87,7 +87,7 @@ PanelWindow {
             Rectangle {
                 width: wsText.implicitWidth + 24
                 height: parent.height
-                color: Skin.accent
+                color: Skin.snd
 
                 Text {
                     id: wsText
@@ -273,19 +273,22 @@ PanelWindow {
                     anchors.centerIn: parent
                     spacing: 8
 
+                    // One size for both: the 10px date under the 12px bold
+                    // clock read as a single garbled string. Hierarchy comes
+                    // from weight and colour alone.
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: SysState.date
-                        color: Skin.dim
+                        color: Skin.body
                         font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.10
+                        font.pixelSize: 12
+                        font.letterSpacing: 12 * 0.06
                     }
 
                     Text {
                         anchors.verticalCenter: parent.verticalCenter
                         text: SysState.time
-                        color: clockHover.hovered ? Skin.accent : Skin.text
+                        color: clockHover.hovered ? Skin.snd : Skin.text
                         font.family: Skin.fontLabel
                         font.bold: true
                         font.pixelSize: 12

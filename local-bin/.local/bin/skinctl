@@ -25,7 +25,8 @@ repository, and none of them should be edited by hand):
     ~/.local/state/skins/skin.lua    Lua table, read by hyprland.lua
     ~/.local/state/skins/skin.json   everything, for the shell surfaces
     ~/.local/state/skins/starship.toml  the prompt, rendered from a template
-    ~/.local/state/skins/skin.sh     sh vars, sourced by rpg-greet and rpg-spine
+    ~/.local/state/skins/skin.sh     sh vars, sourced by the greeting
+                                     (~/.config/zsh/greet.zsh)
     ~/.local/state/skins/active      the active slug, so the choice survives logout
 
 Everything is emitted under the design-token namespace (bg, outer, inner,
@@ -340,8 +341,9 @@ def render_gtk_css(skin: Skin) -> str:
 #
 # The mapping follows the shell's own grammar: `window` is a pane, `cell` is
 # anything that scrolls its own content, `strip` is chrome, `inner` is the
-# keyline, and the darkest text sits on an accent fill rather than white,
-# because `accent` is a light colour in every skin.
+# keyline, and the darkest text sits on a highlight fill rather than white,
+# because `snd` (the desktop's selection pink) is a light colour in every
+# skin.
 ADW_FROM_TOKEN = {
     "window_bg_color": "window",
     "window_fg_color": "text",
@@ -372,8 +374,11 @@ ADW_FROM_TOKEN = {
     "thumbnail_fg_color": "text",
     "shade_color": "shadow",
     "scrollbar_outline_color": "inner",
-    "accent_bg_color": "accent",
-    "accent_color": "accent",
+    # `snd` rather than `accent`: the desktop's highlight/selection colour is
+    # the pink, and GTK's accent is exactly that role (list selections,
+    # checkboxes, switches). Gold stays for meters and state chips.
+    "accent_bg_color": "snd",
+    "accent_color": "snd",
     "accent_fg_color": "bg",
 }
 
@@ -401,7 +406,7 @@ GTK3_FROM_TOKEN = {
     "theme_fg_color": "text",
     "theme_base_color": "cell",
     "theme_text_color": "text",
-    "theme_selected_bg_color": "accent",
+    "theme_selected_bg_color": "snd",
     "theme_selected_fg_color": "bg",
     "insensitive_bg_color": "window",
     "insensitive_fg_color": "dim",
@@ -605,9 +610,9 @@ def render_kitty(skin: Skin) -> str:
 # Under the GENGAR skin this reproduces the handoff almost exactly, because
 # that skin's tokens *are* the handoff's palette. Two entries drift by design:
 #
-#   ok       the git branch. Was #8fe06a, now the fixed `ok` threshold, which
-#            is already the colour rpg-spine draws a successful command in --
-#            so branch green and success green are now the same green.
+#   ok       the git branch and the success caret. Was #8fe06a, now the fixed
+#            `ok` threshold -- branch green and success green are the same
+#            green.
 #   warn     the dirty counters, likewise pinned to the fixed `warn`.
 #
 # Pinning those two to thresholds rather than to tokens is the same rule the
@@ -664,10 +669,10 @@ def render_starship(skin: Skin) -> str:
     return out
 
 
-# What the two shell surfaces need, as SGR triplets. The names are the roles
-# the scripts use them in rather than token names, because that is the level
-# the scripts think at -- rpg-greet wants "the colour of a stat label", not
-# "accent".
+# skin.sh colours, as SGR triplets, named by role rather than token. The big
+# consumers (rpg-greet, rpg-spine.zsh) were removed 2026-08-25; what reads it
+# now is the greeting (~/.config/zsh/greet.zsh) -- art colour, name, type
+# badges, thresholds. The unused roles stay: cheap and settled.
 SHELL_COLORS = {
     "art":      lambda t, th, cr: cr.get("type1_hue", t["accent"]),
     "name":     lambda t, th, cr: t["text"],
@@ -688,7 +693,7 @@ SHELL_COLORS = {
 
 
 def render_shell(skin: Skin) -> str:
-    """POSIX sh assignments, sourced by rpg-greet and rpg-spine.zsh.
+    """POSIX sh assignments, sourced by the greeting (greet.zsh).
 
     Colours are SGR triplets rather than hex because both consumers only ever
     paste them into an escape sequence. The identity strings are here too, so
@@ -817,10 +822,9 @@ def cmd_set(skins: list[Skin], ref: str) -> None:
     # old lock screen until the next lock. Nothing can be signalled to fix
     # that; say so rather than let it look like a bug.
     print("      hyprlock picks this up at the next lock; wofi at next launch")
-    # starship re-reads its config on every prompt, so the prompt itself
-    # changes immediately -- but rpg-greet and rpg-spine.zsh source skin.sh
-    # once when a shell starts, so open shells keep the old spine colour.
-    print("      the prompt changes now; open shells keep their old spine")
+    # starship re-reads its config on every prompt, so the prompt changes
+    # immediately.
+    print("      the prompt changes now")
 
 
 def cmd_lint(skins: list[Skin]) -> int:

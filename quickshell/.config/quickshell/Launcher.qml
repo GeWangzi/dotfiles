@@ -479,7 +479,7 @@ PanelWindow {
                             x: 14
                             anchors.verticalCenter: parent.verticalCenter
                             text: (row.index + 1 < 10 ? "0" : "") + (row.index + 1)
-                            color: row.active ? Skin.accent : Skin.dim
+                            color: row.active ? Skin.snd : Skin.dim
                             font.family: Skin.fontLabel
                             font.bold: row.active
                             font.pixelSize: 10
@@ -715,7 +715,7 @@ PanelWindow {
                                         anchors.fill: parent
                                         color: "transparent"
                                         border.width: 2
-                                        border.color: Skin.accent
+                                        border.color: Skin.snd
                                     }
 
                                     TapHandler {
@@ -767,7 +767,7 @@ PanelWindow {
                                         anchors.fill: parent
                                         color: "transparent"
                                         border.width: 2
-                                        border.color: Skin.accent
+                                        border.color: Skin.snd
                                     }
 
                                     TapHandler {

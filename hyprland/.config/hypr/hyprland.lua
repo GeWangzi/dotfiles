@@ -207,12 +207,13 @@ hl.config({
         -- the wallpaper and did not hold the flat accent colour convincingly.
         border_size = 3,
 
-        -- Flat single colours: accent for the focused window, `inner` for the
-        -- rest -- visible against the wallpaper, but far enough down in
+        -- Flat single colours: `snd` (pink under DREAM LAND, user request
+        -- 2026-08-25; was accent gold) for the focused window, `inner` for
+        -- the rest -- visible against the wallpaper, but far enough down in
         -- brightness that only one window ever looks focused.
         -- was: active_border = { colors = { rgba(skin.outer), rgba(skin.accent) }, angle = 45 }
         col = {
-            active_border   = rgba(skin.accent),
+            active_border   = rgba(skin.snd or skin.accent),
             inactive_border = rgba(skin.inner),
         },
 
@@ -477,15 +478,18 @@ hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd(
     "&& hyprctl hyprsunset temperature 4000 " ..
     "|| hyprctl hyprsunset temperature 6000"))
 
--- Move focus with mainMod + up/down. Left/right belonged to focus too until
--- 2026-08-24: this keyboard has no XF86 media keys, so they are the track
--- controls now (user call -- directional focus was not missed, workspaces
--- are the navigation habit here). SUPER+K pairs with them for play/pause.
-hl.bind(mainMod .. " + left",  hl.dsp.exec_cmd("playerctl previous"), { locked = true })
-hl.bind(mainMod .. " + right", hl.dsp.exec_cmd("playerctl next"),     { locked = true })
-hl.bind(mainMod .. " + K",     hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
+-- Move focus with mainMod + arrows, all four directions. Left/right were the
+-- track controls between 2026-08-24 and 2026-08-26 (this keyboard has no XF86
+-- media keys); directional focus was missed after all, so the track controls
+-- moved one modifier over to SUPER+SHIFT+left/right. SUPER+K stays play/pause.
+hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
 hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
 hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
+
+hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.exec_cmd("playerctl previous"), { locked = true })
+hl.bind(mainMod .. " + SHIFT + right", hl.dsp.exec_cmd("playerctl next"),     { locked = true })
+hl.bind(mainMod .. " + K",             hl.dsp.exec_cmd("playerctl play-pause"), { locked = true })
 
 -- Workspaces 1-9 plus 0 -> 10. Twenty lines of hyprlang collapse into a loop.
 for i = 1, 10 do

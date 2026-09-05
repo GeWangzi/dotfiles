@@ -515,7 +515,7 @@ PanelWindow {
                                                 anchors.fill: parent
                                                 color: "transparent"
                                                 border.width: 3
-                                                border.color: Skin.accent
+                                                border.color: Skin.snd
                                             }
 
                                             Column {
@@ -834,7 +834,7 @@ PanelWindow {
                                     height: clearWord.implicitHeight + 6
                                     color: "transparent"
                                     border.width: 3
-                                    border.color: win.zone === "log" ? Skin.accent : Skin.inner
+                                    border.color: win.zone === "log" ? Skin.snd : Skin.inner
 
                                     Text {
                                         id: clearWord

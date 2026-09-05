@@ -191,7 +191,7 @@ PanelWindow {
 
                             readonly property bool active: win.selected === index
                             readonly property color hue:
-                                modelData.danger ? Skin.critical : Skin.accent
+                                modelData.danger ? Skin.critical : Skin.snd
 
                             width: parent.tileWidth
                             height: 108
@@ -327,7 +327,7 @@ PanelWindow {
                                 height: noText.implicitHeight + 18
                                 color: win.confirmYes ? Skin.cell : Skin.window
                                 border.width: 2
-                                border.color: win.confirmYes ? Skin.inner : Skin.accent
+                                border.color: win.confirmYes ? Skin.inner : Skin.snd
 
                                 Text {
                                     id: noText

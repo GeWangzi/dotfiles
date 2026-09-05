@@ -296,11 +296,13 @@ PanelWindow {
         win.timezone = zone;
     }
 
+    // Spelled H/M rather than a colon: the titlebar already ends in the
+    // clock, and a second colon-time ("UP 3:12") reads as another clock.
     readonly property string uptimeStr: {
         const s = SysState.uptimeSec;
         const h = Math.floor(s / 3600);
         const m = Math.floor((s % 3600) / 60);
-        return h + ":" + (m < 10 ? "0" : "") + m;
+        return h > 0 ? h + "H " + m + "M" : m + "M";
     }
 
     // ---------------------------------------------------------------- apply
@@ -447,27 +449,42 @@ PanelWindow {
                     font.letterSpacing: 12 * 0.10
                 }
 
+                // Uptime sits apart on the left of the group; date and time
+                // sit together as one datetime read, the clock bold at the
+                // end. Only the clock carries a colon.
                 Row {
                     anchors.right: parent.right
                     anchors.rightMargin: 14
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
+                    spacing: 24
 
                     Text {
-                        text: "UP " + win.uptimeStr + " · " + SysState.date + " ·"
+                        text: "UP " + win.uptimeStr
                         color: Skin.dim
                         font.family: Skin.fontLabel
                         font.pixelSize: 11
                         font.letterSpacing: 11 * 0.10
                     }
 
-                    Text {
-                        text: SysState.time
-                        color: Skin.text
-                        font.family: Skin.fontLabel
-                        font.bold: true
-                        font.pixelSize: 11
-                        font.letterSpacing: 11 * 0.10
+                    Row {
+                        spacing: 8
+
+                        Text {
+                            text: SysState.date
+                            color: Skin.body
+                            font.family: Skin.fontLabel
+                            font.pixelSize: 11
+                            font.letterSpacing: 11 * 0.10
+                        }
+
+                        Text {
+                            text: SysState.time
+                            color: Skin.text
+                            font.family: Skin.fontLabel
+                            font.bold: true
+                            font.pixelSize: 11
+                            font.letterSpacing: 11 * 0.10
+                        }
                     }
                 }
             }
@@ -1007,7 +1024,9 @@ PanelWindow {
                         SubLabel { text: "PROFILE" }
 
                         // Three cells; return (or a tap on one) cycles /
-                        // picks. The active cell is the gold one.
+                        // picks. The chosen profile is the gold cell -- gold
+                        // marks a persistent pick, pink marks where keyboard
+                        // focus sits (the row border).
                         FocusRow {
                             width: parent.width
                             height: 36
@@ -1345,7 +1364,7 @@ PanelWindow {
         }
     }
 
-    // A focusable row: gold 2px border and window fill while (panel, row)
+    // A focusable row: pink 2px border and window fill while (panel, row)
     // focus sits on it; tap moves focus here and applies.
     component FocusRow: Rectangle {
         property bool active: false
@@ -1354,7 +1373,7 @@ PanelWindow {
 
         color: active ? Skin.window : baseColor
         border.width: active ? 2 : 0
-        border.color: Skin.accent
+        border.color: Skin.snd
 
         TapHandler {
             onTapped: parent.tapped()

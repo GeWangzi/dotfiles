@@ -1,8 +1,10 @@
-// The trainable 8-step meter (turns 15d/17a): equal blocks with a shine
-// along the top edge (inset 0 2px 0 0 rgba(255,255,255,.28)), a hard 2px
-// shadow keyline, and the tick overlay on filled blocks. Clicking a block
-// sets that value; clicking the block that IS the value steps down one, so
-// zero stays reachable by mouse.
+// The trainable 8-step meter (turns 15d/17a). Two dresses, picked by the
+// skin's `meter` variant slot: "flat" (the default) is plain equal blocks
+// separated only by the gap, and "blocks" is the creature costume's chunky
+// original -- shine along the top edge, a hard 2px shadow keyline, and the
+// tick overlay on filled blocks. Clicking a block sets that value; clicking
+// the block that IS the value steps down one, so zero stays reachable by
+// mouse.
 
 import QtQuick
 
@@ -13,6 +15,8 @@ Item {
     property int value: 0
     property color fillColor: Skin.text
     property bool outlined: false
+
+    readonly property bool chunky: Skin.variant("meter", "flat") === "blocks"
 
     signal stepClicked(int n)
 
@@ -33,7 +37,7 @@ Item {
                 width: root.blockWidth
                 height: root.height
                 color: filled ? root.fillColor : Skin.inner
-                border.width: 2
+                border.width: root.chunky ? 2 : 0
                 border.color: Skin.shadow
 
                 // shine
@@ -48,7 +52,8 @@ Item {
 
                 // ticks
                 Repeater {
-                    model: parent.filled ? Math.floor((parent.width - 4) / 4) : 0
+                    model: root.chunky && parent.filled
+                           ? Math.floor((parent.width - 4) / 4) : 0
 
                     Rectangle {
                         required property int index
