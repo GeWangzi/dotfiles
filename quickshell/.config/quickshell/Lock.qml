@@ -113,7 +113,8 @@ WlSessionLock {
 
             // ---------------- background (plain only)
             // The desk's wallpaper (the same file Wallpaper.qml hangs),
-            // blurred, under a light `bg` scrim so the type reads on any
+            // blurred, under a `bg` scrim (0.45; 0.35 left the dim hint faint
+            // over the bright parts of the picture) so the type reads on any
             // picture. The whole stack sits in one cached layer: MultiEffect
             // re-runs its shader on every scene-graph frame, and the caret
             // blinks every second, so without the layer the blur would be
@@ -152,7 +153,7 @@ WlSessionLock {
                 Rectangle {
                     anchors.fill: parent
                     color: Skin.bg
-                    opacity: 0.35
+                    opacity: 0.45
                 }
             }
 
