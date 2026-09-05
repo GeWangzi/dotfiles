@@ -11,6 +11,9 @@ works around. Read it before installing anywhere that is not the same laptop.
 **[INSTALL.md](INSTALL.md)** — the procedure, in order, from `iwctl` to a working
 desktop.
 
+**[docs/RECOVERY.md](docs/RECOVERY.md)** — what to do from a TTY when the desktop
+will not start.
+
 ## Layout
 
 Every top-level directory except `system/` is a stow package mirroring the path

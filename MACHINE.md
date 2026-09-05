@@ -192,7 +192,7 @@ shell, lock screen and wallpaper all die together if they do. After any
 out** — it restarts the shell and greps the new instance's log for errors. If
 it fails, the previous package versions are still in `/var/cache/pacman/pkg/`
 (`sudo pacman -U <cached .pkg.tar.zst>`), and the fallback locker (hyprlock)
-plus the rescue Hyprland config below keep the machine usable meanwhile.
+keeps the machine lockable meanwhile.
 
 The login shell is zsh. `~/.bash_profile` and `~/.bashrc` are deliberately left in
 place and working, so `chsh -s /usr/bin/bash` is a complete escape hatch if the zsh
@@ -202,21 +202,16 @@ path ever breaks.
 `dispatcher: __lua`, and `hyprctl dispatch` calls take the `hl.dsp.foo(...)` form
 there rather than the classic keywords.
 
-`hyprland.conf` is not dead weight and not a historical copy — it is the **rescue
-config**, and Hyprland reads it whenever `hyprland.lua` is absent, which is what
-`restore-lua.sh --conf` arranges from a TTY. Its own header says to keep it minimal
-and not to mirror the Lua config into it, so the two are expected to differ. The
-clearest example: the Lua config binds log out to SUPER+SHIFT+L, while the rescue
-config deliberately keeps the classic unguarded SUPER+M, because its entire job is
-to be a usable way out when the real config will not load.
+`hyprland.conf` is not dead weight and not a historical copy. Hyprland reads it
+whenever `hyprland.lua` is absent, and its only job is to answer one question:
+does the compositor itself still start? Move the Lua config aside from a TTY
+(`mv ~/.config/hypr/hyprland.lua ~/.config/hypr/hyprland.lua.off` — it is a stow
+symlink, so this moves the link and `stow -R hyprland` puts it back) and log in
+again. If a bare session comes up, the fault is in the Lua config or the shell,
+not in Hyprland or the GPU. Keep it minimal; do not mirror the Lua config into it.
 
-```
-~/.config/hypr/restore-lua.sh           restore the pristine Lua config
-~/.config/hypr/restore-lua.sh --conf    disable Lua, fall back to hyprland.conf
-```
-
-`hyprland.lua.original` alongside them is the pristine snapshot that first script
-restores from. It is a snapshot by design and drifts from the live config on purpose.
+Recovery itself is not a rescue desktop. It is a TTY, the network, and Claude Code
+in this repo: see [docs/RECOVERY.md](docs/RECOVERY.md).
 
 ## Shutting down without holding the power button
 

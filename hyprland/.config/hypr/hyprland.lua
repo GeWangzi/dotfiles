@@ -1,10 +1,10 @@
 -- Hyprland config, migrated from hyprland.conf (hyprlang) to Lua for 0.55+.
 -- Wiki: https://wiki.hypr.land/Configuring/Start/
 --
--- RECOVERY: if Hyprland ever fails to start, drop to a TTY (Ctrl+Alt+F2) and run:
---     ~/.config/hypr/restore-lua.sh
--- That restores hyprland.lua.original (pristine, read-only). Renaming or deleting
--- hyprland.lua also works -- Hyprland then falls back to hyprland.conf.
+-- RECOVERY: if Hyprland ever fails to start, drop to a TTY and follow
+-- ~/dotfiles/docs/RECOVERY.md. Moving this file aside (it is a stow symlink)
+-- makes Hyprland fall back to hyprland.conf, which only proves the compositor
+-- starts; the repair happens in this file, from the TTY, with git and claude.
 --
 -- DO NOT set the AQ DRM device-override env var here. Doing so hung Hyprland's
 -- init on 2026-08-08 (watchdog SIGABRT in initServer). Aquamarine already
