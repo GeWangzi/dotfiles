@@ -19,7 +19,6 @@ Files written (all generated -- none of them are tracked in the dotfiles
 repository, and none of them should be edited by hand):
 
     ~/.config/hypr/skin.conf         hyprlang $vars, sourced by hyprlock.conf
-    ~/.config/wofi/style.css         full stylesheet; wofi cannot @import
     ~/.config/gtk-3.0/gtk.css        GTK application theming, via adw-gtk3-dark
     ~/.config/gtk-4.0/gtk.css        the same stylesheet, for libadwaita apps
     ~/.local/state/skins/skin.lua    Lua table, read by hyprland.lua
@@ -31,8 +30,8 @@ repository, and none of them should be edited by hand):
 
 Everything is emitted under the design-token namespace (bg, outer, inner,
 accent, ...). The legacy Ember namespace (crust, base, ember, ...) went away
-with the 2026-08 prune, when its last two consumers -- the wofi rules and
-hyprlock.conf -- were rewritten to token names.
+with the 2026-08 prune, when its last two consumers -- the wofi rules (since
+removed with wofi) and hyprlock.conf -- were rewritten to token names.
 """
 
 from __future__ import annotations
@@ -55,10 +54,10 @@ SKIN_DIR = HOME / ".config" / "skins"
 SKINS_TOML = SKIN_DIR / "skins.toml"
 TEMPLATES = SKIN_DIR / "templates"
 
-# Generated state that has nowhere better to live. The three files consumers
-# read by path (skin.conf, skin.css, wofi's style.css) have to sit in those
-# programs' own config directories, but these two plus the active-skin marker
-# do not, so they go where generated state belongs.
+# Generated state that has nowhere better to live. The files consumers read
+# by path (skin.conf, gtk.css) have to sit in those programs' own config
+# directories, but these plus the active-skin marker do not, so they go where
+# generated state belongs.
 STATE_DIR = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local" / "state")) / "skins"
 ACTIVE_FILE = STATE_DIR / "active"
 
@@ -442,13 +441,6 @@ def render_gtk_app_css(skin: Skin) -> str:
     return render_gtk_css(skin) + "\n".join(block) + rules.read_text()
 
 
-def render_wofi(skin: Skin) -> str:
-    rules = TEMPLATES / "wofi.rules.css"
-    if not rules.exists():
-        die(f"{rules} not found -- is the `skins` stow package installed?")
-    return render_gtk_css(skin) + rules.read_text()
-
-
 def render_lua(skin: Skin) -> str:
     """A Lua table for hyprland.lua. Colours are bare six-digit hex with no
     leading '#', because the only consumer builds Hyprland rgba() strings out
@@ -724,7 +716,6 @@ def render_shell(skin: Skin) -> str:
 
 TARGETS = [
     (HOME / ".config" / "hypr" / "skin.conf", render_hyprlang),
-    (HOME / ".config" / "wofi" / "style.css", render_wofi),
     (HOME / ".config" / "gtk-3.0" / "gtk.css", render_gtk_app_css),
     (HOME / ".config" / "gtk-4.0" / "gtk.css", render_gtk_app_css),
     (HOME / ".config" / "kitty" / "skin.conf", render_kitty),
@@ -821,7 +812,7 @@ def cmd_set(skins: list[Skin], ref: str) -> None:
     # hyprlock reads its config when it starts, so a running session keeps the
     # old lock screen until the next lock. Nothing can be signalled to fix
     # that; say so rather than let it look like a bug.
-    print("      hyprlock picks this up at the next lock; wofi at next launch")
+    print("      hyprlock picks this up at the next lock")
     # starship re-reads its config on every prompt, so the prompt changes
     # immediately.
     print("      the prompt changes now")

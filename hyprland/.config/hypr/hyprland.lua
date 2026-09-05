@@ -80,11 +80,9 @@ hl.monitor({
 -- hyprlang's $vars are just Lua locals now.
 local terminal    = "kitty"
 local fileManager = "nautilus"
--- The application menu is the Quickshell launcher now, bound below. wofi is
--- still installed only because the smoke-test hyprland.conf uses it as its
--- launcher (skinctl keeps rendering its stylesheet for that). Restore
--- `local menu = "wofi --show drun"` and point SUPER + space back at it to
--- undo that.
+-- The application menu is the Quickshell launcher, bound below. wofi, the
+-- previous menu, is gone (2026-09); the smoke-test hyprland.conf starts the
+-- shell on demand for the same launcher.
 
 
 -------------------
@@ -386,10 +384,8 @@ hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + B",      hl.dsp.exec_cmd("firefox"))
 -- The RPG launcher, from the Quickshell shell started above. It opens on the
 -- four favourites and searches every installed .desktop entry as soon as you
--- type, so it replaces what wofi was bound here for.
---
--- Was: hl.dsp.exec_cmd(menu), i.e. `wofi --show drun`. Both the
--- application menu and the SUPER + V clipboard moved into the shell.
+-- type. Both the application menu (once wofi) and the SUPER + V clipboard
+-- live in the shell.
 hl.bind(mainMod .. " + space",  hl.dsp.exec_cmd("qs ipc call launcher toggle"))
 hl.bind(mainMod .. " + F",      hl.dsp.window.fullscreen())
 -- hl.bind(mainMod .. " + V", hl.dsp.window.float({ action = "toggle" }))

@@ -84,14 +84,9 @@ fc-cache -f
 skinctl generate
 ```
 
-There is no `wofi` package any more. Its stylesheet has to have the palette
-inlined rather than imported, so the whole file is generated; the rules live in
-`skins/.config/skins/templates/wofi.rules.css` and `skinctl` writes
-`~/.config/wofi/style.css`.
-
 `fc-cache -f` is not optional, for two reasons. The `fontconfig` package marks
 CozetteVector as a monospaced family, that edit is applied when fonts are
-scanned into the cache, and without it wofi falls back. The `fonts` package
+scanned into the cache, and without it hyprlock falls back. The `fonts` package
 also installs Silkscreen and IBM Plex Mono (Dream Land's Console face, shared
 by shell and terminal), which nothing can see until the cache is rebuilt.
 README's *Theme* section has the details.
@@ -107,8 +102,8 @@ nothing else about the terminal is right until it is fixed.
 
 `skinctl generate` is not optional either. The Quickshell shell reads
 `skin.json`, kitty includes `skin.conf`, the
-fallback hyprlock sources the hyprlang `skin.conf` and wofi reads a generated
-`style.css` — none of which exist until skinctl has run once. See README's
+fallback hyprlock sources the hyprlang `skin.conf` — none of which exist
+until skinctl has run once. See README's
 *Skins* and *The shell* sections.
 
 `stow -t ~ */` also works and picks up everything, including `system/`. That is

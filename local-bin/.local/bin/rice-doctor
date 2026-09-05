@@ -26,7 +26,7 @@ fi
 if fc-list 2>/dev/null | grep -qi cozettevector; then
     ok "CozetteVector installed"
 else
-    warn "CozetteVector not in the font cache -- wofi falls back (fc-cache -f)"
+    warn "CozetteVector not in the font cache -- hyprlock falls back (fc-cache -f)"
 fi
 
 if fc-list 2>/dev/null | grep -qi silkscreen; then

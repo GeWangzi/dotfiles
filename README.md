@@ -97,7 +97,6 @@ not a warning. `skinctl` renders those into every format that needs them:
 |---|---|
 | `~/.config/hypr/skin.conf` | hyprlang vars (tokens + `$cr_*` creature), sourced by `hyprlock.conf` |
 | `~/.config/kitty/skin.conf` | the 16-colour ANSI palette, included by `kitty.conf` |
-| `~/.config/wofi/style.css` | the whole stylesheet — wofi cannot `@import` |
 | `~/.config/gtk-3.0/gtk.css` | GTK application theming, read through `adw-gtk3-dark` |
 | `~/.config/gtk-4.0/gtk.css` | the same stylesheet again, for libadwaita apps |
 | `~/.local/state/skins/skin.lua` | window border colours, read by `hyprland.lua` |
@@ -112,8 +111,7 @@ until `skinctl generate` has run once.**
 
 The shell, Hyprland and running kitties pick a new skin up
 immediately (`skin.json` is watched; kitty gets SIGUSR1). hyprlock reads its
-config when it starts, so the fallback locker changes at the next lock; wofi
-at its next launch.
+config when it starts, so the fallback locker changes at the next lock.
 
 `ball.png` is rendered from `quickshell/.config/quickshell/assets/ball-map.txt`
 when that (gitignored) file exists: a cell-role map extracted from a sprite,
@@ -122,8 +120,8 @@ a fresh clone still locks in style.
 
 Everything is emitted under the design-token names. The legacy Ember
 namespace (`crust`, `base`, `ember`, …) went away with the 2026-08 prune,
-when its last two consumers — the wofi rules template and `hyprlock.conf` —
-were rewritten against the tokens.
+when its last two consumers — the wofi rules template (gone with wofi since)
+and `hyprlock.conf` — were rewritten against the tokens.
 
 ## The shell
 
@@ -209,7 +207,7 @@ prompt and the two zsh surfaces follow the skin as well — see *The terminal*
 below for how, since starship has no include directive and needs a different
 mechanism from every other consumer.
 
-wofi still needs `cozette-ttf`, and it needs the `fontconfig` package with it.
+hyprlock still needs `cozette-ttf`, and it needs the `fontconfig` package with it.
 CozetteVector.ttf declares no `spacing` property, so fontconfig does not
 consider it monospaced; GTK does not check, but kitty asks for a monospaced
 family, does not get one, and silently renders in Noto Sans CJK with a cell
