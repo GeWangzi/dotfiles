@@ -3,6 +3,8 @@
 secrets.env
 *.secrets
 .env
+# Machine/work shell environment, sourced by .zshrc when present.
+zshrc/.config/zsh/local.zsh
 
 # The same rule applies to the system config in system/. These files carry
 # credentials -- a VLESS server UUID, wifi PSKs in plaintext, an RDP host --

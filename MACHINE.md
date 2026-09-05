@@ -196,7 +196,8 @@ keeps the machine lockable meanwhile.
 
 The login shell is zsh. `~/.bash_profile` and `~/.bashrc` are deliberately left in
 place and working, so `chsh -s /usr/bin/bash` is a complete escape hatch if the zsh
-path ever breaks.
+path ever breaks. Machine and work environment (`AWS_REGION`, `OLLAMA_HOST`,
+`PGHOST`) lives in `~/.config/zsh/local.zsh`, gitignored and sourced by `.zshrc`.
 
 **Hyprland's active config is `hyprland.lua`, not `hyprland.conf`.** Binds show
 `dispatcher: __lua`, and `hyprctl dispatch` calls take the `hl.dsp.foo(...)` form

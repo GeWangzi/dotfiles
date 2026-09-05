@@ -20,7 +20,6 @@ export EDITOR="code -w"
 # start as root, and a GUI editor with a root-owned config directory is not a
 # thing to want anyway. vim is in the base install and always works.
 export SUDO_EDITOR="vim"
-export PGHOST="/var/run/postgresql"
 
 # Keep $path (and the $PATH it mirrors) free of duplicates. A login shell
 # runs .zprofile and then this file, and both add ~/.local/bin, so without
@@ -41,8 +40,10 @@ export GDK_SCALE=1.5
 # Also sourced from ~/.zprofile, so a login shell picks it up before this runs.
 [ -f ~/.config/secrets.env ] && source ~/.config/secrets.env
 
-export AWS_REGION=us-west-2
-export OLLAMA_HOST=127.0.0.1:11434
+# Machine and work environment (AWS region, ollama host, postgres socket)
+# lives in ~/.config/zsh/local.zsh, which is gitignored: it belongs to this
+# machine and this job, not to the shell setup.
+[ -f ~/.config/zsh/local.zsh ] && source ~/.config/zsh/local.zsh
 
 export NVM_DIR="$HOME/.nvm"
 # No bash_completion line here -- that script is bash-specific. zsh gets nvm
