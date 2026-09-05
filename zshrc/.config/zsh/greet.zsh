@@ -8,9 +8,11 @@
 # shell survives a `skinctl set`.
 #
 # The art is per-skin by file name -- ~/.config/skins/art/<slug>.txt, drawn in
-# the skin's art colour. No file, no art: the greeting is then just the name
-# and status lines. The art belongs to the skin, not to this file; the braille
-# drawings themselves are the ones from the old notes.txt (git history).
+# the skin's art colour. No file, no art: the greeting is then the name and
+# status lines plus one dim notice naming the missing file, so a skin added to
+# skins.toml without a drawing is visible rather than silently bare. The art
+# belongs to the skin, not to this file; the braille drawings themselves are
+# the ones from the old notes.txt (git history).
 
 () {
     local f=${XDG_STATE_HOME:-$HOME/.local/state}/skins/skin.sh
@@ -26,6 +28,8 @@
         local a=$(<$art) artcol="${e}[38;2;${RPG_C_ART}m" g
         for g in ✦ ✧ ⋆; do a=${a//$g/${e}[38;2;${RPG_C_DIMMEST}m${g}${artcol}}; done
         print -r -- "${artcol}${a}${reset}"
+    else
+        print -r -- "${e}[38;2;${RPG_C_DIMMEST}m(no art: ${art/#$HOME/~})${reset}"
     fi
 
     # The name, with type badges when the skin is a creature.
