@@ -21,3 +21,18 @@ quickshell/.config/quickshell/assets/
 
 # Python bytecode from scripts run in place.
 __pycache__/
+
+# Build output from web-ext (signed and unsigned extension packages)
+web-ext-artifacts/
+
+# Claude Code: the claude package carries only settings.json, CLAUDE.md,
+# commands/, skills/, templates/. Everything else under ~/.claude is state
+# (credentials, history, sessions, caches) and must never be tracked.
+**/settings.local.json
+**/.claude.json
+claude/.claude/*
+!claude/.claude/settings.json
+!claude/.claude/CLAUDE.md
+!claude/.claude/commands/
+!claude/.claude/skills/
+!claude/.claude/templates/

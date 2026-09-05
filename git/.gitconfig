@@ -1,0 +1,13 @@
+[user]
+	email = alex_geforce@hotmail.com
+	name = Alex Ge
+[core]
+	editor = code --wait
+[safe]
+	directory = /home/naidoq/school/cs537/cs537-docker/cs537-projects/p1-WGE28
+[credential "https://github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/usr/bin/gh auth git-credential
