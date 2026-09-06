@@ -377,7 +377,7 @@ PanelWindow {
                         Text {
                             anchors.verticalCenter: monthWord.verticalCenter
                             text: "◀"
-                            color: win.zone === "month" ? Skin.text : Skin.accent
+                            color: win.zone === "month" ? Skin.text : Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
 
@@ -398,7 +398,7 @@ PanelWindow {
                         Text {
                             anchors.verticalCenter: monthWord.verticalCenter
                             text: "▶"
-                            color: win.zone === "month" ? Skin.text : Skin.accent
+                            color: win.zone === "month" ? Skin.text : Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
 
@@ -443,7 +443,7 @@ PanelWindow {
                                     width: 44
                                     horizontalAlignment: Text.AlignHCenter
                                     text: modelData
-                                    color: index > 4 ? Skin.dim : Skin.accent
+                                    color: index > 4 ? Skin.dim : Skin.body
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.1
@@ -627,7 +627,7 @@ PanelWindow {
                                     id: logTab
                                     anchors.centerIn: parent
                                     text: "HISTORY · " + win.dateWord(win.selectedTs)
-                                    color: Skin.accent
+                                    color: Skin.text
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.16
@@ -838,7 +838,7 @@ PanelWindow {
                                         id: clearWord
                                         anchors.centerIn: parent
                                         text: "CLEAR ALL"
-                                        color: Skin.accent
+                                        color: win.zone === "log" ? Skin.text : Skin.body
                                         font.family: Skin.fontLabel
                                         font.pixelSize: 10
                                         font.letterSpacing: 10 * 0.14

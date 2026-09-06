@@ -348,7 +348,7 @@ PanelWindow {
     }
 
     // Mouse path: focus the row, then apply -- one tap does both, and the
-    // gold border follows the pointer the same way it follows the keys.
+    // pink border follows the pointer the same way it follows the keys.
     function tapRow(p, r) {
         pIdx = p;
         rIdx = r;
@@ -500,7 +500,7 @@ PanelWindow {
                     height: panels.colH
                     title: "NETWORK"
                     chipText: SysState.wifiUp ? "WIFI ON" : "WIFI OFF"
-                    chipColor: SysState.wifiUp ? Skin.cmd : Skin.dim
+                    chipColor: SysState.wifiUp ? Skin.accent : Skin.dim
                     onChipTapped: win.tapRow(0, 0)
 
                     Column {
@@ -633,7 +633,7 @@ PanelWindow {
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: win.btAdapter && win.btAdapter.enabled ? "ON" : "OFF"
                                 color: win.btAdapter && win.btAdapter.enabled
-                                    ? Skin.cmd : Skin.dim
+                                    ? Skin.accent : Skin.dim
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
@@ -685,7 +685,7 @@ PanelWindow {
                                            ? Math.round(parent.modelData.battery * 100) + "% · CONN"
                                            : "CONN")
                                         : "PAIRED"
-                                    color: parent.modelData.connected ? Skin.cmd : Skin.dim
+                                    color: parent.modelData.connected ? Skin.accent : Skin.dim
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
                                     font.letterSpacing: 10 * 0.10
@@ -734,7 +734,7 @@ PanelWindow {
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: win.proxyOn ? "ON" : "OFF"
-                                color: win.proxyOn ? Skin.cmd : Skin.dim
+                                color: win.proxyOn ? Skin.accent : Skin.dim
                                 font.family: Skin.fontLabel
                                 font.bold: win.proxyOn
                                 font.pixelSize: 10
@@ -750,7 +750,7 @@ PanelWindow {
                     height: panels.colH
                     title: "AUDIO"
                     chipText: win.micMuted ? "MIC MUTED" : "MIC LIVE"
-                    chipColor: win.micMuted ? Skin.critical : Skin.cmd
+                    chipColor: win.micMuted ? Skin.critical : Skin.accent
                     onChipTapped: win.tapRow(1, win.sinkList.length + 1)
 
                     Column {
@@ -865,7 +865,7 @@ PanelWindow {
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: win.micMuted ? "MUTED" : "LIVE"
-                                color: win.micMuted ? Skin.critical : Skin.cmd
+                                color: win.micMuted ? Skin.critical : Skin.accent
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
                                 font.letterSpacing: 10 * 0.12
@@ -994,7 +994,7 @@ PanelWindow {
 
                                     Text {
                                         text: Math.round(SysState.battery * 100) + "%"
-                                        color: Skin.text
+                                        color: SysState.battery <= 0.2 ? Skin.critical : Skin.text
                                         font.family: Skin.fontLabel
                                         font.bold: true
                                         font.pixelSize: 20

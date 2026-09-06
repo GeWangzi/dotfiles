@@ -2,18 +2,15 @@
 // `shadow` field with a 2px `inner` rule facing the workspace. Cells, left to
 // right:
 //
-//   active workspace (a filled accent block), the other workspaces, the
-//   focused window's title -- then wifi (icon + SSID), volume, battery (the
-//   icon is the meter), and the date + clock cell.
+//   active workspace (a filled snd block), the other workspaces, the
+//   focused window's title -- then do-not-disturb (only while it is on),
+//   wifi (icon + SSID), volume, battery (the icon is the meter), and the
+//   date + clock cell.
 //
-// Status chips (BRN, SUB) stay inline between the halves, only when the
-// condition is real and only on a skin that has chips. The species cell
-// leads on the creature costume. The battery keeps the fixed threshold
-// colours below 20% -- a warning that changes colour with the theme is not
-// a warning.
-//
-// Workspaces returned to the bar with the Console redesign (they left in the
-// HP-strip era); SUPER+number still switches, the cells are the readout.
+// The battery keeps the fixed threshold colours below 20%, and a muted
+// sink turns the volume icon critical -- a warning that changes colour
+// with the theme is not a warning. SUPER+number still switches workspaces;
+// the cells are the readout.
 
 import QtQuick
 import Quickshell
@@ -77,7 +74,7 @@ PanelWindow {
         readonly property int contentY: bar.atBottom ? 2 : 0
         readonly property int contentH: height - 2
 
-        // ---- left: workspaces, title, chips
+        // ---- left: workspaces, title
         Row {
             id: content
             y: parent.contentY
@@ -146,6 +143,27 @@ PanelWindow {
             y: parent.contentY
             height: parent.contentH
 
+            // Do not disturb: one icon, only while it is on. The details
+            // menu's DND row is where it is switched.
+            Row {
+                visible: SysState.dnd
+                height: parent.height
+
+                CellRule {}
+
+                Item {
+                    width: 14 + 24
+                    height: parent.height
+
+                    Icon {
+                        anchors.centerIn: parent
+                        name: "bellOff"
+                        size: 14
+                        color: Skin.dim
+                    }
+                }
+            }
+
             CellRule {}
 
             Row {
@@ -185,7 +203,7 @@ PanelWindow {
                     anchors.verticalCenter: parent.verticalCenter
                     name: "vol"
                     size: 14
-                    color: Skin.dim
+                    color: SysState.muted ? Skin.critical : Skin.dim
                 }
 
                 Text {
