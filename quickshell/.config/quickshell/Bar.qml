@@ -209,16 +209,16 @@ PanelWindow {
 
                 BatteryIcon {
                     anchors.verticalCenter: parent.verticalCenter
-                    fraction: SysState.hp
+                    fraction: SysState.battery
                     color: Skin.dim
-                    fillColor: Skin.hpColor(SysState.hp)
+                    fillColor: Skin.levelColor(SysState.battery)
                 }
 
                 Text {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Math.round(SysState.hp * 100)
+                    text: Math.round(SysState.battery * 100)
                           + (SysState.charging ? " CHG" : "")
-                    color: SysState.hp <= 0.2 ? Skin.critical : Skin.text
+                    color: SysState.battery <= 0.2 ? Skin.critical : Skin.text
                     font.family: Skin.fontLabel
                     font.bold: true
                     font.pixelSize: 10

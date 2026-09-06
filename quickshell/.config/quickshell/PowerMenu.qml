@@ -29,31 +29,31 @@ PanelWindow {
         {
             name: "LOCK", icon: "lock", key: "SUPER + L",
             danger: false, confirm: false,
-            note: Skin.lex("power_note_lock", "Stays awake."),
+            note: "Stays awake.",
             run: ["loginctl", "lock-session"]
         },
         {
             name: "LOG OUT", icon: "logout", key: "SUPER + SHIFT + L",
             danger: false, confirm: true,
-            note: Skin.lex("power_note_logout", "Ends the session. Open apps close."),
+            note: "Ends the session. Open apps close.",
             run: ["hyprctl", "dispatch", "exit"]
         },
         {
             name: "SUSPEND", icon: "moon", key: "CLOSE LID",
             danger: false, confirm: false,
-            note: Skin.lex("power_note_suspend", "Sleeps. Resumes where you left off."),
+            note: "Sleeps. Resumes where you left off.",
             run: ["systemctl", "suspend"]
         },
         {
             name: "RESTART", icon: "reboot", key: "",
             danger: false, confirm: true,
-            note: Skin.lex("power_note_restart", "Reboots. The machine comes right back."),
+            note: "Reboots. The machine comes right back.",
             run: ["systemctl", "reboot"]
         },
         {
             name: "SHUT DOWN", icon: "power", key: "HOLD POWER",
             danger: true, confirm: true,
-            note: Skin.lex("power_note_off", "Full stop."),
+            note: "Full stop.",
             run: ["systemctl", "poweroff"]
         }
     ]
@@ -158,10 +158,7 @@ PanelWindow {
             id: powerFrame
             width: 720
             anchors.centerIn: parent
-            // The costume tabs the menu with the creature's capture device;
-            // plain, it says what it is. Ball is per-creature data, not a
-            // shared word, so this is data-driven rather than a lexicon key.
-            title: Skin.creature ? Skin.ballWord : "POWER"
+            title: "POWER"
 
             padTop: 18
             padSide: 18
@@ -281,15 +278,10 @@ PanelWindow {
                             width: parent.width
                             text: win.confirming
                                 ? (win.confirming.name === "SHUT DOWN"
-                                    ? Skin.phrase("power_confirm_off",
-                                          "Shut down? Unsaved work will be lost.",
-                                          { name: Skin.species })
+                                    ? "Shut down? Unsaved work will be lost."
                                     : win.confirming.name === "RESTART"
-                                    ? Skin.phrase("power_confirm_restart",
-                                          "Restart? The machine comes right back.",
-                                          { name: Skin.species })
-                                    : Skin.lex("power_confirm_logout",
-                                          "Log out? Open apps will close."))
+                                    ? "Restart? The machine comes right back."
+                                    : "Log out? Open apps will close.")
                                 : ""
                             color: Skin.text
                             font.family: Skin.fontBody
@@ -343,24 +335,6 @@ PanelWindow {
                                     onTapped: win.confirming = null
                                 }
                             }
-                        }
-                    }
-
-                    Blink {
-                        anchors.right: parent.right
-                        anchors.rightMargin: 12
-                        anchors.bottom: parent.bottom
-                        anchors.bottomMargin: 8
-                        periodMs: 400
-                        width: confirmAdvance.implicitWidth
-                        height: confirmAdvance.implicitHeight
-
-                        Text {
-                            id: confirmAdvance
-                            text: Skin.glyphMore
-                            color: Skin.critical
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 14
                         }
                     }
                 }

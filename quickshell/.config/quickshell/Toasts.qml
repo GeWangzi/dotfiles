@@ -212,25 +212,6 @@ PanelWindow {
                         }
                     }
 
-                    // The advance/acknowledge marker.
-                    Blink {
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.rightMargin: 12
-                        anchors.bottomMargin: 6
-                        width: mark.implicitWidth
-                        height: mark.implicitHeight
-                        periodMs: toast.modelData.critical ? 400 : 550
-
-                        Text {
-                            id: mark
-                            text: Skin.glyphMore
-                            color: Skin.accent
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 12
-                        }
-                    }
-
                     TapHandler {
                         onTapped: Notifs.acknowledge(toast.modelData.id)
                     }

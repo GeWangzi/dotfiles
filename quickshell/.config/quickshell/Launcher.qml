@@ -343,7 +343,7 @@ PanelWindow {
 
             title: win.mode === "clip" ? "CLIPBOARD"
                  : win.mode === "glyphs" ? "GLYPHS"
-                 : win.listMode ? "SEARCH" : Skin.menuWord
+                 : win.listMode ? "SEARCH" : "LAUNCH"
 
             // ---------------- list mode (typing), and the idle's bare
             // search line
@@ -514,7 +514,7 @@ PanelWindow {
 
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: Skin.emptyWord
+                            text: "EMPTY"
                             color: Skin.text
                             font.family: Skin.fontLabel
                             font.pixelSize: 14
@@ -765,7 +765,7 @@ PanelWindow {
 
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: Skin.emptyWord
+                                    text: "EMPTY"
                                     color: Skin.dim
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 14

@@ -1,21 +1,11 @@
 pragma Singleton
 
-// The machine's vitals, translated once into the creature vocabulary so every
-// surface reads the same object:
-//
-//   battery      -> HP (there is no separate battery indicator anywhere)
-//   power source -> held item (LEFTOVERS on charge, GANLON BERRY on battery)
-//   volume       -> the trainable pair's audio half
-//   wifi         -> the CONNECT move's link state
-//   thermals     -> BRN status condition, and the THERMAL THROTTLE foe
-//   memory       -> the MEM LEAK foe
-//   do not disturb -> SUB, a field effect (dashed chip, never a filled one)
+// The machine's vitals, read once here so every surface shows the same
+// figures: battery, volume, wifi, brightness, do-not-disturb, thermals and
+// memory, and the on-demand CPU/disk/GPU stats for the details menu.
 //
 // Everything here is event-driven or a cheap kernel-file read on a slow
-// timer. No subprocess polling, no network probing: the handoff's PAR chip
-// (latency) was dropped for exactly that reason -- a chip that needs active
-// probing is not worth the wakeups. SLP never renders while the machine is
-// awake, which is the only time this shell is running.
+// timer. No subprocess polling, no network probing.
 
 import QtQuick
 import Quickshell
@@ -26,47 +16,41 @@ import Quickshell.Services.Pipewire
 Singleton {
     id: root
 
-    // ---------------------------------------------------------------- HP
+    // ---------------------------------------------------------------- battery
 
-    readonly property var battery: UPower.displayDevice
+    readonly property var upower: UPower.displayDevice
 
     // Derived from the device's own state rather than UPower.onBattery: the
     // daemon-level flag read stale here (the bar said CHARGING while
     // draining), and state also distinguishes full/pending-charge on the
     // wire, which onBattery cannot.
-    readonly property bool onBattery: battery && battery.ready
-        ? battery.state === UPowerDeviceState.Discharging
-          || battery.state === UPowerDeviceState.PendingDischarge
-          || battery.state === UPowerDeviceState.Empty
+    readonly property bool onBattery: upower && upower.ready
+        ? upower.state === UPowerDeviceState.Discharging
+          || upower.state === UPowerDeviceState.PendingDischarge
+          || upower.state === UPowerDeviceState.Empty
         : UPower.onBattery
-    readonly property bool charging: battery && battery.ready
-        && battery.state === UPowerDeviceState.Charging
+    readonly property bool charging: upower && upower.ready
+        && upower.state === UPowerDeviceState.Charging
 
     // 0.0 - 1.0. UPowerDevice.percentage is already a fraction in quickshell.
-    readonly property real hp: battery && battery.ready
-        ? (battery.percentage > 1 ? battery.percentage / 100 : battery.percentage)
+    readonly property real battery: upower && upower.ready
+        ? (upower.percentage > 1 ? upower.percentage / 100 : upower.percentage)
         : 1
 
     // "68% — 4H 10M" while draining, "82% — CHARGING" only while current is
     // actually flowing in, "100% — FULL" once it stops.
-    readonly property string hpNum: {
-        if (!battery || !battery.ready) return "";
-        const pct = Math.round(root.hp * 100) + "%";
+    readonly property string batteryText: {
+        if (!upower || !upower.ready) return "";
+        const pct = Math.round(root.battery * 100) + "%";
         if (root.charging) return pct + " — CHARGING";
-        if (battery.state === UPowerDeviceState.FullyCharged) return pct + " — FULL";
+        if (upower.state === UPowerDeviceState.FullyCharged) return pct + " — FULL";
         if (!root.onBattery) return pct;
-        const s = battery.timeToEmpty;
+        const s = upower.timeToEmpty;
         if (!s || s <= 0) return pct;
         const h = Math.floor(s / 3600);
         const m = Math.floor((s % 3600) / 60);
         return pct + " — " + h + "H " + (m < 10 ? "0" : "") + m + "M";
     }
-
-    // The held item follows the power source and swaps itself (turn 20a).
-    readonly property string heldItem: onBattery ? Skin.heldBattery : Skin.heldCharge
-    readonly property string heldNote: onBattery
-        ? "RAISES DEFENSE AT QUARTER HP — ON BATTERY"
-        : "RESTORES A LITTLE HP EACH TURN — ON CHARGE"
 
     // ---------------------------------------------------------------- volume
 
@@ -157,11 +141,11 @@ Singleton {
     }
 
     // One handler for the whole singleton -- QML rejects a second
-    // Component.onCompleted on the same object. syncNature's rationale is
+    // Component.onCompleted on the same object. syncProfile's rationale is
     // with the function, below.
     Component.onCompleted: {
         wifiQuery.running = true;
-        syncNature();
+        syncProfile();
     }
 
     // ---------------------------------------------------------------- brightness
@@ -210,23 +194,16 @@ Singleton {
                                  "" + Math.round(step / 8 * brightMax)]);
     }
 
-    // ---------------------------------------------------------------- SUB (do not disturb)
+    // ---------------------------------------------------------------- do not disturb
 
-    // The shell's own notification daemon owns do-not-disturb now (swaync is
-    // retired); SUB is just its dnd flag under the battle vocabulary.
-    readonly property bool sub: Notifs.dnd
+    // The shell's own notification daemon owns do-not-disturb (swaync is
+    // retired); this is its flag.
+    readonly property bool dnd: Notifs.dnd
 
-    // ---------------------------------------------------------------- foes
+    // ---------------------------------------------------------------- memory and thermals
 
-    // The foe is whatever is eating the machine (data-driven, README table).
-    // Two detectable ones, from kernel files on a slow clock:
-    //
-    //   MEM LEAK          available memory under 10%
-    //   THERMAL THROTTLE  package temperature at or past 90C, which is also
-    //                     what raises the BRN condition
-    //
-    // 30s cadence, plain file reads. This is the whole cost of the bar's
-    // in-combat state.
+    // Kernel files on a slow clock: 30s cadence while idle, 5s while the
+    // details menu is open (the stats timer below reloads the same files).
     property int memTotalKb: 0
     property int memAvailKb: 0
     property int tempC: 0
@@ -269,10 +246,8 @@ Singleton {
 
     // ---------------------------------------------------------------- stats on demand
 
-    // CPU and disk figures for the details menu. Only sampled while the
-    // menu is open (`menuWants`). The wallpaper's stat rows were removed at
-    // the user's request (2026-08-19), so nothing here runs on a bare
-    // desktop any more.
+    // CPU, disk and GPU figures for the details menu. Only sampled while
+    // the menu is open (`menuWants`); nothing here runs on a bare desktop.
     property bool menuWants: false
     readonly property bool statsWanted: menuWants
 
@@ -402,25 +377,17 @@ Singleton {
         }
     }
 
-    // Nature is the power profile (user request 2026-08-21): CALM saves
-    // power, HARDY is balanced, MODEST runs hot. Falls back to HARDY when
-    // power-profiles-daemon is not running.
-    readonly property string nature:
-        PowerProfiles.profile === PowerProfile.PowerSaver ? "CALM"
-        : PowerProfiles.profile === PowerProfile.Performance ? "MODEST"
-        : "HARDY"
-
-    // Nature follows the wire: unplugging drops to CALM, plugging back in
-    // returns to HARDY. power-profiles-daemon will not do this on its own --
-    // it holds whatever profile it was last handed -- and TLP used to, until
-    // it was removed on 2026-08-20 (MACHINE.md, "The battery charge limit").
-    // Without this the machine sat in HARDY on battery, which is the one
-    // thing TLP had still been doing for runtime.
+    // The power profile follows the wire: unplugging drops to power saver,
+    // plugging back in returns to balanced. power-profiles-daemon will not
+    // do this on its own -- it holds whatever profile it was last handed --
+    // and TLP used to, until it was removed on 2026-08-20 (MACHINE.md, "The
+    // battery charge limit"). Without this the machine sat in balanced on
+    // battery, which is the one thing TLP had still been doing for runtime.
     //
     // The wire always wins over a pick from the details menu, which is what
     // TLP did and keeps the rule sayable in one line: choose what you like,
     // but changing power source resets it.
-    function syncNature() {
+    function syncProfile() {
         PowerProfiles.profile = root.onBattery
             ? PowerProfile.PowerSaver
             : PowerProfile.Balanced
@@ -431,60 +398,12 @@ Singleton {
     // on battery there is no transition to react to. UPower is often not
     // ready at completion, so the first call can read wrong -- the signal
     // corrects it a moment later.
-    onOnBatteryChanged: syncNature()
+    onOnBatteryChanged: syncProfile()
 
-    // The six stats of the details menu's STATS section, each mapped to the
-    // real figure named in its sub-label.
-    readonly property var statRows: [
-        { label: Skin.lex("hp", "BATTERY"), sub: "BATTERY", val: hpNum,
-          frac: hp, hue: Skin.hpColor(hp) },
-        { label: Skin.lex("stat_attack", "CPU"), sub: "CPU CLOCK",
-          val: (cpuCurMHz / 1000).toFixed(1) + " / " + (cpuMaxMHz / 1000).toFixed(1) + " GHZ",
-          frac: cpuCurMHz / cpuMaxMHz, hue: Skin.cmd },
-        { label: Skin.lex("stat_defense", "TEMPERATURE"), sub: "THERMALS",
-          val: tempC + "°C",
-          frac: Math.max(0, Math.min(1, 1 - tempC / 90)), hue: Skin.net },
-        { label: Skin.lex("stat_spatk", "GPU"), sub: "GPU LOAD",
-          val: gpuPath !== "" ? gpuBusy + "%" : "",
-          frac: gpuPath !== "" ? gpuBusy / 100 : 0, hue: Skin.snd },
-        { label: Skin.lex("stat_spdef", "DISK"), sub: "DISK FREE",
-          val: diskAvailG + " / " + diskSizeG + " GB",
-          frac: diskSizeG > 0 ? diskAvailG / diskSizeG : 0, hue: Skin.txt },
-        { label: Skin.lex("stat_speed", "MEMORY"), sub: "MEMORY FREE",
-          val: (memAvailKb / 1024 / 1024).toFixed(1) + " / "
-               + Math.round(memTotalKb / 1024 / 1024) + " GB",
-          frac: memFreeFraction, hue: Skin.ok }
-    ]
+    // ---------------------------------------------------------------- uptime
 
-    readonly property bool brn: tempC >= 90
-
-    // Null when nothing is attacking, which is almost always.
-    readonly property var foe: {
-        if (root.memFreeFraction < 0.10 && root.memTotalKb > 0)
-            return { name: "MEM LEAK", level: 62,
-                     hp: Math.max(0.05, root.memFreeFraction * 10),
-                     log: "MEM LEAK is still growing!" };
-        if (root.brn)
-            return { name: "THERMAL THROTTLE", level: 48,
-                     hp: Math.max(0.05, Math.min(1, (105 - root.tempC) / 30)),
-                     log: "THERMAL THROTTLE turned up the heat!" };
-        return null;
-    }
-
-    // Status chips, already filtered to what is real. Filled chips only;
-    // SUB is a field effect and surfaces render it dashed, separately.
-    readonly property var chips: {
-        const out = [];
-        if (root.brn) out.push({ label: "BRN", hue: Skin.brn });
-        return out;
-    }
-
-    // ---------------------------------------------------------------- EXP (uptime)
-
-    // EXP is time awake, at the user's request (2026-08-19): /proc/uptime is
-    // read once at startup to pin the boot moment, and the minute clock
-    // drives the bar from there -- no polling. The bar wraps every 24 hours
-    // of uptime, so a full sliver is a day without a reboot.
+    // /proc/uptime is read once at startup to pin the boot moment, and the
+    // minute clock drives the figure from there -- no polling.
     property real bootEpochMs: 0
 
     FileView {
@@ -496,12 +415,6 @@ Singleton {
     readonly property real uptimeSec: bootEpochMs > 0
         ? Math.max(0, (clock.date.getTime() - bootEpochMs) / 1000)
         : 0
-    readonly property real expFrac: (uptimeSec % 86400) / 86400
-
-    // The level rides the same clock: starts at 50, +1 every time the EXP
-    // bar wraps (a full day awake). The per-skin level in skins.toml is dead
-    // (user request 2026-08-21).
-    readonly property int level: 50 + Math.floor(uptimeSec / 86400)
 
     // ---------------------------------------------------------------- clock
 

@@ -645,7 +645,7 @@ PanelWindow {
 
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: Skin.emptyWord
+                                    text: "EMPTY"
                                     color: win.dimmest
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 12

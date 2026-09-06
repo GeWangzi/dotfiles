@@ -433,7 +433,7 @@ PanelWindow {
                 Text {
                     x: 14
                     anchors.verticalCenter: parent.verticalCenter
-                    text: Skin.lex("details_title", "SYSTEM")
+                    text: "SYSTEM"
                     color: Skin.text
                     font.family: Skin.fontLabel
                     font.bold: true
@@ -983,9 +983,9 @@ PanelWindow {
                                     anchors.verticalCenter: parent.verticalCenter
                                     width: 30
                                     height: 16
-                                    fraction: SysState.hp
+                                    fraction: SysState.battery
                                     color: Skin.body
-                                    fillColor: Skin.hpColor(SysState.hp)
+                                    fillColor: Skin.levelColor(SysState.battery)
                                 }
 
                                 Column {
@@ -993,7 +993,7 @@ PanelWindow {
                                     spacing: 2
 
                                     Text {
-                                        text: Math.round(SysState.hp * 100) + "%"
+                                        text: Math.round(SysState.battery * 100) + "%"
                                         color: Skin.text
                                         font.family: Skin.fontLabel
                                         font.bold: true

@@ -32,10 +32,9 @@ PanelWindow {
 
     anchors.bottom: true
     margins.bottom: 64
-    // content + (20px pad + 5px border) each side + 12px of soft shadow;
-    // 8px above and 18px below for the shadow's downward offset.
-    implicitWidth: content.implicitWidth + 74
-    implicitHeight: content.implicitHeight + 60
+    // content + 24px pad + 2px border each side.
+    implicitWidth: content.implicitWidth + 2 * 26
+    implicitHeight: content.implicitHeight + 2 * 18
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
 
@@ -103,18 +102,14 @@ PanelWindow {
 
         // Console panel: 2px rule, one row.
         Rectangle {
-            x: 12
-            y: 8
-            width: parent.width - 24
-            height: parent.height - 26
+            anchors.fill: parent
             color: Skin.bg
             border.width: 2
             border.color: Skin.inner
 
             Row {
                 id: content
-                x: 25
-                y: 17
+                anchors.centerIn: parent
                 spacing: 14
 
                 Icon {
@@ -125,13 +120,14 @@ PanelWindow {
                         ? Skin.critical : Skin.body
                 }
 
-                Meter {
+                // Same geometry as the details menu's meters: 20 steps of
+                // 8px for volume, 8 steps of 13px for brightness, 4px gaps.
+                StepMeter {
                     anchors.verticalCenter: parent.verticalCenter
-                    blocks: osd.mode === "vol" ? 20 : 8
-                    filled: osd.value
-                    blockWidth: osd.mode === "vol" ? 8 : 13
-                    blockHeight: 14
-                    spacing: osd.mode === "vol" ? 2 : 3
+                    steps: osd.mode === "vol" ? 20 : 8
+                    width: steps * (osd.mode === "vol" ? 8 : 13) + (steps - 1) * 4
+                    height: 12
+                    value: osd.value
                     fillColor: Skin.accent
                 }
 
