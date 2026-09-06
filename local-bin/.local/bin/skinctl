@@ -72,7 +72,7 @@ TOKENS = [
     "cmd", "net", "txt", "snd",
 ]
 
-BEHAVIOR = ["glyph", "radius", "blink", "bar", "font_label", "font_body"]
+BEHAVIOR = ["radius", "blink", "bar", "font_label", "font_body"]
 
 def die(msg: str) -> None:
     print(f"skinctl: {msg}", file=sys.stderr)
@@ -404,7 +404,7 @@ def render_kitty(skin: Skin) -> str:
            f"# Skin: {skin.name} -- Console ANSI: tokens for bases, lifts for brights", ""]
     pairs = [
         ("background", t["bg"]), ("foreground", t["body"]),
-        ("cursor", t["accent"]), ("cursor_text_color", t["shadow"]),
+        ("cursor", t["text"]), ("cursor_text_color", t["bg"]),
         ("selection_background", t["inner"]), ("selection_foreground", t["text"]),
         ("url_color", t["net"]),
         ("active_border_color", t["outer"]), ("inactive_border_color", t["inner"]),

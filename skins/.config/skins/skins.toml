@@ -50,14 +50,12 @@ critical = "#ff4a1f"
 # Behaviour defaults. A skin overrides these in its own [skins.behavior]
 # table.
 #
-#   glyph       the launcher's cursor character
 #   radius      corner radius ("0px" is the Console look)
 #   blink       caret blink period
 #   bar         which screen edge the bar sits on
 #   font_label  the label face (small caps labels, figures, titlebars)
 #   font_body   the body face (sentence-case copy)
 [defaults]
-glyph      = ">"
 radius     = "0px"
 blink      = "1s"
 bar        = "top"

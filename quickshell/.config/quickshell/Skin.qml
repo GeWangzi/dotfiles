@@ -118,7 +118,6 @@ Singleton {
     }
 
     // Behaviour tokens.
-    readonly property string glyph:     behavior("glyph", ">")
     readonly property int radius:       parseInt(behavior("radius", "0px")) || 0
 
     // Which screen edge the bar sits on.
