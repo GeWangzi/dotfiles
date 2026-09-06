@@ -1,26 +1,19 @@
 pragma Singleton
 
-// The notification daemon, from turns 25a-25c of the connect/notifications
-// handoff. This singleton IS the org.freedesktop.Notifications owner --
-// instantiating NotificationServer claims the bus name, so swaync must not be
-// running alongside it.
+// The notification daemon. This singleton IS the org.freedesktop.Notifications
+// owner -- instantiating NotificationServer claims the bus name, so swaync
+// must not be running alongside it.
 //
 // Events are plain JS objects, newest first:
 //
-//   { id, tag, headline, body, critical, ts, read, timeout,
-//     target?, resultChip?, resultColor?, subline?, actions? }
+//   { id, tag, headline, body, critical, ts, read, timeout }
 //
 // `presented` is the subset currently toasting (Toasts.qml renders it).
-// While `dnd` is up (the SUB field effect, 25b) nothing presents; events
-// accumulate silently in history and surface unread in the BATTLE LOG.
+// While `dnd` is up nothing presents; events accumulate silently in history
+// and surface unread on the calendar page.
 //
-// Copy rules (non-negotiable, from the handoff): the headline may flavour the
-// event with the machine as actor, but the body line is always the
-// application's own text, verbatim, never invented.
-//
-// push() is the 25k API: the CONNECT surface delivers its outcome cards
-// through the same pipeline -- they are ordinary events with a result chip,
-// not a separate widget.
+// Copy rule: the body line is always the application's own text, verbatim,
+// never invented.
 
 import QtQuick
 import Quickshell
@@ -47,7 +40,7 @@ Singleton {
     }
 
     // App name -> tag chip. The tag picks the chip hue via
-    // Skin.categoryColor and the headline flavour below.
+    // Skin.categoryColor and the headline shape below.
     function tagFor(appName) {
         const n = (appName || "").toLowerCase();
         if (/firefox|chrom|zen|browser|discord|thunderbird|mail|network|nm-|wifi|blueman|transmission|qbittorrent/.test(n))
@@ -89,26 +82,6 @@ Singleton {
         };
         nrefs[ev.id] = n;
         add(ev);
-    }
-
-    // The 25k entry point. o: { tag, target, critical?, chip, chipColor,
-    // line, subline?, actions? } -- actions are [{ label, act() }].
-    function push(o) {
-        add({
-            id: nextId++,
-            tag: o.tag || "NET",
-            target: o.target || "",
-            headline: "",
-            body: o.line || "",
-            critical: !!o.critical,
-            ts: Date.now(),
-            read: false,
-            timeout: o.actions ? 0 : 8000,
-            resultChip: o.chip || "",
-            resultColor: "" + (o.chipColor || Skin.accent),
-            subline: o.subline || "",
-            actions: o.actions || null,
-        });
     }
 
     function add(ev) {

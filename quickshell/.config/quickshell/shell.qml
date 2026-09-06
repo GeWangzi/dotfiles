@@ -78,11 +78,11 @@ ShellRoot {
         id: sessionLock
     }
 
-    // The trainable pair. Volume keys move 5 points on the 5% grid;
+    // The hardware keys. Volume keys move 5 points on the 5% grid;
     // brightness keys move one bar of the 8-step meter (its readout is bars
     // only, so a press always visibly adds or removes one).
     IpcHandler {
-        target: "trainable"
+        target: "keys"
 
         function volup(): void { SysState.nudgeVol(5); }
         function voldown(): void { SysState.nudgeVol(-5); }

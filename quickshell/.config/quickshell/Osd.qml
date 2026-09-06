@@ -39,7 +39,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "rpg-osd"
+    WlrLayershell.namespace: "shell-osd"
 
     Timer {
         interval: 2000

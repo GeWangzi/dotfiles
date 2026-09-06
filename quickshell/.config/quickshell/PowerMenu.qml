@@ -82,7 +82,7 @@ PanelWindow {
 
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    WlrLayershell.namespace: "rpg-power"
+    WlrLayershell.namespace: "shell-power"
 
     onVisibleChanged: {
         if (visible) {

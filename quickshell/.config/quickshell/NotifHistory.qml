@@ -1,7 +1,5 @@
-// Calendar + log history -- the BATTLE LOG page, respecified by the calendar
-// handoff (`Retro RPG launcher concepts (6)/design_handoff_calendar_history`).
-// A month grid on the left, the notifications held on the selected day and the
-// day before it on the right. Opening it marks everything read, the same as
+// Calendar + notification history. A month grid on the left, the
+// notifications from the selected day and the day before it on the right. Opening it marks everything read, the same as
 // the plain history list it replaces.
 //
 // The handoff draws the empty state as a separate 380px panel with no grid at
@@ -42,7 +40,7 @@ PanelWindow {
 
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    WlrLayershell.namespace: "rpg-battlelog"
+    WlrLayershell.namespace: "shell-calendar"
 
     // ---------------- state
     //
@@ -654,7 +652,7 @@ PanelWindow {
 
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    text: "nothing was held on this day"
+                                    text: "Nothing on this day."
                                     color: win.dimmest
                                     font.family: Skin.fontBody
                                     font.pixelSize: 16
@@ -720,7 +718,7 @@ PanelWindow {
                                                 Text {
                                                     id: groupCount
                                                     anchors.right: parent.right
-                                                    text: group.modelData.rows.length + " HELD"
+                                                    text: group.modelData.rows.length + " ENTRIES"
                                                     color: win.dimmest
                                                     font.family: Skin.fontLabel
                                                     font.pixelSize: 10

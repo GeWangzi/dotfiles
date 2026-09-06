@@ -47,7 +47,7 @@ PanelWindow {
 
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
-    WlrLayershell.namespace: "rpg-details"
+    WlrLayershell.namespace: "shell-details"
 
     // ---------------------------------------------------------------- focus
 

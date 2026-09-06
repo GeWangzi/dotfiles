@@ -1,8 +1,7 @@
-// Notification toasts, turns 25a and 25k. Top-right stack, newest first, at
-// most three visible. Each toast is the frame motif in its tight variant
-// (4px window padding, 3px inner panel, 8px drop) with a battle-log line
-// inside. Critical toasts trade the outer border for the red and blink at
-// 0.4s; they never time out.
+// Notification toasts. Top-right stack, newest first, at most three
+// visible. Each toast is the frame motif with a tag chip, the unread count,
+// the headline and the application's own body line inside. Critical toasts
+// trade the border for red and never time out.
 //
 // The window exists only while something is presented, so an idle desktop
 // pays nothing for this surface. No keyboard focus -- a toast is clicked or
@@ -19,18 +18,16 @@ PanelWindow {
 
     anchors.top: true
     anchors.right: true
-    // 24px in the design, measured to the frame edge; the soft shadow
-    // reaches 12px sideways and 18px down (SoftShadow pad 12, offset 6).
-    margins.top: 18
-    margins.right: 12
+    margins.top: 24
+    margins.right: 24
 
-    implicitWidth: 440 + 24
-    implicitHeight: stack.implicitHeight + 6 + 18
+    implicitWidth: 440
+    implicitHeight: stack.implicitHeight
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
 
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.namespace: "rpg-toasts"
+    WlrLayershell.namespace: "shell-toasts"
 
     Column {
         id: stack
@@ -47,9 +44,6 @@ PanelWindow {
                 required property var modelData
                 required property int index
 
-                readonly property bool outcome: modelData.resultChip !== undefined
-                                                && modelData.resultChip !== ""
-
                 width: 440
                 height: panel.height + 2 * frameBorder + stripHeight
                 padTop: 0
@@ -64,9 +58,7 @@ PanelWindow {
                     onTriggered: Notifs.acknowledge(toast.modelData.id)
                 }
 
-                // One flat panel straight inside the frame -- the halo and
-                // the 5px border are the toast's only rings (the spec's
-                // extra inner panel read as border soup at this size).
+                // One flat panel straight inside the frame.
                 Rectangle {
                     id: panel
                     width: 440 - 2 * frameBorder
@@ -78,10 +70,9 @@ PanelWindow {
                         x: 14
                         y: 10
                         width: parent.width - 28
-                        spacing: toast.outcome ? 12 : 5
+                        spacing: 5
 
-                        // Header: tag chip, then the unread counter (25a) or
-                        // the target name (25k).
+                        // Header: tag chip, then the unread counter.
                         Item {
                             width: parent.width
                             height: tagChip.implicitHeight
@@ -93,21 +84,6 @@ PanelWindow {
                             }
 
                             Text {
-                                visible: toast.outcome
-                                anchors.left: tagChip.right
-                                anchors.leftMargin: 10
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: toast.modelData.target || ""
-                                color: Skin.text
-                                elide: Text.ElideRight
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 12
-                                font.letterSpacing: 12 * 0.10
-                            }
-
-                            Text {
-                                visible: !toast.outcome
                                 anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
                                 text: Math.max(1, Notifs.unreadCount - toast.index) + " UNREAD"
@@ -118,25 +94,7 @@ PanelWindow {
                             }
                         }
 
-                        // 25k result chip.
-                        Rectangle {
-                            visible: toast.outcome
-                            implicitWidth: chipText.implicitWidth + 16
-                            implicitHeight: chipText.implicitHeight + 8
-                            color: toast.modelData.resultColor || Skin.accent
-
-                            Text {
-                                id: chipText
-                                anchors.centerIn: parent
-                                text: toast.modelData.resultChip || ""
-                                color: Skin.bg
-                                font.family: Skin.fontLabel
-                                font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.18
-                            }
-                        }
-
-                        // 25a headline. Outcome toasts have none.
+                        // Headline.
                         Text {
                             visible: text !== ""
                             width: parent.width
@@ -158,57 +116,6 @@ PanelWindow {
                             wrapMode: Text.Wrap
                             font.family: Skin.fontBody
                             font.pixelSize: 16
-                        }
-
-                        // 25k dim subline.
-                        Text {
-                            visible: (toast.modelData.subline || "") !== ""
-                            width: parent.width
-                            text: toast.modelData.subline || ""
-                            color: Skin.dim
-                            wrapMode: Text.Wrap
-                            lineHeight: 1.6
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.14
-                        }
-
-                        // 25k action buttons (TRY AGAIN / FORGET).
-                        Row {
-                            visible: !!toast.modelData.actions
-                            spacing: 8
-
-                            Repeater {
-                                model: toast.modelData.actions || []
-
-                                delegate: Rectangle {
-                                    required property var modelData
-
-                                    implicitWidth: actText.implicitWidth + 24
-                                    implicitHeight: actText.implicitHeight + 16
-                                    color: Skin.cell
-                                    border.width: 3
-                                    border.color: Skin.inner
-
-                                    Text {
-                                        id: actText
-                                        anchors.centerIn: parent
-                                        text: parent.modelData.label
-                                        color: Skin.body
-                                        font.family: Skin.fontLabel
-                                        font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.16
-                                    }
-
-                                    TapHandler {
-                                        onTapped: {
-                                            const id = toast.modelData.id;
-                                            parent.modelData.act();
-                                            Notifs.acknowledge(id);
-                                        }
-                                    }
-                                }
-                            }
                         }
                     }
 
