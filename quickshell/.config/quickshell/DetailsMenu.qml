@@ -470,9 +470,6 @@ PanelWindow {
                     width: panels.colW
                     height: panels.colH
                     title: "NETWORK"
-                    chipText: SysState.wifiUp ? "WIFI ON" : "WIFI OFF"
-                    chipColor: SysState.wifiUp ? Skin.accent : Skin.dim
-                    onChipTapped: win.tapRow(0, 0)
 
                     Column {
                         width: parent.width
@@ -532,7 +529,7 @@ PanelWindow {
 
                         Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
-                        SubLabel { text: "SAVED NEARBY · ⏎ CONNECTS" }
+                        SubLabel { text: "SAVED NEARBY" }
 
                         Repeater {
                             model: win.savedNearby
@@ -678,26 +675,14 @@ PanelWindow {
                             onTapped: win.tapRow(0, 2 + win.savedNearby.length
                                                     + win.btDevices.length)
 
-                            Row {
+                            Text {
                                 x: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 8
-
-                                Icon {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    name: "globe"
-                                    size: 13
-                                    color: Skin.body
-                                }
-
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "PROXY · SING-BOX"
-                                    color: Skin.body
-                                    font.family: Skin.fontLabel
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.12
-                                }
+                                text: "PROXY · SING-BOX"
+                                color: Skin.body
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
                             }
 
                             Text {
@@ -720,9 +705,6 @@ PanelWindow {
                     width: panels.colW
                     height: panels.colH
                     title: "AUDIO"
-                    chipText: win.micMuted ? "MIC MUTED" : "MIC LIVE"
-                    chipColor: win.micMuted ? Skin.critical : Skin.accent
-                    onChipTapped: win.tapRow(1, win.sinkList.length + 1)
 
                     Column {
                         width: parent.width
@@ -864,7 +846,7 @@ PanelWindow {
                             Column {
                                 x: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width - 56
+                                width: parent.width - 24
                                 spacing: 3
 
                                 Text {
@@ -888,42 +870,6 @@ PanelWindow {
                                     font.pixelSize: 10
                                 }
                             }
-
-                            // Play/pause state glyph, drawn not typed.
-                            Item {
-                                anchors.right: parent.right
-                                anchors.rightMargin: 14
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: 12
-                                height: 14
-
-                                readonly property bool playing: win.player
-                                    && win.player.playbackState === MprisPlaybackState.Playing
-
-                                Row {
-                                    visible: parent.playing
-                                    anchors.centerIn: parent
-                                    spacing: 4
-                                    Rectangle { width: 3; height: 14; color: Skin.text }
-                                    Rectangle { width: 3; height: 14; color: Skin.text }
-                                }
-
-                                Canvas {
-                                    visible: !parent.playing
-                                    anchors.fill: parent
-                                    onPaint: {
-                                        const c = getContext("2d");
-                                        c.reset();
-                                        c.fillStyle = Skin.dim;
-                                        c.beginPath();
-                                        c.moveTo(1, 0);
-                                        c.lineTo(width, height / 2);
-                                        c.lineTo(1, height);
-                                        c.closePath();
-                                        c.fill();
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -933,9 +879,6 @@ PanelWindow {
                     width: panels.colW
                     height: panels.colH
                     title: "POWER"
-                    chipText: SysState.charging ? "CHARGING"
-                        : SysState.onBattery ? "BATTERY" : "PLUGGED"
-                    chipColor: SysState.charging ? Skin.accent : Skin.dim
 
                     Column {
                         width: parent.width
@@ -984,12 +927,10 @@ PanelWindow {
 
                         Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
-                        SubLabel { text: "PROFILE" }
-
-                        // Three cells; return (or a tap on one) cycles /
-                        // picks. The chosen profile is the gold cell -- gold
-                        // marks a persistent pick, pink marks where keyboard
-                        // focus sits (the row border).
+                        // Power profile: three cells; return (or a tap on
+                        // one) cycles / picks. The chosen profile is the
+                        // gold cell -- gold marks a persistent pick, pink
+                        // marks where keyboard focus sits (the row border).
                         FocusRow {
                             width: parent.width
                             height: 36
@@ -1081,26 +1022,14 @@ PanelWindow {
                             active: win.foc(2, 2)
                             onTapped: win.tapRow(2, 2)
 
-                            Row {
+                            Text {
                                 x: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 8
-
-                                Icon {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    name: "moon"
-                                    size: 13
-                                    color: Skin.body
-                                }
-
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "NIGHT LIGHT"
-                                    color: Skin.body
-                                    font.family: Skin.fontLabel
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.12
-                                }
+                                text: "NIGHT LIGHT"
+                                color: Skin.body
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
                             }
 
                             Text {
@@ -1121,26 +1050,14 @@ PanelWindow {
                             active: win.foc(2, 3)
                             onTapped: win.tapRow(2, 3)
 
-                            Row {
+                            Text {
                                 x: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 8
-
-                                Icon {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    name: "bellOff"
-                                    size: 13
-                                    color: Skin.body
-                                }
-
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "DO NOT DISTURB"
-                                    color: Skin.body
-                                    font.family: Skin.fontLabel
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.12
-                                }
+                                text: "DO NOT DISTURB"
+                                color: Skin.body
+                                font.family: Skin.fontLabel
+                                font.pixelSize: 10
+                                font.letterSpacing: 10 * 0.12
                             }
 
                             Text {
@@ -1258,14 +1175,11 @@ PanelWindow {
 
     // ---------------------------------------------------------------- pieces
 
-    // A bordered panel with a titlebar strip and a state chip on its right.
+    // A bordered panel with a titlebar strip.
     component Panel: Rectangle {
         id: panel
 
         property string title: ""
-        property string chipText: ""
-        property color chipColor: Skin.dim
-        signal chipTapped()
         default property alias content: body.data
 
         color: "transparent"
@@ -1296,21 +1210,6 @@ PanelWindow {
                 font.bold: true
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.12
-            }
-
-            Text {
-                anchors.right: parent.right
-                anchors.rightMargin: 12
-                anchors.verticalCenter: parent.verticalCenter
-                text: panel.chipText
-                color: panel.chipColor
-                font.family: Skin.fontLabel
-                font.pixelSize: 10
-                font.letterSpacing: 10 * 0.12
-
-                TapHandler {
-                    onTapped: panel.chipTapped()
-                }
             }
         }
 

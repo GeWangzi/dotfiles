@@ -351,7 +351,7 @@ PanelWindow {
                 width: calFrame.inner
                 spacing: 16
 
-                // ---- header: month stepper, and where the machine is in the year
+                // ---- header: month stepper
                 Item {
                     width: parent.width
                     height: monthWord.implicitHeight
@@ -404,17 +404,6 @@ PanelWindow {
 
                             TapHandler { onTapped: win.stepMonth(1) }
                         }
-                    }
-
-                    Text {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "WEEK " + win.isoWeek(win.selectedTs)
-                            + " · DAY " + win.dayOfYear(win.selectedTs)
-                        color: win.dimmest
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
                     }
                 }
 
@@ -561,44 +550,6 @@ PanelWindow {
                                 }
                             }
                         }
-
-                        // Legend. topPadding lifts the 6px column gap to the
-                        // design's 14px.
-                        Flow {
-                            width: gridCol.width
-                            topPadding: 8
-                            spacing: 14
-
-                            Repeater {
-                                model: [
-                                    { label: "CMD", hue: Skin.cmd },
-                                    { label: "NET", hue: Skin.net },
-                                    { label: "TXT", hue: Skin.txt },
-                                    { label: "SND", hue: Skin.snd },
-                                    { label: "CRITICAL", hue: Skin.critical },
-                                ]
-
-                                delegate: Row {
-                                    required property var modelData
-                                    spacing: 5
-
-                                    Rectangle {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 4
-                                        height: 4
-                                        color: parent.modelData.hue
-                                    }
-
-                                    Text {
-                                        text: parent.modelData.label
-                                        color: win.dimmest
-                                        font.family: Skin.fontLabel
-                                        font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.1
-                                    }
-                                }
-                            }
-                        }
                     }
 
                     // ---- history for the selected day
@@ -626,7 +577,7 @@ PanelWindow {
                                 Text {
                                     id: logTab
                                     anchors.centerIn: parent
-                                    text: "HISTORY · " + win.dateWord(win.selectedTs)
+                                    text: "HISTORY"
                                     color: Skin.text
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
@@ -845,15 +796,6 @@ PanelWindow {
                                     }
 
                                     TapHandler { onTapped: win.clearShown() }
-                                }
-
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: "DEL"
-                                    color: win.dimmest
-                                    font.family: Skin.fontLabel
-                                    font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.14
                                 }
                             }
                         }

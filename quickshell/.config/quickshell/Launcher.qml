@@ -406,20 +406,6 @@ PanelWindow {
                         font.pixelSize: 10
                         font.letterSpacing: 10 * 0.12
                     }
-
-                    // The plain idle's only furniture: a hint where the
-                    // count sits in list mode.
-                    Text {
-                        visible: win.plainIdle
-                        anchors.right: parent.right
-                        anchors.rightMargin: 14
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: "TYPE TO SEARCH"
-                        color: Skin.dim
-                        font.family: Skin.fontLabel
-                        font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.12
-                    }
                 }
 
                 // Result rows, Console dress: a two-digit index, the name,
