@@ -1,9 +1,7 @@
 // The power menu: five session actions in a row of icon tiles (Console
 // dress), each with its real keybind, and one line under the row saying what
 // the highlighted action does. Confirmation is a red-framed log line with
-// YES / NO -- not a second menu. Plain wording by default; the creature
-// voice comes back through the power_* lexicon keys and the per-creature
-// ball word on the titlebar.
+// YES / NO -- not a second menu.
 //
 // The key hints are this machine's actual binds, not the design's: LOCK is
 // SUPER+L, LOG OUT is SUPER+SHIFT+L (hyprland.lua). RESTART joined the row

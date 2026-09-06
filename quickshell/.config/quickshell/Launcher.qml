@@ -479,7 +479,7 @@ PanelWindow {
                     }
                 }
 
-                // Nothing matched: the creature's empty word (15f).
+                // Nothing matched.
                 Rectangle {
                     visible: win.listMode && win.pageItems.length === 0
                     width: parent.width

@@ -1,10 +1,7 @@
 // The details menu, control-deck form (2026-08-24 redesign): ONE screen,
 // no sections, no drill-in. Three panels -- NETWORK, AUDIO, POWER -- over a
 // vitals band and a key-hint footer. Every row is either a control (return
-// applies it) or a diagnostic; nothing here is decoration. The old
-// section-based game menu survives whole as GameMenu.qml, and the skin's
-// `menu` variant picks between them (shell.qml) -- the creature costume
-// keeps its SUMMARY/STATS/... dress, the plain shell gets this deck.
+// applies it) or a diagnostic; nothing here is decoration.
 //
 // Keys: tab or left/right moves between panels, up/down between rows,
 // return applies, ESC closes. Focus is a (panel, row) pair; each panel
