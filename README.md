@@ -33,11 +33,11 @@ cd ~/dotfiles && stow -t ~ */              # everything
 | `hyprland` | compositor, plus hypridle |
 | `quickshell` | the QML shell — wallpaper, bar, lock screen, launcher, OSD, power menu, details menu, notifications |
 | `hyprlock` | fallback locker, only reached when the shell is not running |
-| `skins` | every palette and creature, and the templates they are rendered through |
+| `skins` | the palette (one skin, DREAM LAND) and the templates it is rendered through |
 | `kitty` `zshrc` | terminal and shell (the starship prompt is rendered by `skinctl` from a template in `skins`) |
 | `chrome` `spotify` | Wayland flags for two stubborn apps |
 | `fontconfig` | one rule, without which kitty refuses the theme's font |
-| `fonts` | Silkscreen (the creature skins' pixel face) and IBM Plex Mono (Dream Land's Console face, also the terminal's), both self-hosted |
+| `fonts` | IBM Plex Mono (the shell's and the terminal's face) and Silkscreen (unused since the costume went; kept self-hosted), both self-hosted |
 | `local-bin` | scripts in `~/.local/bin` |
 | `claude` `git` | Claude Code global instructions and settings; git config and global ignore |
 | `wireplumber` | audio drop-in that protects the tuned mic gain |
@@ -52,56 +52,48 @@ them means git history, not a parked copy; the wallpapers themselves moved to
 
 ## Skins
 
-The desktop's default palette is **DREAM LAND** — the Kirby night-sky field
-with pink chrome and a warm star accent, worn in the **Console dress**
+The desktop's palette is **DREAM LAND** — the Kirby night-sky field with
+pink chrome and a warm star accent, worn in the **Console dress**
 (2026-08-24 redesign): IBM Plex Mono for every face, square corners, 2px
-rules, hard offset shadows, block meters, and stroke icons where a word was
-doing an icon's job. The colours are the flavour; the chrome is the
-terminal's.
+rules, block meters, and stroke icons where a word was doing an icon's job.
+The colours are the flavour; the chrome is the terminal's. The wallpaper
+(Kirby under the stars, `skinctl wallpaper <image>`, gitignored) carries the
+theme; the chrome carries none.
 
-**The shell's native voice is plain.** Every surface's default wording and
-structure is normal — a battery is a battery, processes are processes, the
-lock is a clock and a password field. The RPG dress is a *costume*: one
-`[voices.creature]` preset in the TOML bundling variant picks (the lock
-card, the launcher move bar, the wallpaper battle field, the creature
-summary pane), feature switches (foe plate, chips, LV/EXP, …) and the
-battle lexicon. The three creature skins opt in with `voice = "creature"`;
-dream-land declares nothing and gets the plain shell. One caveat:
-notification headlines are composed when they arrive, so history keeps the
-voice it was written in across skin switches.
-
-It is one of four skins. The other three are **creatures** from the
-creature-shell handoff — a skin plus a `[skins.creature]` block (species,
-level, types, ability, held items, flavour note) that every shell surface
-reads. The handoff invented species names to stay clear of the trademarks;
-this machine swaps in the real ones (gengar, wooper, whimsicott — words in a
-TOML file; the sprite art they imply is personal-use and gitignored, see
-below). The 2026-08 prune cut the roster from eleven — Ember and the six
-remaining RPG-handoff palettes live in git history and on the
-`archive/dream-land-mascot` tag. All of it lives in
-`skins/.config/skins/skins.toml`, the only place any colour is written down:
+It is the only skin. The creature costume — three creature skins, a
+`[voices.creature]` preset, the variant / feature / lexicon machinery and
+the shell components that wore it — was deleted on 2026-09-06; all of it
+lives in git history and on the `archive/dream-land-mascot` tag. What is
+left is one palette in `skins/.config/skins/skins.toml`, the only place any
+colour is written down:
 
 ```bash
-skinctl list            # the four, with the active one marked
-skinctl set gengar      # by slug, or by the number `list` prints
-skinctl next            # cycle
-skinctl lint            # check every skin against the design's colour rules
+skinctl list            # the roster (one entry), with the active one marked
+skinctl set dream-land  # by slug, or by the number `list` prints
+skinctl lint            # check the palette against the colour rules
+skinctl wallpaper x.jpg # swap the desk (and lock) picture
 ```
 
-Each skin defines the same sixteen design tokens (`bg`, `outer`, `inner`,
-`accent`, …) plus three fixed threshold colours that deliberately do *not*
-change with the skin, because a warning that changes colour with the theme is
-not a warning. `skinctl` renders those into every format that needs them:
+The skin defines fifteen design tokens (`bg`, `outer`, `inner`, `accent`,
+…) plus three fixed threshold colours that deliberately do *not* change with
+the skin, because a warning that changes colour with the theme is not a
+warning. **Every token has one purpose**, documented at the top of
+`skins.toml` and mirrored in `Skin.qml`: `snd` is the one focus / selection
+colour, `accent` the caret, filled meters and ON states, `inner` borders
+and empty tracks, `bg` surface fill and chip ink, `critical` error / mute /
+low / danger. A surface that uses a token for anything else is a bug.
+`skinctl` renders those into every format that needs them:
 
 | generated file | for |
 |---|---|
-| `~/.config/hypr/skin.conf` | hyprlang vars (tokens + `$cr_*` creature), sourced by `hyprlock.conf` |
+| `~/.config/hypr/skin.conf` | hyprlang vars, sourced by `hyprlock.conf` |
 | `~/.config/kitty/skin.conf` | the 16-colour ANSI palette, included by `kitty.conf` |
 | `~/.config/gtk-3.0/gtk.css` | GTK application theming, read through `adw-gtk3-dark` |
 | `~/.config/gtk-4.0/gtk.css` | the same stylesheet again, for libadwaita apps |
 | `~/.local/state/skins/skin.lua` | window border colours, read by `hyprland.lua` |
-| `~/.local/state/skins/skin.json` | everything, for the Quickshell surfaces |
-| `~/.local/state/skins/ball.png` | the capture device, recoloured into the active palette |
+| `~/.local/state/skins/skin.json` | tokens, thresholds, behaviour, for the Quickshell surfaces |
+| `~/.local/state/skins/starship.toml` | the prompt, rendered from a template |
+| `~/.local/state/skins/skin.sh` | SGR triplets and the skin's name, for the greeting |
 
 None of those are tracked here and none should be edited by hand; edit the
 TOML and re-run. The state files go under `~/.local/state` rather than next
@@ -113,11 +105,6 @@ The shell, Hyprland and running kitties pick a new skin up
 immediately (`skin.json` is watched; kitty gets SIGUSR1). hyprlock reads its
 config when it starts, so the fallback locker changes at the next lock.
 
-`ball.png` is rendered from `quickshell/.config/quickshell/assets/ball-map.txt`
-when that (gitignored) file exists: a cell-role map extracted from a sprite,
-recoloured per skin. Without it, skinctl falls back to a procedural ball, so
-a fresh clone still locks in style.
-
 Everything is emitted under the design-token names. The legacy Ember
 namespace (`crust`, `base`, `ember`, …) went away with the 2026-08 prune,
 when its last two consumers — the wofi rules template (gone with wofi since)
@@ -128,36 +115,29 @@ and `hyprlock.conf` — were rewritten against the tokens.
 `quickshell/` is a [Quickshell](https://quickshell.org) config — a QML runtime
 that draws its own Wayland layer-shell surfaces. It exists because the rest of
 the desktop's parts are closed widget trees with a CSS skin bolted on: they can
-be recoloured but not restructured, and the RPG design needs new widgets, free
-2D placement and per-element timers. `quickshell` is in `extra`, so it updates
-with everything else.
-
-The desktop **is** the shell now — the creature-shell handoff's conceit is
-that the machine is a creature: battery is HP everywhere (there is no other
-battery indicator), running apps are its moves, hardware is its IVs, and the
-machine is always the actor, never the collector.
+be recoloured but not restructured, and this design needs its own widgets,
+free 2D placement and per-element timers. `quickshell` is in `extra`, so it
+updates with everything else.
 
 | | |
 |---|---|
 | `shell.qml` | entry point, IPC targets, keeps the process resident |
-| `Wallpaper.qml` | the wallpaper — a background per workspace and the clock |
-| `Bar.qml` | 34px HP header — creature, HP bar, chips only when real, wifi/vol, clock |
-| `Lock.qml` | lock screen — **SUPER + L** — WlSessionLock + PAM; clock, battery, password field |
-| `Launcher.qml` | launcher — **SUPER + space** — a search line, typing filters |
-| `CreatureField.qml` `LockCard.qml` `MoveBar.qml` | the creature costume's structural halves — battle field, capture-device lock card, move bar — loaded only when the skin's voice asks |
+| `Wallpaper.qml` | the wallpaper — one picture on the background layer |
+| `Bar.qml` | 32px status bar — workspaces, window title, DND, wifi, volume, battery, clock |
+| `Lock.qml` | lock screen — **SUPER + L** — WlSessionLock + PAM; the wallpaper blurred, clock, password field |
+| `Launcher.qml` | launcher — **SUPER + space** — a search line, typing filters; clipboard (**SUPER + V**) and glyph (**SUPER + G**) list modes |
 | `Osd.qml` | volume/brightness pop-up, hard fade frames |
-| `PowerMenu.qml` | **SUPER + ESC** — LOCK / SUSPEND / LOG OUT / SHUT DOWN, red confirm log line |
-| `DetailsMenu.qml` | **SUPER + D** — SUMMARY / STATS / ABILITIES / ITEMS / MOVES / TM / TRAIN / SESSION |
-| `Apps.qml` `SysState.qml` | singletons: app search + running moves; battery, audio, wifi, brightness, foes |
+| `PowerMenu.qml` | **SUPER + ESC** — LOCK / LOG OUT / SUSPEND / RESTART / SHUT DOWN, red confirm line |
+| `DetailsMenu.qml` | **SUPER + D** — one screen: NETWORK / AUDIO / POWER panels, vitals, key hints |
+| `Apps.qml` `SysState.qml` | singletons: app search + window counts; battery, audio, wifi, brightness, DND, thermals, on-demand stats |
 | `Skin.qml` | singleton reading `skin.json`, live-reloads on `skinctl set` |
 | `Notifs.qml` `Toasts.qml` `NotifHistory.qml` | the notification daemon, its toasts, and the calendar + log page — **SUPER + N**, or a click on the bar clock |
-| `Frame.qml` `HpBar.qml` `Meter.qml` `StepMeter.qml` `Chip.qml` `Blink.qml` `DashedSlot.qml` `WidgetText.qml` | shared parts |
-| `assets/` | **gitignored** — personal-use sprite art (ally sprite, ball map, route backgrounds `bg-1..10.png`); every surface degrades to dashed placeholder slots without it. Not recoverable from this repo: keep the tarball under `~/Backups/` copied somewhere off the machine |
+| `Frame.qml` `StepMeter.qml` `Chip.qml` `Blink.qml` `Icon.qml` `BatteryIcon.qml` | shared parts |
+| `assets/` | **gitignored** — `wallpaper.jpg`, set with `skinctl wallpaper`; without it the desk and the lock are the flat `bg` void |
 
-The wallpaper shows a different route background per workspace (workspace
-`n` maps to `assets/bg-n.png`, named in the ROUTE line under the clock), and
-the EXP bar on the wallpaper and lock screen is uptime, wrapping at 24 hours
-awake.
+One type scale (10 label / 12 emphasis / 16 body, two tracking constants in
+`Skin.qml`), one border width (2px), one focus colour (`snd`), no shadows,
+no animations.
 
 Hyprland starts it with `qs -d` at login; surfaces toggle over IPC
 (`qs ipc call launcher toggle`, `power toggle`, `details toggle`,
@@ -221,12 +201,11 @@ The cursor is stock Adwaita at size 24, set for Hyprland in `hyprland.lua`
 (`XCURSOR_THEME`) and for GTK apps in `gtk-3.0/settings.ini` plus the
 gsettings key.
 
-The `fonts` package adds **Silkscreen**, the creature skins' pixel label
-face, and **IBM Plex Mono**, Dream Land's Console face, both self-hosted.
-Which face a surface uses is the skin's call (`font_label` / `font_body`
-behaviour tokens); the terminal shares IBM Plex Mono — see *The terminal*
-below. Silkscreen is a pixel face and the panel runs at scale 1.5, so only
-even logical sizes land on whole physical pixels — see `fonts/README.md`.
+The `fonts` package adds **IBM Plex Mono**, the shell's Console face, and
+**Silkscreen**, the old pixel face nothing uses since the costume went,
+both self-hosted. Which face a surface uses is the skin's call
+(`font_label` / `font_body` behaviour tokens); the terminal shares IBM Plex
+Mono — see *The terminal* below.
 
 The old palettes (Catppuccin Mocha, the hand-maintained Ember pair) and their
 revert copies were deleted in the 2026-08 simplification; going back to any
@@ -273,14 +252,12 @@ The prompt recolours immediately on `skinctl set`, because starship re-reads
 its config on every prompt.
 
 The greeting survives, rebuilt small as `zshrc/.config/zsh/greet.zsh`: the
-skin's braille art (when it ships one — `skins/art/<slug>.txt`; gengar and
-wooper are rescued from the old notes.txt in git history, dream-land is a
-warp star in a field of ✦ ✧ ⋆ glyphs, which greet.zsh renders dim as
-background scenery), then the skin's name with its type badges, then one dim
-status line:
+skin's braille art (when it ships one — `skins/art/<slug>.txt`; dream-land
+is a warp star in a field of ✦ ✧ ⋆ glyphs, which greet.zsh renders dim as
+background scenery), then the skin's name, then one dim status line:
 
 ```
-▌ GENGAR  GHOST POISON
+▌ DREAM LAND
   naidoq@archlinux · zsh 5.9.2 · up 6h 48m · bat 68%
 ```
 
