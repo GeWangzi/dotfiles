@@ -237,7 +237,6 @@ Still to do by hand, in rough order:
      sudo systemctl enable NetworkManager bluetooth panel-od-off
      sudo systemctl enable power-profiles-daemon battery-charge-limit
      sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
-     sudo systemctl enable docker        # optional
      sudo systemctl enable sing-box      # only after the config below exists
 
      systemctl --user enable hyprpolkitagent hyprsunset

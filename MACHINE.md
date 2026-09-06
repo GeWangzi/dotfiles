@@ -261,10 +261,15 @@ only option, and the journal recovery is unavoidable rather than a mistake.
 Enabled at the system level:
 
 ```
-NetworkManager  bluetooth  docker
+NetworkManager  bluetooth
 sing-box  panel-od-off  power-profiles-daemon  battery-charge-limit
 nvidia-suspend  nvidia-resume  nvidia-hibernate
 ```
+
+`docker.service` is installed but **not** enabled (2026-09-06: it had been,
+and kept a project's MongoDB container up at every boot, published on every
+interface). Start it by hand for a project: `sudo systemctl start docker`,
+then `docker compose up` in the project directory.
 
 Enabled for the user:
 
@@ -276,6 +281,9 @@ hyprpolkitagent  hyprsunset  wireplumber  pipewire-pulse
 `OLLAMA_MODELS=/home/ollama-models`, `ProtectHome=false`) but is **not** enabled;
 it gets started by hand when wanted. The models live outside `$HOME` at
 `/home/ollama-models`, which is why the drop-in has to turn `ProtectHome` off.
+There is also a user unit, `~/.config/systemd/user/ollama.service` (bound to
+the docker bridge address, 5 minute keep-alive), likewise not enabled since
+2026-09-06: `systemctl --user start ollama` when wanted.
 
 ## The battery charge limit
 

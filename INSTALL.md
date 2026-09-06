@@ -161,9 +161,11 @@ Nothing above enables anything. System level:
 sudo systemctl enable NetworkManager bluetooth panel-od-off
 sudo systemctl enable power-profiles-daemon battery-charge-limit
 sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
-sudo systemctl enable docker          # optional
 sudo systemctl enable sing-box        # only after step 7
 ```
+
+docker is installed but stays disabled; `sudo systemctl start docker` for
+the session that needs it.
 
 User level:
 
@@ -172,7 +174,8 @@ systemctl --user enable hyprpolkitagent hyprsunset
 systemctl --user enable wireplumber pipewire-pulse
 ```
 
-`ollama.service` is intentionally left disabled; it is started by hand when needed.
+`ollama.service` (system) and `~/.config/systemd/user/ollama.service` (user)
+are both intentionally left disabled; start one by hand when needed.
 
 ## 7. Carry the secrets across
 
