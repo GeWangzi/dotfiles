@@ -1,16 +1,11 @@
-// The lock screen. Plain by default: the desk's wallpaper, blurred under a
-// light scrim, with the clock and date and a centred password field on top
-// and nothing else (the inset frame, lock glyph, and user/battery footer
-// left on 2026-09-05). The creature costume (skin variant lock = "card")
-// loads LockCard.qml on top of its own framed window -- the recoloured
-// capture device, the creature card, and the four moves that resume on wake,
-// from turn 13a of the creature-shell handoff.
+// The lock screen: the desk's wallpaper, blurred under a scrim, with the
+// clock and date and a centred password field on top and nothing else.
 //
 // This replaced hyprlock (2026-08-19). hyprlock's widget set fought the
 // design -- no blink, pango-over-cmd hacks for every live figure, and an
 // async text pipeline that silently stalled on this config. Here the lock is
-// a normal QML surface: same Skin tokens, same HpBar/Blink components, and
-// SysState keeps updating while locked because it is the same process.
+// a normal QML surface: same Skin tokens, same Blink component, and SysState
+// keeps updating while locked because it is the same process.
 //
 // Security shape: WlSessionLock speaks ext-session-lock-v1 -- the compositor
 // holds the lock, so if this process dies the session STAYS locked (Hyprland
@@ -32,26 +27,10 @@ WlSessionLock {
     property bool wantLocked: false
     locked: wantLocked
 
-    onLockedChanged: {
-        // Live PP figures for the move slots while the card is up. The plain
-        // lock has no move slots, so it does not pay for the polling.
-        Apps.polling = locked && Skin.variant("lock", "plain") === "card";
-    }
-
     surface: WlSessionLockSurface {
         id: surf
 
-        readonly property bool plainLock: Skin.variant("lock", "plain") !== "card"
-
         color: Skin.bg
-
-        // The card costume keeps the 44px window its layout was drawn on.
-        // The plain lock draws no frame; its figures are placed against the
-        // screen, not the frame.
-        readonly property int frameX: 44
-        readonly property int frameY: 44
-        readonly property int frameW: width - 2 * frameX
-        readonly property int frameH: height - 2 * frameY
 
         property string password: ""
         property bool checking: false
@@ -111,7 +90,7 @@ WlSessionLock {
                 event.accepted = true;
             }
 
-            // ---------------- background (plain only)
+            // ---------------- background
             // The desk's wallpaper (the same file Wallpaper.qml hangs),
             // blurred, under a `bg` scrim (0.45; 0.35 left the dim hint faint
             // over the bright parts of the picture) so the type reads on any
@@ -125,7 +104,7 @@ WlSessionLock {
             // this stays hidden and the surface's flat `bg` shows, the same
             // fallback the desk has.
             Item {
-                visible: surf.plainLock && wallArt.status === Image.Ready
+                visible: wallArt.status === Image.Ready
                 anchors.fill: parent
                 layer.enabled: visible
 
@@ -133,9 +112,7 @@ WlSessionLock {
                     id: wallArt
                     visible: false
                     anchors.fill: parent
-                    source: surf.plainLock
-                        ? Quickshell.env("HOME") + "/.config/quickshell/assets/wallpaper.jpg"
-                        : ""
+                    source: Quickshell.env("HOME") + "/.config/quickshell/assets/wallpaper.jpg"
                     fillMode: Image.PreserveAspectCrop
                     smooth: true
                     asynchronous: true
@@ -157,63 +134,20 @@ WlSessionLock {
                 }
             }
 
-            // ---------------- frame (card only)
-            // The shadowed window the card layout was drawn on.
-            SoftShadow {
-                visible: !surf.plainLock
-                x: surf.frameX
-                y: surf.frameY
-                width: surf.frameW
-                height: surf.frameH
-            }
-
-            Rectangle {
-                visible: !surf.plainLock
-                x: surf.frameX
-                y: surf.frameY
-                width: surf.frameW
-                height: surf.frameH
-                color: Skin.window
-                border.width: 5
-                border.color: Skin.outer
-            }
-
-            // Card costume keeps its text tab.
-            Rectangle {
-                visible: !surf.plainLock
-                x: surf.frameX + 22
-                y: surf.frameY - height
-                width: tabText.implicitWidth + 22
-                height: tabText.implicitHeight + 8
-                color: Skin.outer
-
-                Text {
-                    id: tabText
-                    anchors.centerIn: parent
-                    text: Skin.lex("lock_tab", "LOCKED")
-                    color: Skin.window
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 12
-                    font.letterSpacing: 12 * 0.18
-                }
-            }
-
-            // ---------------- clock
-            // Plain: the big centred figure the Console design leads with.
-            // Card: top-left, where the card layout expects it.
+            // ---------------- clock: the big centred figure the design leads with
             Text {
-                x: surf.plainLock ? Math.round((surf.width - implicitWidth) / 2) : 72
-                y: surf.plainLock ? Math.round(surf.height * 0.24) : 70
+                x: Math.round((surf.width - implicitWidth) / 2)
+                y: Math.round(surf.height * 0.24)
                 text: SysState.time
                 color: Skin.text
                 font.family: Skin.fontLabel
-                font.bold: surf.plainLock
-                font.pixelSize: surf.plainLock ? 120 : 54
+                font.bold: true
+                font.pixelSize: 120
             }
 
             Text {
-                x: surf.plainLock ? Math.round((surf.width - implicitWidth) / 2) : 75
-                y: surf.plainLock ? Math.round(surf.height * 0.24) + 158 : 146
+                x: Math.round((surf.width - implicitWidth) / 2)
+                y: Math.round(surf.height * 0.24) + 158
                 text: Qt.formatDateTime(SysState.clock.date, "dddd dd MMMM yyyy").toUpperCase()
                 color: Skin.dim
                 font.family: Skin.fontLabel
@@ -221,36 +155,9 @@ WlSessionLock {
                 font.letterSpacing: 12 * 0.22
             }
 
-            // ---------------- the creature centrepiece (costume only)
-            Loader {
-                anchors.fill: parent
-                active: Skin.variant("lock", "plain") === "card"
-                sourceComponent: LockCard {
-                    frameX: surf.frameX
-                    frameW: surf.frameW
-                }
-            }
-
-            // Card costume keeps the worded prompt; the plain lock's hint
-            // lives under the field.
-            Text {
-                id: promptText
-                visible: !surf.plainLock
-                x: 104
-                y: 632
-                text: surf.checking ? "CHECKING..."
-                                    : Skin.lex("lock_prompt", "TYPE YOUR PASSWORD THEN ENTER")
-                color: Skin.text
-                font.family: Skin.fontLabel
-                font.pixelSize: 12
-                font.letterSpacing: 12 * 0.16
-            }
-
-            // The field is the prompt: it fills as you type, anywhere. The
-            // card variant parks its boxed field bottom right; the plain lock
-            // centres square blocks over a bare rule (Console dress).
+            // The field is the prompt: it fills as you type, anywhere. Square
+            // blocks centred over a bare rule.
             Column {
-                visible: surf.plainLock
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: Math.round(surf.height * 0.60)
                 spacing: 12
@@ -319,50 +226,9 @@ WlSessionLock {
                     text: surf.checking ? "CHECKING..."
                         : surf.fails > 0 && surf.password === ""
                         ? "AUTHENTICATION FAILED — TRY AGAIN"
-                        : Skin.lex("lock_type", "ENTER PASSPHRASE")
+                        : "ENTER PASSPHRASE"
                     color: surf.fails > 0 && surf.password === ""
                         ? Skin.critical : Skin.dim
-                    font.family: Skin.fontLabel
-                    font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.14
-                }
-            }
-
-            // Card costume's boxed field, unchanged.
-            Rectangle {
-                visible: !surf.plainLock
-                x: surf.frameX + surf.frameW - 34 - width
-                y: 620
-                width: 340
-                height: 44
-                color: Skin.cell
-                border.width: 4
-                border.color: surf.fails > 0 && surf.password === ""
-                    ? Skin.critical : Skin.inner
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 6
-                    visible: surf.password !== ""
-
-                    Repeater {
-                        model: Math.min(24, surf.password.length)
-
-                        Rectangle {
-                            width: 8
-                            height: 14
-                            color: surf.checking ? Skin.dim : Skin.accent
-                        }
-                    }
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    visible: surf.password === ""
-                    text: surf.fails > 0
-                        ? "AUTHENTICATION FAILED — TRY AGAIN"
-                        : Skin.lex("lock_type", "TYPE TO UNLOCK")
-                    color: surf.fails > 0 ? Skin.critical : Skin.dim
                     font.family: Skin.fontLabel
                     font.pixelSize: 10
                     font.letterSpacing: 10 * 0.14

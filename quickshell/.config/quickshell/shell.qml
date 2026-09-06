@@ -1,20 +1,15 @@
 // Quickshell entry point.
 //
-// Right now this hosts one surface, the launcher. The toast, status bar and
-// control center from the same design handoff are meant to join it here, which
-// is the point of using a shell runtime rather than four separate programs:
-// one process, one skin, one set of shared components.
+// One process hosts every surface -- wallpaper, bar, launcher, OSD, power
+// and details menus, lock, toasts, calendar -- so they share one skin and one
+// set of components. Each is built once at startup and toggled with `visible`
+// rather than constructed on demand: the surface appears in a single frame
+// instead of after a QML load, and nothing in it polls or animates while it
+// is hidden.
 //
-// The launcher is built once at startup and toggled with `visible` rather than
-// being constructed on demand. That costs a few MB of resident memory and buys
-// two things: the surface appears in a single frame instead of after a QML
-// load, and nothing in it polls or animates while it is hidden.
-//
-// Toggle it from outside with:
+// The IPC targets below are what the Hyprland keybinds call, e.g.
 //
 //     qs ipc call launcher toggle
-//
-// which is what the Hyprland keybind runs.
 
 import QtQuick
 import Quickshell
@@ -155,13 +150,11 @@ ShellRoot {
         onDismissed: root.launcherOpen = false
     }
 
-    // The battle field as the wallpaper, turn 16a. Owns the background
-    // layer; hyprpaper is retired.
+    // The wallpaper. Owns the background layer; hyprpaper is retired.
     Wallpaper {}
 
-    // The 34px HP/PP strip from turn 13b. Always on, event-driven. Its
-    // clock is the pointer's way into the calendar page (SUPER + N is the
-    // keyboard's).
+    // The 32px status bar. Always on, event-driven. Its clock is the
+    // pointer's way into the calendar page (SUPER + N is the keyboard's).
     Bar {
         onClockActivated: root.notifHistoryOpen = true
     }
@@ -176,16 +169,9 @@ ShellRoot {
         onDismissed: root.powerOpen = false
     }
 
-    // The details menu (SUPER + D). The skin's `menu` variant picks the
-    // dress: the plain shell gets the one-screen control deck, the creature
-    // costume keeps turn 17a's section menu (GameMenu.qml) whole.
+    // The details menu (SUPER + D): the one-screen control deck.
     DetailsMenu {
-        visible: root.detailsOpen && Skin.variant("menu", "deck") !== "game"
-        onDismissed: root.detailsOpen = false
-    }
-
-    GameMenu {
-        visible: root.detailsOpen && Skin.variant("menu", "deck") === "game"
+        visible: root.detailsOpen
         onDismissed: root.detailsOpen = false
     }
 

@@ -1,16 +1,6 @@
-// The launcher. Plain by default: with no query it is a bare search line
-// with a blinking cursor, and typing brings the result list (turn 15f's
-// list mode -- a query line and truncating result rows below it). The
-// creature costume (skin variant idle = "moves") loads MoveBar.qml into the
-// idle slot instead: turn 14a's log box and 2x2 command grid with PP.
-//
-// Departures from the design document, all deliberate:
-//
-//   - It floats over the live desktop rather than sitting in a full battle
-//     screen; the field became the wallpaper (turn 16a) and the launcher
-//     kept only the band.
-//   - Every Silkscreen size is rounded up to even, because the face is a
-//     pixel font and this panel runs at scale 1.5. See fonts/README.md.
+// The launcher. With no query it is a bare search line with a blinking
+// cursor, and typing brings the result list (a query line and truncating
+// result rows below it). It floats over the live desktop as one band.
 
 import QtQuick
 import Quickshell
@@ -26,34 +16,31 @@ PanelWindow {
     property int page: 0
     property int selected: 0
 
-    // "apps" is the move bar / search; "clip" and "glyphs" are the list
-    // modes from turn 25d/25e, opened via `qs ipc call launcher clipboard`
-    // and `... glyphs`. In those modes the query line is a filter and the
-    // digits are literal text.
+    // "apps" is the search; "clip" and "glyphs" are the list modes, opened
+    // via `qs ipc call launcher clipboard` and `... glyphs`. In those modes
+    // the query line is a filter and the digits are literal text.
     property string mode: "apps"
     readonly property bool altMode: mode !== "apps"
 
     function openAs(m) {
         if (mode === m) return;
         mode = m;
-        // Re-targeting an already-open launcher (SUPER+V while the move bar
-        // is up) never passes through onVisibleChanged, so reset here too.
+        // Re-targeting an already-open launcher (SUPER+V while the search
+        // line is up) never passes through onVisibleChanged, so reset here too.
         if (visible) {
             query = "";
             page = 0;
             selected = 0;
-            Apps.polling = mode === "apps";
             if (mode === "clip") clipQuery.running = true;
         }
     }
 
     readonly property bool listMode: mode === "apps" && query !== ""
 
-    // The plain idle: no query and no move-bar costume. The launcher shows
-    // just the search line; selection and Enter are inert until typing
-    // starts, because there is nothing on screen to select.
+    // Idle: no query. The launcher shows just the search line; selection
+    // and Enter are inert until typing starts, because there is nothing on
+    // screen to select.
     readonly property bool plainIdle: mode === "apps" && query === ""
-        && Skin.variant("idle", "plain") !== "moves"
 
     readonly property int perPage: listMode ? 6 : 4
     readonly property var results: Apps.search(query)
@@ -213,8 +200,6 @@ PanelWindow {
     WlrLayershell.namespace: "rpg-launcher"
 
     onVisibleChanged: {
-        // Sampling the process table is gated on the launcher being on screen.
-        Apps.polling = visible && mode === "apps";
         if (visible) {
             query = "";
             page = 0;
@@ -360,22 +345,8 @@ PanelWindow {
                  : win.mode === "glyphs" ? "GLYPHS"
                  : win.listMode ? "SEARCH" : Skin.menuWord
 
-            // ---------------- move bar (no query; costume only)
-            Loader {
-                // Constructed only under the creature costume. The height
-                // clamp matters: Frame sizes by childrenRect, and an inactive
-                // Loader still reports its last size without it.
-                active: !win.listMode && !win.altMode
-                        && Skin.variant("idle", "plain") === "moves"
-                width: parent.width
-                height: active && item ? item.implicitHeight : 0
-                sourceComponent: MoveBar {
-                    win: win
-                }
-            }
-
-            // ---------------- list mode (typing), and the plain idle's
-            // bare search line
+            // ---------------- list mode (typing), and the idle's bare
+            // search line
             Column {
                 visible: win.listMode || win.plainIdle
                 width: parent.width

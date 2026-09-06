@@ -125,17 +125,6 @@ PanelWindow {
                 }
             }
 
-            // Species cell: costume only, the machine leads with its name.
-            Text {
-                visible: Skin.has("species")
-                anchors.verticalCenter: parent.verticalCenter
-                leftPadding: 12
-                text: Skin.species
-                color: Skin.text
-                font.family: Skin.fontLabel
-                font.pixelSize: 12
-            }
-
             // Focused window title.
             Text {
                 anchors.verticalCenter: parent.verticalCenter
@@ -147,29 +136,6 @@ PanelWindow {
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
                 font.letterSpacing: 10 * 0.06
-            }
-
-            // Status conditions: filled chips, only when real (turn 19c),
-            // and only on a skin that has chips at all.
-            Repeater {
-                model: Skin.has("chips") ? SysState.chips : []
-
-                Chip {
-                    required property var modelData
-                    anchors.verticalCenter: parent.verticalCenter
-                    label: modelData.label
-                    hue: modelData.hue
-                }
-            }
-
-            // SUB is a field effect the machine raised itself, so it is a
-            // dashed outline, never a filled chip (turn 20).
-            Chip {
-                visible: SysState.sub && Skin.has("chips")
-                anchors.verticalCenter: parent.verticalCenter
-                label: "SUB"
-                hue: Skin.accent
-                fieldEffect: true
             }
         }
 

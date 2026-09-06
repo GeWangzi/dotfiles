@@ -3,11 +3,9 @@
 //
 //     border: 2px solid <inner>;
 //     background: <bg>;
-//     box-shadow: 8px 8px 0 <shadow>;   (SoftShadow.qml, hard offset)
 //
 // plus a titlebar STRIP inside the top edge -- <cell> fill, a 2px rule under
-// it -- where the old dress hung an overhanging tab. The 5px pixel frame and
-// the soft shadows it replaced live in git history.
+// it. No shadow (hard shadows went 2026-08-25, soft ones before that).
 
 import QtQuick
 
@@ -36,10 +34,6 @@ Item {
     implicitWidth: body.childrenRect.width + 2 * (frameBorder + padSide)
     implicitHeight: body.childrenRect.height + 2 * frameBorder + stripHeight
                     + padTop + padBottom
-
-    SoftShadow {
-        anchors.fill: parent
-    }
 
     Rectangle {
         anchors.fill: parent

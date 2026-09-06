@@ -101,7 +101,7 @@ PanelWindow {
         anchors.fill: parent
         opacity: osd.opacities[Math.min(osd.frame, osd.opacities.length - 1)]
 
-        // Console panel: hard offset shadow, 2px rule, one row.
+        // Console panel: 2px rule, one row.
         Rectangle {
             x: 12
             y: 8
@@ -110,11 +110,6 @@ PanelWindow {
             color: Skin.bg
             border.width: 2
             border.color: Skin.inner
-
-            SoftShadow {
-                z: -1
-                anchors.fill: parent
-            }
 
             Row {
                 id: content

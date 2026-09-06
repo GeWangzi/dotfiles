@@ -20,7 +20,7 @@
 //
 // Root actions (proxy toggle) dismiss the menu before exec: polkit's auth
 // dialog cannot stack above the Overlay layer, so it would open invisibly
-// behind this surface. Same trap as the timezone note in GameMenu.qml.
+// behind this surface.
 
 import QtQuick
 import Quickshell
@@ -403,14 +403,6 @@ PanelWindow {
         }
 
         // ------------------------------------------------------------ frame
-
-        SoftShadow {
-            x: deck.x
-            y: deck.y
-            width: deck.width
-            height: deck.height
-            offsetY: 10
-        }
 
         Rectangle {
             id: deck
