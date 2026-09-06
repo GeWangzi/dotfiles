@@ -16,9 +16,9 @@ local-bin/.local/bin/connectvm
 # Backups written by system/install.sh, in case anyone runs it from a checkout.
 *.bak-*
 
-# Copyrighted sprite art for personal theming only -- never committed. The
-# creature-shell surfaces fall back to dashed placeholder slots when these
-# files are absent, so a fresh clone still works.
+# Personal wallpaper (assets/wallpaper.jpg, set with `skinctl wallpaper`) --
+# never committed. The desk and the lock fall back to the flat `bg` void
+# when it is absent, so a fresh clone still works.
 quickshell/.config/quickshell/assets/
 
 # Python bytecode from scripts run in place.

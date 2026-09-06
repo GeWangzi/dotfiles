@@ -1,59 +1,43 @@
 # Skins -- the single source every themed surface is generated from.
 #
-# Before this file existed the palette was maintained as four hand-synced
-# copies, and the header comment in each one said so: "Change a value here and
-# change it there too -- there is no single source the four formats can
-# share." That was tolerable for one palette and not for several, so `skinctl`
-# renders every format from the tokens below.
+# `skinctl` renders the tokens below into every format that consumes them
+# (Hyprland, hyprlock, kitty, GTK, starship, the greeting, and skin.json for
+# the shell). Nothing downstream carries a colour of its own; a QML file
+# with a hex in it is a bug. Edit here, then `skinctl generate` (or `skinctl
+# set <slug>`), and `skinctl lint` checks the rules at the bottom.
 #
-# The token names come from the Retro RPG launcher design handoff. Every
-# surface in that design reads the same sixteen colours, so the same sixteen
-# are all this file defines. Do not add a token here without also teaching
-# skinctl what to do with it.
+# The fifteen tokens, and what each is FOR. The purpose is the contract:
+# every surface uses a token for its listed job and nothing else, so the
+# same colour means the same thing everywhere.
 #
-#   bg       desktop / the void behind the frame
-#   shadow   outer 5px halo and hard drop shadow; darker than everything else
-#   window   window fill behind the grid
-#   outer    frame rule, title tab fill, big numerals
-#   inner    cell and panel rules, dividers, EMPTY METER BLOCKS
-#   cell     cell and inset fill
-#   strip    detail strip / secondary panel fill
-#   text     primary text
-#   body     body copy
-#   dim      tags, key hints, inactive
-#   accent   cursor glyph, active selector, filled meters
-#   outline  selection outline around the highlighted cell
+#   bg       surface fill: the void behind the desk, the lock scrim, every
+#            framed panel
+#   shadow   the darkest strip -- the bar's own fill
+#   window   the focused-row fill under a snd focus ring
+#   outer    the frame accent: kitty's active border and tab
+#   inner    borders, dividers, rules, and the EMPTY METER TRACK
+#   cell     rows, panels, titlebar strips
+#   strip    a second panel fill (kitty's inactive tab, GTK header bars)
+#   text     primary text, figures
+#   body     body copy, default icon colour
+#   dim      muted labels, key hints, inactive
+#   accent   the caret, FILLED METERS, ON-state chips, toggle-ON text
 #   cmd      category hue -- Terminal
 #   net      category hue -- Browser
 #   txt      category hue -- Editor
-#   snd      category hue -- Music
+#   snd      category hue -- Music, AND the one focus / selection colour
 #
-# The one hard constraint, from the handoff: `inner` is the empty-meter track,
-# so it must stay clearly darker than every colour that fills a meter (accent,
-# outer, text and the four category hues) or a half-full bar stops reading as
-# half full. `skinctl lint` checks this.
+# Rules `skinctl lint` checks: `inner` is the empty-meter track, so it must
+# stay clearly darker than every colour that fills a meter (accent, outer,
+# text and the four category hues) or a half-full bar stops reading as half
+# full; and `shadow` must not be lighter than `bg`.
 #
 # Order matters. The launcher binds number keys to skins by position, so the
 # nth entry below is key n, and the first entry is the default when no skin
-# has been chosen. DREAM LAND is first: it is the machine's daily palette.
-# The 2026-08 prune cut the roster from eleven skins to these four; the old
-# ones (ember included) live in git history and on the archive/dream-land-mascot
-# tag if they are ever wanted back.
-#
-# Beyond colours, a skin can change what the shell SAYS and SHOWS:
-#
-#   [skins.features]   boolean switches for shell elements (Skin.has gates)
-#   [skins.variants]   which implementation fills a slot -- lock, idle,
-#                      field, summary; unknown names degrade to plain
-#   [skins.lexicon]    wording overrides; the QML call sites' fallbacks are
-#                      the plain voice, and {name}/{app} placeholders are
-#                      filled by Skin.phrase
-#
-# The shell's native voice is PLAIN. A [voices.<name>] table bundles all
-# three of the above into a costume a skin opts into with `voice = "<name>"`;
-# the merge order is the global [features] table, then the voice, then the
-# skin's own tables, later layers winning per key. Today there is one voice:
-# the creature costume the three creature skins wear.
+# has been chosen. There is one skin today: DREAM LAND, the machine's daily
+# palette. The 2026-08 prune cut the roster from eleven to four, and the
+# 2026-09-06 costume removal cut the three creature skins; all of them live
+# in git history and on the archive/dream-land-mascot tag.
 
 # Battery and peripheral health only. These are deliberately skin-independent:
 # a warning that changes colour with the theme is not a warning. The POWER OFF
@@ -63,131 +47,30 @@ ok       = "#3ddc84"
 warn     = "#ffc53d"
 critical = "#ff4a1f"
 
-# Status-condition chip hues, also skin-independent (creature-shell handoff):
-# SLP is suspend, BRN is thermal throttling, PAR is latency/packet loss.
-slp      = "#7cb8ff"
-brn      = "#ff7a3c"
-par      = "#ffd36b"
-
 # Behaviour defaults. A skin overrides these in its own [skins.behavior]
 # table.
+#
+#   glyph       the launcher's cursor character
+#   radius      corner radius ("0px" is the Console look)
+#   blink       caret blink period
+#   bar         which screen edge the bar sits on
+#   font_label  the label face (small caps labels, figures, titlebars)
+#   font_body   the body face (sentence-case copy)
 [defaults]
-glyph      = "▶"
-glyph_more = "▼"
+glyph      = ">"
 radius     = "0px"
 blink      = "1s"
-shine      = "none"
-menu_word  = "LAUNCH"
-empty_word = "EMPTY"
 bar        = "top"
-font_label = "Silkscreen"
-font_body  = "DejaVu Sans Mono"
-
-# The plain shell's feature switches: furniture only the creature costume
-# turns on. Merge order per skin: this table, then the skin's voice, then the
-# skin's own [skins.features], later layers winning per key. A key absent
-# everywhere defaults ON in the QML (Skin.has), which is what real content --
-# the menu sections -- relies on.
-[features]
-foe      = false
-chips    = false
-exp      = false
-lv       = false
-types    = false
-ally     = false
-caught   = false
-held     = false
-portrait = false
-pp       = false
-nature   = false
-species  = false
-route    = false
-
-# ---------------------------------------------------------------------------
-# The creature costume. The shell's native voice is plain: plain wording is
-# hardcoded at every lex()/phrase() call site, and every variant slot's
-# default is its plain implementation. A skin that sets `voice = "creature"`
-# gets all of this -- the RPG structure (variants), the battle furniture
-# (features) and the battle vocabulary (lexicon) -- and may still override
-# any single key in its own tables.
-[voices.creature.variants]
-lock    = "card"
-idle    = "moves"
-field   = "creature"
-summary = "creature"
-menu    = "game"
-meter   = "blocks"
-
-[voices.creature.features]
-foe      = true
-chips    = true
-exp      = true
-lv       = true
-types    = true
-ally     = true
-caught   = true
-held     = true
-portrait = true
-pp       = true
-nature   = true
-species  = true
-route    = true
-
-[voices.creature.lexicon]
-sec_summary   = "SUMMARY"
-sec_stats     = "STATS"
-sec_abilities = "ABILITIES"
-sec_items     = "ITEMS"
-sec_moves     = "MOVES"
-sec_tm        = "TM"
-sec_train     = "TRAIN"
-sec_session   = "SESSION"
-keys_armed    = "KEYS ARMED — ESC RELEASES"
-hp            = "HP"
-stat_attack   = "ATTACK"
-stat_defense  = "DEFENSE"
-stat_spatk    = "SP. ATK"
-stat_spdef    = "SP. DEF"
-stat_speed    = "SPEED"
-nature_saver  = "CALM"
-nature_balanced = "HARDY"
-nature_performance = "MODEST"
-perf_performance = "MEGA"
-perf_saver_note       = "Fans quiet. Clocks capped. HP drains slowest."
-perf_performance_note = "All cores unlocked. Fans loud, HP drains faster."
-items_empty   = "NO DEVICE HELD"
-items_off     = "RADIO OFF — NOTHING HELD"
-tm_note       = "INSTALLED — TEACHABLE, NOT RUNNING"
-session_note  = "Restart and shut down ask first — the capture device holds the confirmation."
-osd_vol_min   = "THROAT CHOP"
-osd_vol_max   = "BOOMBURST"
-osd_bright_min = "BLACK HOLE ECLIPSE"
-osd_bright_max = "LIGHT THAT BURNS THE SKY"
-notif_net     = "{name} TOOK DAMAGE FROM {app}!"
-notif_snd     = "{name} HEARD A CALL!"
-notif_plain   = "{name} FELT SOMETHING!"
-power_header  = "RETURN {name} TO THE DEVICE"
-power_note_lock    = "Stays awake. Moves keep their PP."
-power_note_suspend = "Sleeps. HP holds where it is."
-power_note_logout  = "Ends the session. Moves are cleared."
-power_note_off     = "Full stop. Everything is released."
-power_confirm_off     = "Shut down {name}? Everything running is released."
-power_confirm_restart = "Restart {name}? Everything is released, then it comes back."
-power_confirm_logout  = "End the session? Every move loses its PP."
-lock_tab      = "RELEASE"
-lock_prompt   = "PRESS ANY KEY TO CONTINUE"
-lock_type     = "TYPE TO RELEASE"
+font_label = "IBM Plex Mono"
+font_body  = "IBM Plex Mono"
 
 
 # ---------------------------------------------------------------------------
 # DREAM LAND -- the default. The Kirby night-sky palette under the Console
-# dress (2026-08-24 redesign, user pick from four drafted directions): IBM
-# Plex Mono everywhere, square corners, 2px rules, hard offset shadows, block
-# meters, stroke icons -- and the plain shell's surfaces themselves wear that
-# dress natively now. Default wording, bar on the top edge. The colours are
-# the flavour; the chrome is the terminal's. It declares no voice, so it gets
-# the shell's native plain surfaces; the pixel look and the battle framing
-# stayed with the creature skins.
+# dress (2026-08-24 redesign): IBM Plex Mono everywhere, square corners, 2px
+# rules, stroke icons. The colours are the flavour; the chrome is the
+# terminal's.
+
 [[skins]]
 slug    = "dream-land"
 name    = "DREAM LAND"
@@ -202,159 +85,7 @@ text    = "#f4eaff"
 body    = "#cbb6f0"
 dim     = "#8a76c4"
 accent  = "#ffcf7a"
-outline = "#ff5fa2"
 cmd     = "#7de3c8"
 net     = "#6aa8ff"
 txt     = "#ffb26b"
 snd     = "#ff86d0"
-
-[skins.behavior]
-radius     = "0px"
-glyph      = ">"
-font_label = "IBM Plex Mono"
-font_body  = "IBM Plex Mono"
-
-
-# ---------------------------------------------------------------------------
-# The three creature profiles from the creature-shell handoff (Aug 2026).
-# A creature is a skin plus a [skins.creature] table: the palette is the
-# creature's dark-field palette, and the creature block carries everything
-# the shell surfaces print about the machine-as-creature (species, level,
-# types, ability, held items, flavour note). The four category hues are
-# skin-independent in this handoff (CMD/NET/TXT/SND are fixed), so all
-# three creatures share them.
-#
-# The handoff shipped invented species (GRIMLING / PUDDLIN / FLOSSET) to
-# stay clear of the trademarks; the user swapped in the real names for this
-# personal machine (2026-08-19). The palettes are unchanged -- GENGAR here
-# is still the handoff's shade-and-venom palette.
-#
-# Held items follow the power source (handoff turn 20a): LEFTOVERS on
-# charge, GANLON BERRY on battery. The shell picks which one to show; both
-# names live here so the choice is data, not code.
-
-[[skins]]
-slug    = "gengar"
-voice   = "creature"
-name    = "GENGAR"
-bg      = "#0a0713"
-shadow  = "#04020a"
-window  = "#241a3c"
-outer   = "#e4d6ff"
-inner   = "#4a2e6e"
-cell    = "#1a1230"
-strip   = "#130d22"
-text    = "#f4edff"
-body    = "#d2c2ee"
-dim     = "#9a83c2"
-accent  = "#c86bff"
-outline = "#e4d6ff"
-cmd     = "#7ef0c8"
-net     = "#7cb8ff"
-txt     = "#ffd36b"
-snd     = "#ff86d0"
-
-[skins.behavior]
-blink      = "0.55s"
-menu_word  = "FIGHT"
-empty_word = "NO DATA"
-
-[skins.creature]
-species      = "GENGAR"
-level        = 47
-type1        = "GHOST"
-type2       = "POISON"
-type1_hue    = "#9c6bff"
-type2_hue    = "#d45ab8"
-sig          = "SHADOW BALL"
-ability      = "LEVITATE"
-nature       = "IMPISH"
-ball         = "POKE BALL"
-held_charge  = "LEFTOVERS"
-held_battery = "GANLON BERRY"
-# The real Red/Blue dex entry, at the user's request (2026-08-21).
-note         = "Under a full moon, this POKEMON likes to mimic the shadows of people and laugh at their fright."
-
-[[skins]]
-slug    = "wooper"
-voice   = "creature"
-name    = "WOOPER"
-bg      = "#05101a"
-shadow  = "#020810"
-window  = "#123049"
-outer   = "#cfe9ff"
-inner   = "#1f5a80"
-cell    = "#0c2233"
-strip   = "#071824"
-text    = "#eaf7ff"
-body    = "#b6d8ee"
-dim     = "#6f9cba"
-accent  = "#ff9a3c"
-outline = "#cfe9ff"
-cmd     = "#7ef0c8"
-net     = "#7cb8ff"
-txt     = "#ffd36b"
-snd     = "#ff86d0"
-
-[skins.behavior]
-blink      = "1s"
-menu_word  = "FIGHT"
-empty_word = "NO DATA"
-
-[skins.creature]
-species      = "WOOPER"
-level        = 12
-type1        = "WATER"
-type2        = "GROUND"
-type1_hue    = "#4ec8ff"
-type2_hue    = "#c9a06a"
-sig          = "MUD SHOT"
-ability      = "WATER ABSORB"
-nature       = "JOLLY"
-ball         = "NET BALL"
-held_charge  = "LEFTOVERS"
-held_battery = "GANLON BERRY"
-# The real Silver dex entry, at the user's request (2026-08-21).
-note         = "A slippery film covers its body, making it hard to grasp. It burrows into soft mud to sleep."
-
-[[skins]]
-slug    = "whimsicott"
-voice   = "creature"
-name    = "WHIMSICOTT"
-bg      = "#0d1410"
-shadow  = "#050a07"
-window  = "#1e3226"
-outer   = "#eaf7d8"
-inner   = "#3d6b48"
-cell    = "#142519"
-strip   = "#0d1a12"
-text    = "#f4fbe9"
-body    = "#cbe2c2"
-dim     = "#85a88f"
-accent  = "#ff8fd0"
-outline = "#eaf7d8"
-cmd     = "#7ef0c8"
-net     = "#7cb8ff"
-txt     = "#ffd36b"
-snd     = "#ff86d0"
-
-[skins.behavior]
-blink      = "1.4s"
-menu_word  = "FIGHT"
-empty_word = "NO DATA"
-
-[skins.creature]
-species      = "WHIMSICOTT"
-type1        = "GRASS"
-level        = 33
-type2        = "FAIRY"
-type1_hue    = "#8fe06a"
-type2_hue    = "#ff9ad5"
-sig          = "COTTON GUARD"
-ability      = "PRANKSTER"
-nature       = "CALM"
-ball         = "LOVE BALL"
-held_charge  = "LEFTOVERS"
-held_battery = "GANLON BERRY"
-# The real Black dex entry, at the user's request (2026-08-21).
-note         = "Riding whirlwinds, they appear. These POKEMON sneak into homes and cause all sorts of mischief."

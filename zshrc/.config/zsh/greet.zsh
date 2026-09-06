@@ -1,4 +1,4 @@
-# greet.zsh -- the shell greeting, rebuilt small after the creature era.
+# greet.zsh -- the shell greeting: the skin's art, its name, one status line.
 #
 # Everything here is fork-free: colours and identity come from skinctl's
 # skin.sh, the art is a $(<file) read, battery and uptime are plain file reads
@@ -32,11 +32,8 @@
         print -r -- "${e}[38;2;${RPG_C_DIMMEST}m(no art: ${art/#$HOME/~})${reset}"
     fi
 
-    # The name, with type badges when the skin is a creature.
-    local line="${e}[38;2;${RPG_C_ART}m▌${reset} ${e}[1;38;2;${RPG_C_NAME}m${RPG_SPECIES}${reset}"
-    [[ -n $RPG_TYPE1 ]] && line+="  ${e}[48;2;${RPG_C_TYPE1};38;2;${RPG_C_BADGE_FG}m ${RPG_TYPE1} ${reset}"
-    [[ -n $RPG_TYPE2 ]] && line+=" ${e}[48;2;${RPG_C_TYPE2};38;2;${RPG_C_BADGE_FG}m ${RPG_TYPE2} ${reset}"
-    print -r -- $line
+    # The skin's name.
+    print -r -- "${e}[38;2;${RPG_C_ART}m▌${reset} ${e}[1;38;2;${RPG_C_NAME}m${RPG_NAME}${reset}"
 
     # One dim status line. Only the battery number carries colour, on the same
     # fixed thresholds as everything else (warn 30, crit 15), so the line
