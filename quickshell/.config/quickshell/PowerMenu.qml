@@ -216,9 +216,8 @@ PanelWindow {
                                          : cell.modelData.danger ? Skin.critical
                                          : Skin.body
                                     font.family: Skin.fontLabel
-                                    font.bold: cell.active
                                     font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.12
+                                    font.letterSpacing: 10 * Skin.trackLabel
                                 }
                             }
 
@@ -243,7 +242,7 @@ PanelWindow {
                         text: win.actions[win.selected].note
                         color: Skin.body
                         font.family: Skin.fontBody
-                        font.pixelSize: 14
+                        font.pixelSize: 16
                     }
 
                     Text {
@@ -254,7 +253,7 @@ PanelWindow {
                         color: Skin.dim
                         font.family: Skin.fontLabel
                         font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.14
+                        font.letterSpacing: 10 * Skin.trackLabel
                     }
                 }
 
@@ -305,7 +304,6 @@ PanelWindow {
                                     text: "YES"
                                     color: Skin.critical
                                     font.family: Skin.fontLabel
-                                    font.bold: win.confirmYes
                                     font.pixelSize: 12
                                 }
 
@@ -327,7 +325,6 @@ PanelWindow {
                                     text: "NO"
                                     color: Skin.text
                                     font.family: Skin.fontLabel
-                                    font.bold: !win.confirmYes
                                     font.pixelSize: 12
                                 }
 

@@ -389,8 +389,9 @@ PanelWindow {
                             text: win.monthWords[win.monthIndex] + " " + win.monthYear
                             color: Skin.text
                             font.family: Skin.fontLabel
-                            font.pixelSize: 14
-                            font.letterSpacing: 14 * 0.14
+                            font.bold: true
+                            font.pixelSize: 12
+                            font.letterSpacing: 12 * Skin.trackWide
 
                             TapHandler { onTapped: win.zone = "month" }
                         }
@@ -435,7 +436,7 @@ PanelWindow {
                                     color: index > 4 ? Skin.dim : Skin.body
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.1
+                                    font.letterSpacing: 10 * Skin.trackLabel
                                 }
                             }
                         }
@@ -581,7 +582,7 @@ PanelWindow {
                                     color: Skin.text
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.16
+                                    font.letterSpacing: 10 * Skin.trackLabel
                                 }
                             }
 
@@ -598,7 +599,7 @@ PanelWindow {
                                     color: win.dimmest
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 12
-                                    font.letterSpacing: 12 * 0.16
+                                    font.letterSpacing: 12 * Skin.trackWide
                                 }
 
                                 Text {
@@ -653,7 +654,7 @@ PanelWindow {
                                                     color: Skin.dim
                                                     font.family: Skin.fontLabel
                                                     font.pixelSize: 10
-                                                    font.letterSpacing: 10 * 0.14
+                                                    font.letterSpacing: 10 * Skin.trackLabel
                                                 }
 
                                                 Rectangle {
@@ -673,7 +674,7 @@ PanelWindow {
                                                     color: win.dimmest
                                                     font.family: Skin.fontLabel
                                                     font.pixelSize: 10
-                                                    font.letterSpacing: 10 * 0.14
+                                                    font.letterSpacing: 10 * Skin.trackLabel
                                                 }
                                             }
 
@@ -792,7 +793,7 @@ PanelWindow {
                                         color: win.zone === "log" ? Skin.text : Skin.body
                                         font.family: Skin.fontLabel
                                         font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.14
+                                        font.letterSpacing: 10 * Skin.trackLabel
                                     }
 
                                     TapHandler { onTapped: win.clearShown() }
@@ -820,7 +821,7 @@ PanelWindow {
                             color: win.dimmest
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.14
+                            font.letterSpacing: 10 * Skin.trackLabel
                         }
                     }
                 }

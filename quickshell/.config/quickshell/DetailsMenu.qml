@@ -429,8 +429,8 @@ PanelWindow {
                     text: "UP " + win.uptimeStr
                     color: Skin.dim
                     font.family: Skin.fontLabel
-                    font.pixelSize: 11
-                    font.letterSpacing: 11 * 0.10
+                    font.pixelSize: 10
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
 
                 Row {
@@ -440,8 +440,8 @@ PanelWindow {
                         text: SysState.date
                         color: Skin.body
                         font.family: Skin.fontLabel
-                        font.pixelSize: 11
-                        font.letterSpacing: 11 * 0.10
+                        font.pixelSize: 10
+                        font.letterSpacing: 10 * Skin.trackLabel
                     }
 
                     Text {
@@ -449,8 +449,8 @@ PanelWindow {
                         color: Skin.text
                         font.family: Skin.fontLabel
                         font.bold: true
-                        font.pixelSize: 11
-                        font.letterSpacing: 11 * 0.10
+                        font.pixelSize: 10
+                        font.letterSpacing: 10 * Skin.trackLabel
                     }
                 }
             }
@@ -477,7 +477,7 @@ PanelWindow {
                         // Current network; return toggles the radio.
                         FocusRow {
                             width: parent.width
-                            height: 52
+                            height: 48
                             active: win.foc(0, 0)
                             onTapped: win.tapRow(0, 0)
 
@@ -523,7 +523,7 @@ PanelWindow {
                                 color: Skin.dim
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
 
@@ -539,7 +539,7 @@ PanelWindow {
                                 required property int index
 
                                 width: parent.width
-                                height: 26
+                                height: 28
                                 active: win.foc(0, 1 + index)
                                 onTapped: win.tapRow(0, 1 + index)
 
@@ -549,7 +549,7 @@ PanelWindow {
                                     text: parent.modelData.name.toUpperCase()
                                     color: Skin.body
                                     font.family: Skin.fontLabel
-                                    font.pixelSize: 11
+                                    font.pixelSize: 10
                                 }
 
                                 Text {
@@ -573,13 +573,13 @@ PanelWindow {
                             color: Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.12
+                            font.letterSpacing: 10 * Skin.trackLabel
                         }
 
                         // Bluetooth: the strip row is the adapter toggle.
                         FocusRow {
                             width: parent.width
-                            height: 26
+                            height: 28
                             active: win.foc(0, 1 + win.savedNearby.length)
                             baseColor: Skin.cell
                             onTapped: win.tapRow(0, 1 + win.savedNearby.length)
@@ -592,7 +592,7 @@ PanelWindow {
                                 font.family: Skin.fontLabel
                                 font.bold: true
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
 
                             Text {
@@ -604,7 +604,7 @@ PanelWindow {
                                     ? Skin.accent : Skin.dim
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
 
@@ -628,7 +628,7 @@ PanelWindow {
                                     Icon {
                                         anchors.verticalCenter: parent.verticalCenter
                                         name: "bt"
-                                        size: 12
+                                        size: 14
                                         color: parent.parent.modelData.connected
                                             ? Skin.body : Skin.dim
                                     }
@@ -639,8 +639,7 @@ PanelWindow {
                                         color: parent.parent.modelData.connected
                                             ? Skin.text : Skin.body
                                         font.family: Skin.fontLabel
-                                        font.bold: parent.parent.modelData.connected
-                                        font.pixelSize: 11
+                                        font.pixelSize: 10
                                     }
                                 }
 
@@ -656,7 +655,7 @@ PanelWindow {
                                     color: parent.modelData.connected ? Skin.accent : Skin.dim
                                     font.family: Skin.fontLabel
                                     font.pixelSize: 10
-                                    font.letterSpacing: 10 * 0.10
+                                    font.letterSpacing: 10 * Skin.trackLabel
                                 }
                             }
                         }
@@ -669,7 +668,7 @@ PanelWindow {
 
                         FocusRow {
                             width: parent.width
-                            height: 30
+                            height: 28
                             active: win.foc(0, 2 + win.savedNearby.length
                                                + win.btDevices.length)
                             onTapped: win.tapRow(0, 2 + win.savedNearby.length
@@ -682,7 +681,7 @@ PanelWindow {
                                 color: Skin.body
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
 
                             Text {
@@ -692,9 +691,8 @@ PanelWindow {
                                 text: win.proxyOn ? "ON" : "OFF"
                                 color: win.proxyOn ? Skin.accent : Skin.dim
                                 font.family: Skin.fontLabel
-                                font.bold: win.proxyOn
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
                     }
@@ -735,8 +733,7 @@ PanelWindow {
                                            || parent.modelData.name || "?").toUpperCase()
                                     color: parent.isDefault ? Skin.text : Skin.body
                                     font.family: Skin.fontLabel
-                                    font.bold: parent.isDefault
-                                    font.pixelSize: 11
+                                    font.pixelSize: 10
                                 }
 
                                 Text {
@@ -756,7 +753,7 @@ PanelWindow {
                         // Volume: return steps +5%, clicking a block sets it.
                         FocusRow {
                             width: parent.width
-                            height: 38
+                            height: 32
                             active: win.foc(1, win.sinkList.length)
                             onTapped: win.tapRow(1, win.sinkList.length)
 
@@ -769,13 +766,13 @@ PanelWindow {
                                 Icon {
                                     anchors.verticalCenter: parent.verticalCenter
                                     name: "vol"
-                                    size: 15
+                                    size: 14
                                     color: SysState.muted ? Skin.critical : Skin.body
                                 }
 
                                 StepMeter {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - 15 - 10 - 34
+                                    width: parent.width - 14 - 10 - 34
                                     height: 12
                                     steps: 20
                                     value: SysState.vol20
@@ -799,7 +796,7 @@ PanelWindow {
                         // Mic mute.
                         FocusRow {
                             width: parent.width
-                            height: 26
+                            height: 28
                             active: win.foc(1, win.sinkList.length + 1)
                             onTapped: win.tapRow(1, win.sinkList.length + 1)
 
@@ -810,7 +807,7 @@ PanelWindow {
                                 color: Skin.body
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
 
                             Text {
@@ -821,7 +818,7 @@ PanelWindow {
                                 color: win.micMuted ? Skin.critical : Skin.accent
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
 
@@ -839,7 +836,7 @@ PanelWindow {
                         // Now playing; return (or tap) toggles play/pause.
                         FocusRow {
                             width: parent.width
-                            height: 54
+                            height: 48
                             active: win.foc(1, win.sinkList.length + 2)
                             onTapped: win.tapRow(1, win.sinkList.length + 2)
 
@@ -886,7 +883,7 @@ PanelWindow {
                         // Battery: display only, no focus.
                         Item {
                             width: parent.width
-                            height: 56
+                            height: 48
 
                             Row {
                                 x: 12
@@ -911,7 +908,7 @@ PanelWindow {
                                         color: SysState.battery <= 0.2 ? Skin.critical : Skin.text
                                         font.family: Skin.fontLabel
                                         font.bold: true
-                                        font.pixelSize: 20
+                                        font.pixelSize: 16
                                     }
 
                                     Text {
@@ -919,7 +916,7 @@ PanelWindow {
                                         color: Skin.dim
                                         font.family: Skin.fontLabel
                                         font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.08
+                                        font.letterSpacing: 10 * Skin.trackLabel
                                     }
                                 }
                             }
@@ -933,7 +930,7 @@ PanelWindow {
                         // marks where keyboard focus sits (the row border).
                         FocusRow {
                             width: parent.width
-                            height: 36
+                            height: 32
                             active: win.foc(2, 0)
                             onTapped: win.tapRow(2, 0)
 
@@ -962,9 +959,8 @@ PanelWindow {
                                             text: parent.modelData.label
                                             color: parent.current ? Skin.text : Skin.dim
                                             font.family: Skin.fontLabel
-                                            font.bold: parent.current
-                                            font.pixelSize: 9
-                                            font.letterSpacing: 9 * 0.10
+                                            font.pixelSize: 10
+                                            font.letterSpacing: 10 * Skin.trackLabel
                                         }
 
                                         TapHandler {
@@ -985,7 +981,7 @@ PanelWindow {
                         // the same).
                         FocusRow {
                             width: parent.width
-                            height: 34
+                            height: 32
                             active: win.foc(2, 1)
                             onTapped: win.tapRow(2, 1)
 
@@ -998,13 +994,13 @@ PanelWindow {
                                 Icon {
                                     anchors.verticalCenter: parent.verticalCenter
                                     name: "sun"
-                                    size: 15
+                                    size: 14
                                     color: Skin.body
                                 }
 
                                 StepMeter {
                                     anchors.verticalCenter: parent.verticalCenter
-                                    width: parent.width - 15 - 10
+                                    width: parent.width - 14 - 10
                                     height: 12
                                     steps: 8
                                     value: SysState.bright8
@@ -1029,7 +1025,7 @@ PanelWindow {
                                 color: Skin.body
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
 
                             Text {
@@ -1040,7 +1036,7 @@ PanelWindow {
                                 color: win.warm ? Skin.accent : Skin.dim
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
 
@@ -1057,7 +1053,7 @@ PanelWindow {
                                 color: Skin.body
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
 
                             Text {
@@ -1067,9 +1063,8 @@ PanelWindow {
                                 text: Notifs.dnd ? "ON" : "OFF"
                                 color: Notifs.dnd ? Skin.accent : Skin.dim
                                 font.family: Skin.fontLabel
-                                font.bold: Notifs.dnd
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
 
@@ -1086,7 +1081,7 @@ PanelWindow {
                                 color: Skin.body
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.12
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
 
                             Text {
@@ -1098,7 +1093,7 @@ PanelWindow {
                                 font.family: Skin.fontLabel
                                 font.bold: true
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.08
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
                     }
@@ -1168,7 +1163,7 @@ PanelWindow {
                 color: Skin.dim
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
-                font.letterSpacing: 10 * 0.12
+                font.letterSpacing: 10 * Skin.trackLabel
             }
         }
     }
@@ -1209,7 +1204,7 @@ PanelWindow {
                 font.family: Skin.fontLabel
                 font.bold: true
                 font.pixelSize: 10
-                font.letterSpacing: 10 * 0.12
+                font.letterSpacing: 10 * Skin.trackLabel
             }
         }
 
@@ -1245,8 +1240,8 @@ PanelWindow {
         bottomPadding: 3
         color: Skin.dim
         font.family: Skin.fontLabel
-        font.pixelSize: 9
-        font.letterSpacing: 9 * 0.14
+        font.pixelSize: 10
+        font.letterSpacing: 10 * Skin.trackLabel
     }
 
     // One vitals cell: label, figure, 8-block meter.
@@ -1273,8 +1268,8 @@ PanelWindow {
                     text: label
                     color: Skin.dim
                     font.family: Skin.fontLabel
-                    font.pixelSize: 9
-                    font.letterSpacing: 9 * 0.14
+                    font.pixelSize: 10
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
 
                 Text {
@@ -1283,7 +1278,7 @@ PanelWindow {
                     color: Skin.text
                     font.family: Skin.fontLabel
                     font.bold: true
-                    font.pixelSize: 11
+                    font.pixelSize: 10
                 }
             }
 

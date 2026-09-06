@@ -128,6 +128,12 @@ Singleton {
     readonly property string fontLabel: behavior("font_label", "IBM Plex Mono")
     readonly property string fontBody:  behavior("font_body", "IBM Plex Mono")
 
+    // Letter spacing, as a fraction of the size: labels (10px) are tracked
+    // wide, anything 12px and up only a little. Every letterSpacing in the
+    // shell is one of these two.
+    readonly property real trackLabel: 0.14
+    readonly property real trackWide:  0.08
+
     // "1s" / "0.7s" -> milliseconds.
     readonly property int blinkMs: {
         const raw = behavior("blink", "1s");

@@ -378,17 +378,17 @@ PanelWindow {
                             text: win.query
                             color: Skin.text
                             font.family: Skin.fontBody
-                            font.pixelSize: 18
+                            font.pixelSize: 16
                         }
 
                         Blink {
                             anchors.verticalCenter: parent.verticalCenter
                             width: 9
-                            height: 18
+                            height: 17
 
                             Rectangle {
                                 width: 9
-                                height: 18
+                                height: 17
                                 color: Skin.accent
                             }
                         }
@@ -404,7 +404,7 @@ PanelWindow {
                         color: Skin.dim
                         font.family: Skin.fontLabel
                         font.pixelSize: 10
-                        font.letterSpacing: 10 * 0.12
+                        font.letterSpacing: 10 * Skin.trackLabel
                     }
                 }
 
@@ -433,9 +433,8 @@ PanelWindow {
                             text: (row.index + 1 < 10 ? "0" : "") + (row.index + 1)
                             color: row.active ? Skin.snd : Skin.dim
                             font.family: Skin.fontLabel
-                            font.bold: row.active
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.10
+                            font.letterSpacing: 10 * Skin.trackLabel
                         }
 
                         Text {
@@ -445,7 +444,6 @@ PanelWindow {
                             text: row.modelData.name
                             color: row.active ? Skin.text : Skin.body
                             font.family: Skin.fontLabel
-                            font.bold: row.active
                             font.pixelSize: 12
                             elide: Text.ElideRight
                         }
@@ -458,7 +456,7 @@ PanelWindow {
                             color: Skin.categoryColor(row.modelData.tag)
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.16
+                            font.letterSpacing: 10 * Skin.trackLabel
                         }
 
                         Text {
@@ -469,7 +467,7 @@ PanelWindow {
                             color: Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.10
+                            font.letterSpacing: 10 * Skin.trackLabel
                         }
 
                         TapHandler {
@@ -495,9 +493,10 @@ PanelWindow {
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
                             text: "EMPTY"
-                            color: Skin.text
+                            color: Skin.dim
                             font.family: Skin.fontLabel
-                            font.pixelSize: 14
+                            font.pixelSize: 12
+                            font.letterSpacing: 12 * Skin.trackWide
                         }
 
                         Text {
@@ -543,7 +542,7 @@ PanelWindow {
                             color: Skin.dim
                             font.family: Skin.fontLabel
                             font.pixelSize: 10
-                            font.letterSpacing: 10 * 0.18
+                            font.letterSpacing: 10 * Skin.trackLabel
                         }
 
                         Row {
@@ -554,17 +553,17 @@ PanelWindow {
                                 text: win.query
                                 color: Skin.text
                                 font.family: Skin.fontBody
-                                font.pixelSize: 18
+                                font.pixelSize: 16
                             }
 
                             Blink {
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 9
-                                height: 18
+                                height: 17
 
                                 Rectangle {
                                     width: 9
-                                    height: 18
+                                    height: 17
                                     color: Skin.accent
                                 }
                             }
@@ -581,7 +580,7 @@ PanelWindow {
                               + " of " + win.altResults.length + " entries"
                         color: Skin.dim
                         font.family: Skin.fontBody
-                        font.pixelSize: 14
+                        font.pixelSize: 12
                     }
                 }
 
@@ -659,7 +658,7 @@ PanelWindow {
                                         color: Skin.dim
                                         font.family: Skin.fontLabel
                                         font.pixelSize: 10
-                                        font.letterSpacing: 10 * 0.16
+                                        font.letterSpacing: 10 * Skin.trackLabel
                                     }
 
                                     Rectangle {
@@ -748,8 +747,8 @@ PanelWindow {
                                     text: "EMPTY"
                                     color: Skin.dim
                                     font.family: Skin.fontLabel
-                                    font.pixelSize: 14
-                                    font.letterSpacing: 14 * 0.18
+                                    font.pixelSize: 12
+                                    font.letterSpacing: 12 * Skin.trackWide
                                 }
 
                                 Text {

@@ -152,7 +152,7 @@ WlSessionLock {
                 color: Skin.dim
                 font.family: Skin.fontLabel
                 font.pixelSize: 12
-                font.letterSpacing: 12 * 0.22
+                font.letterSpacing: 12 * Skin.trackWide
             }
 
             // The field is the prompt: it fills as you type, anywhere. Square
@@ -231,7 +231,7 @@ WlSessionLock {
                         ? Skin.critical : Skin.dim
                     font.family: Skin.fontLabel
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.14
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
             }
         }

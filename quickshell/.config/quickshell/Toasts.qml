@@ -90,7 +90,7 @@ PanelWindow {
                                 color: Skin.dim
                                 font.family: Skin.fontLabel
                                 font.pixelSize: 10
-                                font.letterSpacing: 10 * 0.16
+                                font.letterSpacing: 10 * Skin.trackLabel
                             }
                         }
 
@@ -103,8 +103,9 @@ PanelWindow {
                             wrapMode: Text.Wrap
                             lineHeight: 1.35
                             font.family: Skin.fontLabel
-                            font.pixelSize: 20   // 19 in the design; even rule
-                            font.letterSpacing: 20 * 0.04
+                            font.bold: true
+                            font.pixelSize: 16
+                            font.letterSpacing: 16 * Skin.trackWide
                         }
 
                         // Body / log line: always the plain text.

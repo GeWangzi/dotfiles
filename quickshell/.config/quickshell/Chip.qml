@@ -22,6 +22,6 @@ Rectangle {
         color: Skin.bg
         font.family: Skin.fontLabel
         font.pixelSize: 10
-        font.letterSpacing: 10 * 0.16
+        font.letterSpacing: 10 * Skin.trackLabel
     }
 }

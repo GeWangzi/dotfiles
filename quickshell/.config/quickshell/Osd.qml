@@ -138,7 +138,7 @@ PanelWindow {
                         ? Skin.critical : Skin.text
                     font.family: Skin.fontLabel
                     font.bold: true
-                    font.pixelSize: 14
+                    font.pixelSize: 16
                 }
             }
         }

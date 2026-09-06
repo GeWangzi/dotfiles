@@ -94,7 +94,7 @@ PanelWindow {
                     font.family: Skin.fontLabel
                     font.bold: true
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.10
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
             }
 
@@ -118,7 +118,7 @@ PanelWindow {
                     color: Skin.dim
                     font.family: Skin.fontLabel
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.14
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
             }
 
@@ -132,7 +132,7 @@ PanelWindow {
                 elide: Text.ElideRight
                 font.family: Skin.fontLabel
                 font.pixelSize: 10
-                font.letterSpacing: 10 * 0.06
+                font.letterSpacing: 10 * Skin.trackLabel
             }
         }
 
@@ -187,7 +187,7 @@ PanelWindow {
                     color: SysState.wifiUp ? Skin.body : Skin.critical
                     font.family: Skin.fontLabel
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.10
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
             }
 
@@ -213,7 +213,7 @@ PanelWindow {
                     font.family: Skin.fontLabel
                     font.bold: true
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.08
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
             }
 
@@ -240,7 +240,7 @@ PanelWindow {
                     font.family: Skin.fontLabel
                     font.bold: true
                     font.pixelSize: 10
-                    font.letterSpacing: 10 * 0.08
+                    font.letterSpacing: 10 * Skin.trackLabel
                 }
             }
 
@@ -266,7 +266,7 @@ PanelWindow {
                         color: Skin.body
                         font.family: Skin.fontLabel
                         font.pixelSize: 12
-                        font.letterSpacing: 12 * 0.06
+                        font.letterSpacing: 12 * Skin.trackWide
                     }
 
                     Text {

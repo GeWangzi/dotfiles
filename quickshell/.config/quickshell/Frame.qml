@@ -73,7 +73,7 @@ Item {
             font.family: Skin.fontLabel
             font.bold: true
             font.pixelSize: 12
-            font.letterSpacing: 12 * 0.10
+            font.letterSpacing: 12 * Skin.trackWide
         }
 
         Item {
