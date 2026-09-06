@@ -202,8 +202,9 @@ Singleton {
 
     // ---------------------------------------------------------------- memory and thermals
 
-    // Kernel files on a slow clock: 30s cadence while idle, 5s while the
-    // details menu is open (the stats timer below reloads the same files).
+    // Kernel files, read once at startup and then only while the details
+    // menu is open (its 5s stats timer below reloads them). Nothing on the
+    // always-on surfaces shows these, so nothing wakes for them while idle.
     property int memTotalKb: 0
     property int memAvailKb: 0
     property int tempC: 0
@@ -230,16 +231,6 @@ Singleton {
         path: "/sys/class/thermal/thermal_zone0/temp"
         printErrors: false
         onLoaded: root.tempC = Math.round(parseInt(text(), 10) / 1000)
-    }
-
-    Timer {
-        interval: 30000
-        running: true
-        repeat: true
-        onTriggered: {
-            meminfo.reload();
-            thermal.reload();
-        }
     }
 
     readonly property real memFreeFraction: memTotalKb > 0 ? memAvailKb / memTotalKb : 1
