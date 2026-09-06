@@ -356,20 +356,6 @@ PanelWindow {
                     width: parent.width
                     height: monthWord.implicitHeight
 
-                    // The month zone's cursor, in the grid's own gutter.
-                    Blink {
-                        visible: win.zone === "month"
-                        width: 16
-                        height: parent.height
-                        Text {
-                            anchors.centerIn: parent
-                            text: Skin.glyph
-                            color: Skin.text
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 10
-                        }
-                    }
-
                     Row {
                         x: 16
                         spacing: 14

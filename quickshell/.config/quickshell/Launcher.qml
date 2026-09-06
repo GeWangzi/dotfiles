@@ -381,16 +381,9 @@ PanelWindow {
                             font.pixelSize: 16
                         }
 
-                        Blink {
+                        Caret {
                             anchors.verticalCenter: parent.verticalCenter
-                            width: 9
-                            height: 17
-
-                            Rectangle {
-                                width: 9
-                                height: 17
-                                color: Skin.accent
-                            }
+                            lineHeight: 17
                         }
                     }
 
@@ -556,16 +549,9 @@ PanelWindow {
                                 font.pixelSize: 16
                             }
 
-                            Blink {
+                            Caret {
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 9
-                                height: 17
-
-                                Rectangle {
-                                    width: 9
-                                    height: 17
-                                    color: Skin.accent
-                                }
+                                lineHeight: 17
                             }
                         }
                     }
