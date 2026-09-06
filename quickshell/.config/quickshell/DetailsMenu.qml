@@ -404,79 +404,53 @@ PanelWindow {
 
         // ------------------------------------------------------------ frame
 
-        Rectangle {
+        Frame {
             id: deck
             width: 1060
             height: 620
             anchors.centerIn: parent
-            color: Skin.bg
-            border.width: 2
-            border.color: Skin.inner
-            radius: Skin.radius
+            title: "SYSTEM"
+            padTop: 14
+            padSide: 16
+            padBottom: 12
 
-            // Titlebar: name left, uptime and clock right.
-            Rectangle {
-                id: strip
-                x: 2
-                y: 2
-                width: parent.width - 4
-                height: 32
-                color: Skin.cell
+            // The height the body has to fill: everything the frame itself
+            // takes, off the fixed 620.
+            readonly property int bodyH: height - 2 * frameBorder - stripHeight
+                                         - padTop - padBottom
 
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: 2
-                    color: Skin.inner
-                }
+            // Uptime sits apart on the left of the group; date and time
+            // sit together as one datetime read, the clock bold at the
+            // end. Only the clock carries a colon.
+            titleRight: Row {
+                spacing: 24
 
                 Text {
-                    x: 14
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: "SYSTEM"
-                    color: Skin.text
+                    text: "UP " + win.uptimeStr
+                    color: Skin.dim
                     font.family: Skin.fontLabel
-                    font.bold: true
-                    font.pixelSize: 12
-                    font.letterSpacing: 12 * 0.10
+                    font.pixelSize: 11
+                    font.letterSpacing: 11 * 0.10
                 }
 
-                // Uptime sits apart on the left of the group; date and time
-                // sit together as one datetime read, the clock bold at the
-                // end. Only the clock carries a colon.
                 Row {
-                    anchors.right: parent.right
-                    anchors.rightMargin: 14
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 24
+                    spacing: 8
 
                     Text {
-                        text: "UP " + win.uptimeStr
-                        color: Skin.dim
+                        text: SysState.date
+                        color: Skin.body
                         font.family: Skin.fontLabel
                         font.pixelSize: 11
                         font.letterSpacing: 11 * 0.10
                     }
 
-                    Row {
-                        spacing: 8
-
-                        Text {
-                            text: SysState.date
-                            color: Skin.body
-                            font.family: Skin.fontLabel
-                            font.pixelSize: 11
-                            font.letterSpacing: 11 * 0.10
-                        }
-
-                        Text {
-                            text: SysState.time
-                            color: Skin.text
-                            font.family: Skin.fontLabel
-                            font.bold: true
-                            font.pixelSize: 11
-                            font.letterSpacing: 11 * 0.10
-                        }
+                    Text {
+                        text: SysState.time
+                        color: Skin.text
+                        font.family: Skin.fontLabel
+                        font.bold: true
+                        font.pixelSize: 11
+                        font.letterSpacing: 11 * 0.10
                     }
                 }
             }
@@ -485,14 +459,11 @@ PanelWindow {
 
             Row {
                 id: panels
-                x: 16
-                y: strip.y + strip.height + 14
                 spacing: 12
 
-                readonly property int colW: (deck.width - 32 - 24) / 3
-                readonly property int colH: deck.height - strip.height - 2
-                                            - 28 - vitals.height - 12
-                                            - footer.height - 12
+                readonly property int colW: (parent.width - 24) / 3
+                readonly property int colH: deck.bodyH - 12 - vitals.height
+                                            - 12 - footer.height
 
                 // ---------------------------------------- NETWORK
                 Panel {
@@ -559,7 +530,7 @@ PanelWindow {
                             }
                         }
 
-                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+                        Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
                         SubLabel { text: "SAVED NEARBY · ⏎ CONNECTS" }
 
@@ -697,7 +668,7 @@ PanelWindow {
                         // spacer math below being unnecessary -- the column
                         // just runs on; the divider keeps it read as its
                         // own block.
-                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+                        Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
                         FocusRow {
                             width: parent.width
@@ -798,7 +769,7 @@ PanelWindow {
                             }
                         }
 
-                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+                        Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
                         // Volume: return steps +5%, clicking a block sets it.
                         FocusRow {
@@ -872,7 +843,7 @@ PanelWindow {
                             }
                         }
 
-                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+                        Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
                         SubLabel {
                             text: win.player
@@ -1011,7 +982,7 @@ PanelWindow {
                             }
                         }
 
-                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+                        Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
                         SubLabel { text: "PROFILE" }
 
@@ -1042,7 +1013,7 @@ PanelWindow {
                                         width: (panels.colW - 24 - 12) / 3
                                         height: 24
                                         color: current ? Skin.window : "transparent"
-                                        border.width: current ? 2 : 1
+                                        border.width: 2
                                         border.color: current ? Skin.accent : Skin.inner
 
                                         Text {
@@ -1102,7 +1073,7 @@ PanelWindow {
                             }
                         }
 
-                        Rectangle { width: parent.width; height: 1; color: Skin.inner }
+                        Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
                         FocusRow {
                             width: parent.width
@@ -1221,9 +1192,8 @@ PanelWindow {
 
             Rectangle {
                 id: vitals
-                x: 16
-                y: panels.y + panels.height + 12
-                width: deck.width - 32
+                y: panels.height + 12
+                width: parent.width
                 height: 62
                 color: "transparent"
                 border.width: 2
@@ -1240,7 +1210,7 @@ PanelWindow {
                         frac: SysState.cpuPct
                     }
 
-                    Rectangle { width: 1; height: parent.height; color: Skin.inner }
+                    Rectangle { width: 2; height: parent.height; color: Skin.inner }
 
                     Vital {
                         label: "MEM"
@@ -1249,7 +1219,7 @@ PanelWindow {
                         frac: 1 - SysState.memFreeFraction
                     }
 
-                    Rectangle { width: 1; height: parent.height; color: Skin.inner }
+                    Rectangle { width: 2; height: parent.height; color: Skin.inner }
 
                     Vital {
                         label: "TEMP"
@@ -1259,7 +1229,7 @@ PanelWindow {
                              : SysState.tempC >= 75 ? Skin.warn : Skin.accent
                     }
 
-                    Rectangle { width: 1; height: parent.height; color: Skin.inner }
+                    Rectangle { width: 2; height: parent.height; color: Skin.inner }
 
                     Vital {
                         label: "DISK"
@@ -1276,9 +1246,7 @@ PanelWindow {
 
             Text {
                 id: footer
-                x: 16
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: 12
+                y: deck.bodyH - height
                 text: "TAB PANEL · ↑↓ ROW · ⏎ APPLY · ESC CLOSE"
                 color: Skin.dim
                 font.family: Skin.fontLabel
@@ -1315,7 +1283,7 @@ PanelWindow {
             Rectangle {
                 anchors.bottom: parent.bottom
                 width: parent.width
-                height: 1
+                height: 2
                 color: Skin.inner
             }
 

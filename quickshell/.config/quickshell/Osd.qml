@@ -1,4 +1,4 @@
-// The OSD, from turn 15e of the creature-shell handoff, in the Console dress:
+// The OSD, in the Console dress:
 // bottom centre, one panel, an icon naming the channel, the block meter
 // filling with `accent` over the `inner` track, and the volume figure. No
 // interaction.
@@ -8,8 +8,7 @@
 // never a QML animation (see Blink.qml for why that matters on a surface
 // that would otherwise hold the frame clock at refresh rate).
 //
-// The extremes get a name: plain by default, and the creature voice names a
-// move through the osd_* lexicon keys. The details menu uses the same words.
+// A muted sink reads MUTE in critical; the details menu uses the same word.
 
 import QtQuick
 import Quickshell

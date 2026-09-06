@@ -345,7 +345,7 @@ PanelWindow {
             padBottom: 18
             title: "CALENDAR"
 
-            readonly property int inner: 900 - 2 * (5 + 24)   // 842
+            readonly property int inner: 900 - 2 * (calFrame.frameBorder + 24)   // 848
 
             Column {
                 width: calFrame.inner
@@ -453,7 +453,7 @@ PanelWindow {
 
                         Rectangle {
                             width: gridCol.width
-                            height: 3
+                            height: 2
                             color: Skin.inner
                         }
 
@@ -493,7 +493,7 @@ PanelWindow {
                                                 visible: cell.today
                                                 anchors.fill: parent
                                                 color: "transparent"
-                                                border.width: 3
+                                                border.width: 2
                                                 border.color: Skin.text
                                             }
 
@@ -512,7 +512,7 @@ PanelWindow {
                                                 visible: cell.selected
                                                 anchors.fill: parent
                                                 color: "transparent"
-                                                border.width: 3
+                                                border.width: 2
                                                 border.color: Skin.snd
                                             }
 
@@ -611,7 +611,7 @@ PanelWindow {
                             anchors.fill: parent
                             anchors.topMargin: 15
                             color: "transparent"
-                            border.width: 4
+                            border.width: 2
                             border.color: Skin.inner
 
                             // The tab knocks a hole in the keyline, so it is
@@ -711,7 +711,7 @@ PanelWindow {
                                                     anchors.leftMargin: 10
                                                     anchors.rightMargin: 10
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    height: 3
+                                                    height: 2
                                                     color: Skin.inner
                                                 }
 
@@ -753,7 +753,7 @@ PanelWindow {
                                                     height: Math.max(entryBody.implicitHeight
                                                         + entrySub.height, 20) + 2 * (entry.critical ? 10 : 0)
                                                     color: "transparent"
-                                                    border.width: entry.critical ? 3 : 0
+                                                    border.width: entry.critical ? 2 : 0
                                                     border.color: Skin.critical
 
                                                     Text {
@@ -831,7 +831,7 @@ PanelWindow {
                                     width: clearWord.implicitWidth + 18
                                     height: clearWord.implicitHeight + 6
                                     color: "transparent"
-                                    border.width: 3
+                                    border.width: 2
                                     border.color: win.zone === "log" ? Skin.snd : Skin.inner
 
                                     Text {

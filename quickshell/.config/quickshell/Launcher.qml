@@ -335,12 +335,6 @@ PanelWindow {
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 42
 
-            // The band's own padding is the design's 12px, not the Frame
-            // default panel padding.
-            padTop: 12
-            padSide: 12
-            padBottom: 12
-
             title: win.mode === "clip" ? "CLIPBOARD"
                  : win.mode === "glyphs" ? "GLYPHS"
                  : win.listMode ? "SEARCH" : "LAUNCH"
@@ -362,7 +356,7 @@ PanelWindow {
                     Rectangle {
                         anchors.bottom: parent.bottom
                         width: parent.width
-                        height: 1
+                        height: 2
                         color: Skin.inner
                     }
 

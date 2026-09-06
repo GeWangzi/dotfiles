@@ -23,9 +23,9 @@ PanelWindow {
     // surface is reached (the keybind is SUPER + N).
     signal clockActivated()
 
-    // The 1px rule between the right-hand cells.
+    // The rule between the right-hand cells.
     component CellRule: Rectangle {
-        width: 1
+        width: 2
         height: parent.height
         color: Skin.inner
     }
@@ -106,7 +106,7 @@ PanelWindow {
 
                 Rectangle {
                     anchors.right: parent.right
-                    width: 1
+                    width: 2
                     height: parent.height
                     color: Skin.inner
                 }

@@ -18,9 +18,13 @@ Item {
     // Content goes inside the border, below the titlebar, and the padding.
     default property alias content: body.data
 
-    property int padTop: 36
-    property int padSide: 30
-    property int padBottom: 26
+    property int padTop: 12
+    property int padSide: 12
+    property int padBottom: 12
+
+    // Optional content at the right end of the titlebar strip (the details
+    // menu's uptime and clock).
+    property alias titleRight: titleRightSlot.data
 
     readonly property int frameBorder: 2
     // The toast variant recolors the border for critical urgency.
@@ -70,6 +74,15 @@ Item {
             font.bold: true
             font.pixelSize: 12
             font.letterSpacing: 12 * 0.10
+        }
+
+        Item {
+            id: titleRightSlot
+            anchors.right: parent.right
+            anchors.rightMargin: 14
+            anchors.verticalCenter: parent.verticalCenter
+            width: childrenRect.width
+            height: childrenRect.height
         }
     }
 
