@@ -1,0 +1,11 @@
+[Hotkey]
+# Ctrl+Space cycles keyboard-us, pinyin, mozc rather than toggling the last two.
+EnumerateWithTriggerKeys=True
+
+[Hotkey/TriggerKeys]
+0=Control+space
+
+[Behavior]
+# The small popup naming the input method on every switch (fcitx5's own
+# classic UI, default look; no colours are written here on purpose).
+ShowInputMethodInformation=True

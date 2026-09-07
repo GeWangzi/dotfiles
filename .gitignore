@@ -41,3 +41,7 @@ claude/.claude/*
 
 # Mozilla add-on upload id written by web-ext sign. Not config.
 .amo-upload-uuid
+
+# fcitx5 writes one file per addon here on every configtool save; the tracked
+# profile and config are enough to rebuild the setup.
+fcitx5/.config/fcitx5/conf/
