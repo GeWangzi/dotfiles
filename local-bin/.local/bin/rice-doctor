@@ -87,8 +87,20 @@ fi
 
 # --- restart ---------------------------------------------------------------
 
+# Respawn through the compositor, not from this shell. A process inherits its
+# parent's environment at spawn, and the launcher hands that environment on to
+# every app it starts. Spawned from here, the shell would carry this terminal's
+# env, which can predate an hl.env() change in hyprland.lua (the input-method
+# vars, 2026-09-07: WeChat launched from such a shell had no QT_IM_MODULE and
+# no fcitx). Spawned by Hyprland it gets exactly what the login path and the
+# Super+Shift+R bind give it. The dispatcher must be written in the 0.56 Lua
+# form; the old `exec qs -d` string no longer parses.
 pkill -x qs 2>/dev/null && sleep 0.5
-qs -d >/dev/null 2>&1
+if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+    hyprctl dispatch "hl.dsp.exec_cmd('qs -d')" >/dev/null 2>&1
+else
+    qs -d >/dev/null 2>&1
+fi
 sleep 3
 
 if pgrep -x qs >/dev/null; then
