@@ -77,8 +77,8 @@ under `$HOME`, so `stow -t ~ kitty` links `kitty/.config/kitty/*` into
 
 ```bash
 cd ~/dotfiles
-stow -t ~ chrome claude fcitx5 fontconfig fonts git hyprland hyprlock kitty \
-          local-bin quickshell skins spotify wireplumber zshrc
+stow -t ~ chrome claude code fcitx5 fontconfig fonts git hyprland hyprlock \
+          kitty local-bin quickshell skins spotify wireplumber zshrc
 chsh -s /usr/bin/zsh
 fc-cache -f
 skinctl generate
