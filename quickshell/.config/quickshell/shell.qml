@@ -153,6 +153,10 @@ ShellRoot {
     // The wallpaper. Owns the background layer; hyprpaper is retired.
     Wallpaper {}
 
+    // The desk todo list, on the bottom layer: only there on an empty
+    // workspace, clickable there. See Todo.qml.
+    Todo {}
+
     // The 32px status bar. Always on, event-driven. Its clock is the
     // pointer's way into the calendar page (SUPER + N is the keyboard's).
     Bar {
