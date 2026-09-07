@@ -171,6 +171,18 @@ hl.env("XCURSOR_THEME", "Adwaita")
 -- var rather than ~/.config/*-flags.conf. Needs Electron 28+; Discord 1.0.153
 -- ships Chrome/148, well past that.
 hl.env("ELECTRON_OZONE_PLATFORM_HINT", "auto")
+
+-- Input method (fcitx5: pinyin and mozc, 2026-09-07). Per the fcitx wiki's
+-- wlroots setup: XMODIFIERS for Xwayland clients over XIM, QT_IM_MODULE for
+-- Qt5, QT_IM_MODULES for Qt 6.8.2+ (Quickshell), which then tries the
+-- compositor's text-input-v3 first and the fcitx plugin second. GTK_IM_MODULE
+-- is left unset on purpose: GTK3 (Firefox) and GTK4 speak text-input-v3
+-- natively. Chrome is Chromium and reads none of these; it gets
+-- --enable-wayland-ime from chrome-flags.conf instead. The daemon itself is
+-- fcitx5.service, hung off graphical-session.target. Next login to take effect.
+hl.env("XMODIFIERS", "@im=fcitx")
+hl.env("QT_IM_MODULE", "fcitx")
+hl.env("QT_IM_MODULES", "wayland;fcitx")
 -- $HOME isn't expanded for you anymore; this is plain Lua.
 hl.env("HYPRSHOT_DIR", os.getenv("HOME") .. "/Pictures/clipboard")
 
