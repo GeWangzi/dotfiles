@@ -69,6 +69,21 @@ ShellRoot {
         function lock(): void {
             sessionLock.wantLocked = true;
         }
+
+        // After resume Hyprland delivers only key releases to the lock
+        // surface that existed before suspend (MACHINE.md, "The lock screen
+        // goes deaf after suspend"). A brand-new ext-session-lock object gets
+        // a new surface and a fresh keyboard enter, which is what fixlock
+        // achieves with a new hyprlock process. Flipping wantLocked off and
+        // on in one call sends unlock_and_destroy and lock in the same flush,
+        // so Hyprland never renders an unlocked frame between them. No-op
+        // when not locked, so hypridle's after_sleep_cmd can call it
+        // unconditionally.
+        function relock(): void {
+            if (!sessionLock.wantLocked) return;
+            sessionLock.wantLocked = false;
+            sessionLock.wantLocked = true;
+        }
     }
 
     // The lock screen from turn 13a. Replaces hyprlock; see Lock.qml for the

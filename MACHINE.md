@@ -444,19 +444,34 @@ data points with the LED settle it; one without is a coin flip.
 
 ## Other quirks that come with this machine
 
-**The lock screen goes deaf after suspend.** The primary locker is the
-Quickshell surface now (Lock.qml); whether it shares this bug is untested —
-what follows was reproduced with hyprlock, which remains the fallback locker,
-and `fixlock` still targets hyprlock. Locking and then suspending leaves
-hyprlock visible but ignoring the keyboard (Hyprland 0.56.1, hyprlock 0.9.6).
-Instrumented repro confirmed the input devices tear down on suspend, return about
-two seconds after resume, and stay healthy — but hyprlock's ext-session-lock surface
-never regains keyboard focus, and logs `Invalid key down event (stray release
-event?)` for anything typed. Relaunching hyprlock fixes it.
+**The lock screen goes deaf after suspend.** Locking and then suspending leaves
+the lock surface visible but ignoring the keyboard (Hyprland 0.56.1; both the
+Quickshell locker, Lock.qml, and the hyprlock fallback). Instrumented repro
+confirmed the input devices tear down on suspend, return about two seconds after
+resume, and stay healthy — but the ext-session-lock surface that existed before
+suspend only ever receives key releases afterwards (hyprlock logs `Invalid key
+down event (stray release event?)` for anything typed). A fresh lock surface
+fixes it: relaunching hyprlock, or a new lock object from the same Quickshell
+process.
 
-The chosen response is manual, not automated: Ctrl+Alt+F2, log in, run `fixlock`,
-Ctrl+Alt+F1. An automatic resume hook was built, tested working, and then
-deliberately removed. Do not re-add it or other hypridle sleep hooks.
+The response is automated since 2026-09-10 in `hypridle.conf`:
+`before_sleep_cmd = loginctl lock-session` locks before any suspend (the lid used
+to suspend without locking at all), and `after_sleep_cmd` turns the panel back on
+and runs `qs ipc call lock relock`, which drops and re-takes the lock in one call
+so Hyprland hands the new surface a fresh keyboard focus. An earlier automatic hook
+had been removed in favour of doing this by hand; that was reversed after three
+lid-open resumes in two days each ended in a TTY login and a reboot.
+
+The first version of that hook produced a black panel instead: under the Lua
+config `hl.dsp.dpms("on")` is a *toggle*, not "on" — the binding reads `action`
+only from a table and treats any string as TOGGLE — so the resume hook switched
+the freshly restored panel off (Hyprland log: "Restoring crtc 95" followed by
+"Disabling output eDP-1"). Every dpms call in `hypridle.conf` is now the table
+form, `hl.dsp.dpms({action="on"})`. The idle listener's off/on pair had only
+worked because two toggles happen to cancel out.
+
+Manual fallback, for when the shell is not running and hyprlock holds the lock:
+Ctrl+Alt+F2, log in, run `fixlock`, Ctrl+Alt+F1.
 
 Two things exist only to keep `fixlock` working and must not be cleaned up:
 `misc:allow_session_lock_restore = true` in both `hyprland.lua` and `hyprland.conf`
