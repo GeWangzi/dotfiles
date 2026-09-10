@@ -23,6 +23,8 @@ sudo bash system/install.sh --dry-run   # compare system/ against live /etc; nev
 
 ## Conventions
 
+- No unnecessary edits. Every change or addition to the machine needs a stated reason. If it
+  addresses an issue, it must be the best way to address that issue, not just one that works.
 - Small commits: one feature or fix per commit, with a message that says what changed and why.
 - Never `git checkout` / `git switch` in this checkout. Use `git worktree add ../dotfiles-<branch>`.
 - Colours: edit `skins.toml`, never the generated files under `~/.local/state/skins`.
