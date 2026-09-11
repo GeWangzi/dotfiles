@@ -23,8 +23,12 @@ Singleton {
     // Derived from the device's own state rather than UPower.onBattery: the
     // daemon-level flag read stale here (the bar said CHARGING while
     // draining), and state also distinguishes full/pending-charge on the
-    // wire, which onBattery cannot.
+    // wire, which onBattery cannot. Unknown is not an answer: it is what the
+    // first read returns when the shell starts before UPower does, and the
+    // delta stream never repairs it (docs/2026-08-25-power-management.md), so
+    // it falls through to the daemon flag rather than reading as "plugged".
     readonly property bool onBattery: upower && upower.ready
+        && upower.state !== UPowerDeviceState.Unknown
         ? upower.state === UPowerDeviceState.Discharging
           || upower.state === UPowerDeviceState.PendingDischarge
           || upower.state === UPowerDeviceState.Empty
@@ -141,11 +145,9 @@ Singleton {
     }
 
     // One handler for the whole singleton -- QML rejects a second
-    // Component.onCompleted on the same object. syncProfile's rationale is
-    // with the function, below.
+    // Component.onCompleted on the same object.
     Component.onCompleted: {
         wifiQuery.running = true;
-        syncProfile();
     }
 
     // ---------------------------------------------------------------- brightness
@@ -368,28 +370,13 @@ Singleton {
         }
     }
 
-    // The power profile follows the wire: unplugging drops to power saver,
-    // plugging back in returns to balanced. power-profiles-daemon will not
-    // do this on its own -- it holds whatever profile it was last handed --
-    // and TLP used to, until it was removed on 2026-08-20 (MACHINE.md, "The
-    // battery charge limit"). Without this the machine sat in balanced on
-    // battery, which is the one thing TLP had still been doing for runtime.
-    //
-    // The wire always wins over a pick from the details menu, which is what
-    // TLP did and keeps the rule sayable in one line: choose what you like,
-    // but changing power source resets it.
-    function syncProfile() {
-        PowerProfiles.profile = root.onBattery
-            ? PowerProfile.PowerSaver
-            : PowerProfile.Balanced
-    }
-
-    // Both this signal AND the completion call (in the singleton's one
-    // Component.onCompleted, up by the wifi query): on a boot that starts
-    // on battery there is no transition to react to. UPower is often not
-    // ready at completion, so the first call can read wrong -- the signal
-    // corrects it a moment later.
-    onOnBatteryChanged: syncProfile()
+    // No power policy here. The profile follows the AC adapter through
+    // system/etc/udev/rules.d/85-power-profile-ac.rules and
+    // power-profile-ac.service; the deck's QUIET/BALANCED/PERF row is the
+    // manual override until the next plug or unplug. The rule used to live in
+    // this file, and a stale onBattery held power-profiles-daemon on balanced
+    // for every battery session and undid every pick of power-saver within a
+    // minute (docs/2026-09-10-powertop.md).
 
     // ---------------------------------------------------------------- uptime
 
