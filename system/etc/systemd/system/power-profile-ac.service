@@ -1,0 +1,15 @@
+[Unit]
+Description=Pick the power profile from the AC adapter
+# Started by udev on every AC0 change (udev/rules.d/85-power-profile-ac.rules)
+# and once at boot through the [Install] section, so a boot that starts on
+# battery does not wait for a plug event. The wire always wins over a pick from
+# the shell's details menu: choose what you like, changing power source resets it.
+After=power-profiles-daemon.service
+Wants=power-profiles-daemon.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'if [ "$(cat /sys/class/power_supply/AC0/online)" = 1 ]; then p=balanced; else p=power-saver; fi; exec busctl set-property net.hadess.PowerProfiles /net/hadess/PowerProfiles net.hadess.PowerProfiles ActiveProfile s "$p"'
+
+[Install]
+WantedBy=multi-user.target

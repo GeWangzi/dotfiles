@@ -262,7 +262,8 @@ Enabled at the system level:
 
 ```
 NetworkManager  bluetooth
-sing-box  panel-od-off  power-profiles-daemon  battery-charge-limit
+sing-box  panel-od-off  battery-charge-limit
+upower  power-profiles-daemon  power-profile-ac
 nvidia-suspend  nvidia-resume  nvidia-hibernate
 ```
 

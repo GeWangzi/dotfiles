@@ -1,0 +1,14 @@
+# The power profile follows the AC adapter: unplugging drops to power-saver,
+# plugging in returns to balanced. This used to be a rule in the shell
+# (SysState.qml, syncProfile), which meant a stale UPower reading in a QML
+# binding could -- and did -- hold power-profiles-daemon on balanced for whole
+# battery sessions and undo every manual pick of power-saver within a minute
+# (docs/2026-09-10-powertop.md). udev sees the same ACPI event the kernel does,
+# is coldplugged at boot, and keeps working when the shell is confused or not
+# running. power-profiles-daemon will not do this on its own: it holds whatever
+# profile it was last handed.
+#
+# RUN+= rather than ENV{SYSTEMD_WANTS}: a change event on a device unit that is
+# already active does not reliably re-start its Wants=, and the adapter is a
+# change event every time.
+ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="AC0", RUN+="/usr/bin/systemctl --no-block start power-profile-ac.service"

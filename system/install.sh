@@ -141,7 +141,17 @@ say ""
 say "systemd units:"
 install_file systemd/system/panel-od-off.service
 install_file systemd/system/battery-charge-limit.service
+install_file systemd/system/power-profile-ac.service
 install_file systemd/system/sing-box.service.d/override.conf
+
+say ""
+say "udev (udevd reloads rules on its own):"
+install_file udev/rules.d/80-nvidia-runtime-pm.rules
+install_file udev/rules.d/85-power-profile-ac.rules
+
+say ""
+say "modprobe (NVIDIA runtime D3; pairs with the udev rule above, takes effect at boot):"
+install_file modprobe.d/nvidia-pm.conf
 
 # --- grub kernel command line ------------------------------------------------
 #
@@ -235,7 +245,8 @@ Still to do by hand, in rough order:
 1. Enable the services. None of them are enabled by this script.
 
      sudo systemctl enable NetworkManager bluetooth panel-od-off
-     sudo systemctl enable power-profiles-daemon battery-charge-limit
+     sudo systemctl enable upower power-profiles-daemon battery-charge-limit
+     sudo systemctl enable power-profile-ac
      sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
      sudo systemctl enable sing-box      # only after the config below exists
 
