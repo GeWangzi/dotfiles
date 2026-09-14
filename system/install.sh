@@ -164,7 +164,7 @@ say "GRUB kernel command line:"
 
 GRUB_FILE=/etc/default/grub
 WANT_LINUX='GRUB_CMDLINE_LINUX="zswap.enabled=0 rootfstype=ext4 nvme_core.default_ps_max_latency_us=0"'
-WANT_DEFAULT='GRUB_CMDLINE_LINUX_DEFAULT="loglevel=7"'
+WANT_DEFAULT='GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"'
 GRUB_CHANGED=0
 
 if [[ ! -f "$GRUB_FILE" ]]; then
