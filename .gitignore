@@ -38,6 +38,13 @@ claude/.claude/*
 !claude/.claude/commands/
 !claude/.claude/skills/
 !claude/.claude/templates/
+# Skills that Claude Code downloads from claude.ai on sync. Regenerated on
+# every sync under a per-account UUID directory, so tracking them is noise.
+claude/.claude/skills/synced/
+
+# fontconfig writes a per-directory cache id into every font directory it
+# scans. Machine state, not config.
+fonts/.local/share/fonts/.uuid
 
 # Mozilla add-on upload id written by web-ext sign. Not config.
 .amo-upload-uuid
