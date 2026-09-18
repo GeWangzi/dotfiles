@@ -1,15 +1,22 @@
 [Unit]
-Description=Pick the power profile from the AC adapter
+Description=Pick the CPU power policy from the AC adapter
 # Started by udev on every AC0 change (udev/rules.d/85-power-profile-ac.rules)
 # and once at boot through the [Install] section, so a boot that starts on
-# battery does not wait for a plug event. The wire always wins over a pick from
-# the shell's details menu: choose what you like, changing power source resets it.
-After=power-profiles-daemon.service
-Wants=power-profiles-daemon.service
+# battery does not wait for a plug event.
+#
+# Writes the two knobs power-profiles-daemon used to own on this machine:
+# amd_pstate's energy_performance_preference on every core, and the ACPI
+# platform_profile (asus-wmi: fan curve and CPU power limits in the EC).
+# The daemon was dropped on 2026-09-17: it did nothing else here, it was one
+# of three writers of the same state (this unit, the shell, its own
+# battery-aware mode), and its After=multi-user.target made this unit's boot
+# job an ordering cycle that systemd deleted every boot. Fn+F5 still cycles
+# the platform profile by hand (the kernel driver does that); the next plug
+# or unplug resets it.
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'if [ "$(cat /sys/class/power_supply/AC0/online)" = 1 ]; then p=balanced; else p=power-saver; fi; exec busctl set-property net.hadess.PowerProfiles /net/hadess/PowerProfiles net.hadess.PowerProfiles ActiveProfile s "$p"'
+ExecStart=/bin/sh -c 'if [ "$(cat /sys/class/power_supply/AC0/online)" = 1 ]; then epp=balance_power; pp=balanced; else epp=power; pp=quiet; fi; for c in /sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference; do echo "$epp" > "$c"; done; echo "$pp" > /sys/firmware/acpi/platform_profile'
 
 [Install]
 WantedBy=multi-user.target

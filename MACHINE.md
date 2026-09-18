@@ -263,7 +263,7 @@ Enabled at the system level:
 ```
 NetworkManager  bluetooth
 sing-box  panel-od-off  battery-charge-limit
-upower  power-profiles-daemon  power-profile-ac
+upower  power-profile-ac
 nvidia-suspend  nvidia-resume  nvidia-hibernate
 ```
 
@@ -324,6 +324,11 @@ platform-profile settings in `tlp.conf` are ppd's job and ppd was already doing 
 and `tlp.d/99-nvme.conf` existed only to cancel TLP's own defaults — see the next
 section.
 
+ppd itself went on 2026-09-17. On this machine it only ever wrote EPP and
+`platform_profile`, and it was one of three things writing them (the AC service, the
+shell's deck row, its own battery-aware mode). `power-profile-ac.service` now writes
+the two sysfs nodes directly; the deck row is gone; Fn+F5 remains the manual override.
+
 ## The NVMe hang
 
 The defining bug of this machine, and the reason several files in `system/` exist.
@@ -380,7 +385,7 @@ and that file existed only to cancel TLP's own aggressive defaults; with TLP gon
 kernel defaults are already what it was asking for —
 `/sys/class/nvme/nvme0/device/power/control` reads `on` and
 `/sys/module/pcie_aspm/parameters/policy` reads `default`. Nothing else on the system
-writes either knob, power-profiles-daemon included. The metric for whether it is
+writes either knob. The metric for whether it is
 working is the power cycle count, not the absence of crashes:
 
 ```bash

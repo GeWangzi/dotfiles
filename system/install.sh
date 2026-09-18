@@ -245,7 +245,7 @@ Still to do by hand, in rough order:
 1. Enable the services. None of them are enabled by this script.
 
      sudo systemctl enable NetworkManager bluetooth panel-od-off
-     sudo systemctl enable upower power-profiles-daemon battery-charge-limit
+     sudo systemctl enable upower battery-charge-limit
      sudo systemctl enable power-profile-ac
      sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
      sudo systemctl enable sing-box      # only after the config below exists
