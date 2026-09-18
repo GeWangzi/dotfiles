@@ -113,3 +113,7 @@ alias grep='grep --color=auto'
 if [[ -o interactive && ${SKIN_GREET:-1} == 1 && -f ~/.config/zsh/greet.zsh ]]; then
     source ~/.config/zsh/greet.zsh
 fi
+
+# algorithm drill (practice/go = one-click start)
+alias drill='python3 /home/naidoq/sandbox/algorithms/practice/drill.py'
+alias go-drill='/home/naidoq/sandbox/algorithms/practice/go'
