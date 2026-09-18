@@ -130,6 +130,11 @@ retire_file NetworkManager/conf.d/dns.conf
 retire_file NetworkManager/conf.d/wifi-dhcp.conf
 
 say ""
+say "power policy (removed 2026-09-17; Fn+F5 via asus-wmi is the only control):"
+retire_file systemd/system/power-profile-ac.service
+retire_file udev/rules.d/85-power-profile-ac.rules
+
+say ""
 say "sysctl (full SysRq, so a hung system can be rebooted cleanly):"
 install_file sysctl.d/99-sysrq.conf
 
@@ -141,13 +146,11 @@ say ""
 say "systemd units:"
 install_file systemd/system/panel-od-off.service
 install_file systemd/system/battery-charge-limit.service
-install_file systemd/system/power-profile-ac.service
 install_file systemd/system/sing-box.service.d/override.conf
 
 say ""
 say "udev (udevd reloads rules on its own):"
 install_file udev/rules.d/80-nvidia-runtime-pm.rules
-install_file udev/rules.d/85-power-profile-ac.rules
 
 say ""
 say "modprobe (NVIDIA runtime D3; pairs with the udev rule above, takes effect at boot):"
@@ -246,7 +249,6 @@ Still to do by hand, in rough order:
 
      sudo systemctl enable NetworkManager bluetooth panel-od-off
      sudo systemctl enable upower battery-charge-limit
-     sudo systemctl enable power-profile-ac
      sudo systemctl enable nvidia-suspend nvidia-resume nvidia-hibernate
      sudo systemctl enable sing-box      # only after the config below exists
 

@@ -263,7 +263,7 @@ Enabled at the system level:
 ```
 NetworkManager  bluetooth
 sing-box  panel-od-off  battery-charge-limit
-upower  power-profile-ac
+upower
 nvidia-suspend  nvidia-resume  nvidia-hibernate
 ```
 
@@ -324,10 +324,17 @@ platform-profile settings in `tlp.conf` are ppd's job and ppd was already doing 
 and `tlp.d/99-nvme.conf` existed only to cancel TLP's own defaults — see the next
 section.
 
-ppd itself went on 2026-09-17. On this machine it only ever wrote EPP and
-`platform_profile`, and it was one of three things writing them (the AC service, the
-shell's deck row, its own battery-aware mode). `power-profile-ac.service` now writes
-the two sysfs nodes directly; the deck row is gone; Fn+F5 remains the manual override.
+ppd itself went on 2026-09-17, and the AC-follows-wire unit with it. On this machine
+ppd only ever wrote EPP and `platform_profile`, worth 0.2 W at idle
+(docs/2026-09-10-powertop.md), and it was one of three things writing them (the AC
+service, the shell's deck row, its own battery-aware mode). Nothing manages power
+policy now. `platform_profile` is whatever the EC booted into or Fn+F5 last set
+(asus-wmi handles the key in-kernel); EPP is the amd-pstate default. To read the
+current mode:
+
+```bash
+cat /sys/firmware/acpi/platform_profile      # quiet | balanced | performance
+```
 
 ## The NVMe hang
 
