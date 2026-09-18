@@ -9,8 +9,8 @@
 // sinks) included.
 //
 // Everything shown is real: wifi is NetworkManager, bluetooth is bluez,
-// audio is Pipewire, media is MPRIS, power is UPower and
-// power-profiles-daemon, the proxy row is the sing-box unit. The saved
+// audio is Pipewire, media is MPRIS, power is UPower, the proxy row is
+// the sing-box unit. The saved
 // networks list shows only profiles NetworkManager already knows -- return
 // connects without a password prompt, which is why unknown networks are not
 // listed (joining one needs a password flow; that is SUPER+C nmtui's job).
@@ -59,7 +59,7 @@ PanelWindow {
         switch (pIdx) {
         case 0: return 1 + savedNearby.length + 1 + btDevices.length + 1;
         case 1: return sinkList.length + 3;
-        default: return 5;
+        default: return 4;
         }
     }
 
@@ -230,24 +230,6 @@ PanelWindow {
         }
     }
 
-    readonly property var perfModes: [
-        { label: "QUIET",    profile: PowerProfile.PowerSaver },
-        { label: "BALANCED", profile: PowerProfile.Balanced },
-        { label: "PERF",     profile: PowerProfile.Performance }
-    ]
-
-    function cyclePerf() {
-        const cur = PowerProfiles.profile;
-        for (let i = 0; i < perfModes.length; i++) {
-            if (perfModes[i].profile === cur) {
-                PowerProfiles.profile
-                    = perfModes[(i + 1) % perfModes.length].profile;
-                return;
-            }
-        }
-        PowerProfiles.profile = PowerProfile.Balanced;
-    }
-
     // Night light. Same round-trippable query/toggle as SUPER+SHIFT+N in
     // hyprland.lua -- identity would latch (see the comment there), so the
     // off state is temperature 6000.
@@ -335,11 +317,10 @@ PanelWindow {
             }
         } else {
             switch (r) {
-            case 0: cyclePerf(); break;
-            case 1: SysState.setBright8((SysState.bright8 % 8) + 1); break;
-            case 2: toggleWarm(); break;
-            case 3: Notifs.toggleDnd(); break;
-            case 4: cycleTimezone(); break;
+            case 0: SysState.setBright8((SysState.bright8 % 8) + 1); break;
+            case 1: toggleWarm(); break;
+            case 2: Notifs.toggleDnd(); break;
+            case 3: cycleTimezone(); break;
             }
         }
     }
@@ -921,66 +902,14 @@ PanelWindow {
 
                         Rectangle { width: parent.width; height: 2; color: Skin.inner }
 
-                        // Power profile: three cells; return (or a tap on
-                        // one) cycles / picks. The chosen profile is the
-                        // gold cell -- gold marks a persistent pick, pink
-                        // marks where keyboard focus sits (the row border).
-                        FocusRow {
-                            width: parent.width
-                            height: 32
-                            active: win.foc(2, 0)
-                            onTapped: win.tapRow(2, 0)
-
-                            Row {
-                                x: 12
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 6
-
-                                Repeater {
-                                    model: win.perfModes
-
-                                    Rectangle {
-                                        required property var modelData
-
-                                        readonly property bool current:
-                                            PowerProfiles.profile === modelData.profile
-
-                                        width: (panels.colW - 24 - 12) / 3
-                                        height: 24
-                                        color: current ? Skin.window : "transparent"
-                                        border.width: 2
-                                        border.color: current ? Skin.accent : Skin.inner
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: parent.modelData.label
-                                            color: parent.current ? Skin.text : Skin.dim
-                                            font.family: Skin.fontLabel
-                                            font.pixelSize: 10
-                                            font.letterSpacing: 10 * Skin.trackLabel
-                                        }
-
-                                        TapHandler {
-                                            onTapped: {
-                                                win.pIdx = 2;
-                                                win.rIdx = 0;
-                                                PowerProfiles.profile
-                                                    = parent.modelData.profile;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
                         // Brightness: bars only, deliberately no number
                         // (backlight percent is meaningless; the OSD says
                         // the same).
                         FocusRow {
                             width: parent.width
                             height: 32
-                            active: win.foc(2, 1)
-                            onTapped: win.tapRow(2, 1)
+                            active: win.foc(2, 0)
+                            onTapped: win.tapRow(2, 0)
 
                             Row {
                                 x: 12
@@ -1012,8 +941,8 @@ PanelWindow {
                         FocusRow {
                             width: parent.width
                             height: 28
-                            active: win.foc(2, 2)
-                            onTapped: win.tapRow(2, 2)
+                            active: win.foc(2, 1)
+                            onTapped: win.tapRow(2, 1)
 
                             Text {
                                 x: 12
@@ -1040,8 +969,8 @@ PanelWindow {
                         FocusRow {
                             width: parent.width
                             height: 28
-                            active: win.foc(2, 3)
-                            onTapped: win.tapRow(2, 3)
+                            active: win.foc(2, 2)
+                            onTapped: win.tapRow(2, 2)
 
                             Text {
                                 x: 12
@@ -1068,8 +997,8 @@ PanelWindow {
                         FocusRow {
                             width: parent.width
                             height: 28
-                            active: win.foc(2, 4)
-                            onTapped: win.tapRow(2, 4)
+                            active: win.foc(2, 3)
+                            onTapped: win.tapRow(2, 3)
 
                             Text {
                                 x: 12

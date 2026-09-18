@@ -370,13 +370,14 @@ Singleton {
         }
     }
 
-    // No power policy here. The profile follows the AC adapter through
-    // system/etc/udev/rules.d/85-power-profile-ac.rules and
-    // power-profile-ac.service; the deck's QUIET/BALANCED/PERF row is the
-    // manual override until the next plug or unplug. The rule used to live in
-    // this file, and a stale onBattery held power-profiles-daemon on balanced
-    // for every battery session and undid every pick of power-saver within a
-    // minute (docs/2026-09-10-powertop.md).
+    // No power policy here. EPP and the ACPI platform profile follow the AC
+    // adapter through system/etc/udev/rules.d/85-power-profile-ac.rules and
+    // power-profile-ac.service; Fn+F5 (asus-wmi) is the manual override for
+    // the platform profile. The rule used to live in this file, and a stale
+    // onBattery held power-profiles-daemon on balanced for every battery
+    // session and undid every pick of power-saver within a minute
+    // (docs/2026-09-10-powertop.md). The daemon itself is gone since
+    // 2026-09-17: it only ever wrote these two sysfs knobs.
 
     // ---------------------------------------------------------------- uptime
 
