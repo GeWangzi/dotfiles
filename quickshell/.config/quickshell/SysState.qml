@@ -196,6 +196,35 @@ Singleton {
                                  "" + Math.round(step / 8 * brightMax)]);
     }
 
+    // ---------------------------------------------------------------- platform profile
+
+    // The ACPI platform profile (quiet / balanced / performance), the one
+    // Fn+F5 cycles inside asus-wmi. Read-only here: nothing in userspace
+    // sets it since 2026-09-17. The kernel signals a change with
+    // sysfs_notify, which is POLLPRI rather than inotify, so a FileView
+    // cannot watch it; platform-profile-watch blocks in poll(2) and prints
+    // one word per change. Zero cost between changes.
+    property string profile: ""
+
+    readonly property string profileLabel: ({
+        quiet: "QUIET", balanced: "BALANCED", performance: "PERF"
+    })[profile] || profile.toUpperCase()
+
+    // 1..3 for a three-step meter; 0 while unknown.
+    readonly property int profileStep: ({
+        quiet: 1, balanced: 2, performance: 3
+    })[profile] || 0
+
+    Process {
+        // ~/.local/bin is not on the shell's PATH (same as skinctl in
+        // Launcher.qml).
+        command: [Quickshell.env("HOME") + "/.local/bin/platform-profile-watch"]
+        running: true
+        stdout: SplitParser {
+            onRead: data => root.profile = data.trim()
+        }
+    }
+
     // ---------------------------------------------------------------- do not disturb
 
     // The shell's own notification daemon owns do-not-disturb (swaync is

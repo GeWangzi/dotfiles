@@ -9,6 +9,9 @@
 // that would otherwise hold the frame clock at refresh rate).
 //
 // A muted sink reads MUTE in critical; the details menu uses the same word.
+//
+// The third channel is the platform profile, which Fn+F5 cycles inside the
+// kernel with no on-screen sign of its own: three blocks and the word.
 
 import QtQuick
 import Quickshell
@@ -17,7 +20,7 @@ import Quickshell.Wayland
 PanelWindow {
     id: osd
 
-    // "vol" or "bright"
+    // "vol", "bright" or "profile"
     property string mode: "vol"
 
     // 1 -> 0.66 -> 0.33 -> hidden. Index into OPACITIES.
@@ -60,6 +63,7 @@ PanelWindow {
 
         function onVolPctChanged(): void { osd.show("vol"); }
         function onBright8Changed(): void { osd.show("bright"); }
+        function onProfileChanged(): void { osd.show("profile"); }
     }
 
     // Hold fully visible, then step down three hard frames.
@@ -83,13 +87,19 @@ PanelWindow {
         }
     }
 
-    readonly property int value: mode === "vol" ? SysState.vol20 : SysState.bright8
+    readonly property int steps: mode === "vol" ? 20 : mode === "bright" ? 8 : 3
+    readonly property int blockW: mode === "vol" ? 8 : 13
+    readonly property int value: mode === "vol" ? SysState.vol20
+                               : mode === "bright" ? SysState.bright8
+                               : SysState.profileStep
 
     // Volume reads the real percent (keys move it in 5s); brightness shows
-    // no figure at all -- the bars are the whole readout (user decision).
-    // MUTE is the one word the panel keeps: an empty meter alone cannot say
-    // whether the sink is muted or just quiet.
+    // no figure at all -- the bars are the whole readout (user decision);
+    // the profile shows its name, since three blocks alone do not say which
+    // end is quiet. MUTE is the one word the volume panel keeps: an empty
+    // meter alone cannot say whether the sink is muted or just quiet.
     readonly property string figure: {
+        if (mode === "profile") return SysState.profileLabel;
         if (mode !== "vol") return "";
         if (SysState.muted) return "MUTE";
         return "" + SysState.volPct;
@@ -113,7 +123,8 @@ PanelWindow {
 
                 Icon {
                     anchors.verticalCenter: parent.verticalCenter
-                    name: osd.mode === "vol" ? "vol" : "sun"
+                    name: osd.mode === "vol" ? "vol"
+                        : osd.mode === "bright" ? "sun" : "gauge"
                     size: 18
                     color: osd.mode === "vol" && SysState.muted
                         ? Skin.critical : Skin.body
@@ -121,10 +132,11 @@ PanelWindow {
 
                 // Same geometry as the details menu's meters: 20 steps of
                 // 8px for volume, 8 steps of 13px for brightness, 4px gaps.
+                // The profile borrows the brightness block at 3 steps.
                 StepMeter {
                     anchors.verticalCenter: parent.verticalCenter
-                    steps: osd.mode === "vol" ? 20 : 8
-                    width: steps * (osd.mode === "vol" ? 8 : 13) + (steps - 1) * 4
+                    steps: osd.steps
+                    width: steps * osd.blockW + (steps - 1) * 4
                     height: 12
                     value: osd.value
                     fillColor: Skin.accent
