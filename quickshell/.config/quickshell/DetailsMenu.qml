@@ -9,8 +9,9 @@
 // sinks) included.
 //
 // Everything shown is real: wifi is NetworkManager, bluetooth is bluez,
-// audio is Pipewire, media is MPRIS, power is UPower, the proxy row is
-// the sing-box unit. The saved
+// audio is Pipewire, media is MPRIS, power is UPower, the platform
+// profile is asus-wmi's sysfs node (Fn+F5 sets it; the deck only reads it),
+// the proxy row is the sing-box unit. The saved
 // networks list shows only profiles NetworkManager already knows -- return
 // connects without a password prompt, which is why unknown networks are not
 // listed (joining one needs a password flow; that is SUPER+C nmtui's job).
@@ -858,10 +859,40 @@ PanelWindow {
                     Column {
                         width: parent.width
 
-                        // Battery: display only, no focus.
+                        // Battery, and on the right the platform profile:
+                        // display only, no focus. The profile has no control
+                        // here because the sysfs node is root-only; Fn+F5 is
+                        // the control and the sub-label says so.
                         Item {
                             width: parent.width
                             height: 48
+
+                            Column {
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 2
+                                visible: SysState.profile !== ""
+
+                                Text {
+                                    anchors.right: parent.right
+                                    text: SysState.profileLabel
+                                    color: Skin.text
+                                    font.family: Skin.fontLabel
+                                    font.bold: true
+                                    font.pixelSize: 10
+                                    font.letterSpacing: 10 * Skin.trackLabel
+                                }
+
+                                Text {
+                                    anchors.right: parent.right
+                                    text: "FN+F5"
+                                    color: Skin.dim
+                                    font.family: Skin.fontLabel
+                                    font.pixelSize: 10
+                                    font.letterSpacing: 10 * Skin.trackLabel
+                                }
+                            }
 
                             Row {
                                 x: 12
