@@ -147,6 +147,7 @@ say "systemd units:"
 install_file systemd/system/panel-od-off.service
 install_file systemd/system/battery-charge-limit.service
 install_file systemd/system/sing-box.service.d/override.conf
+install_file systemd/system/ollama.service.d/override.conf
 
 say ""
 say "udev (udevd reloads rules on its own):"
