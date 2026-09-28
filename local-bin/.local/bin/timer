@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# timer -- notify after a delay: `timer 25m`, `timer 1h30m tea`.
+#
+# DURATION uses systemd's syntax (90s, 25m, 1h30m). The timer is a transient
+# systemd user unit, so it returns at once and outlives the terminal, but not
+# a reboot or logout. List:   systemctl --user list-timers 'timer-*'
+#                     Cancel: systemctl --user stop 'timer-*'
+set -eu
+
+if [ $# -lt 1 ]; then
+    echo "usage: timer DURATION [MESSAGE]" >&2
+    exit 2
+fi
+dur=$1
+shift
+msg=${*:-"$dur up"}
+
+# Critical urgency keeps the notification up until dismissed.
+systemd-run --user --quiet --collect --unit="timer-$(date +%s%N)" \
+    --on-active="$dur" --timer-property=AccuracySec=1s \
+    notify-send -u critical -a timer "Timer" "$msg"
+echo "timer set: $dur"
