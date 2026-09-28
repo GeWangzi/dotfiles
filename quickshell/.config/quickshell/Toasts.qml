@@ -31,8 +31,6 @@ PanelWindow {
 
     Column {
         id: stack
-        x: 12
-        y: 6
         spacing: 12
 
         Repeater {
