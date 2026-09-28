@@ -49,6 +49,10 @@ fonts/.local/share/fonts/.uuid
 # Mozilla add-on upload id written by web-ext sign. Not config.
 .amo-upload-uuid
 
-# fcitx5 writes one file per addon here on every configtool save; the tracked
-# profile and config are enough to rebuild the setup.
+# fcitx5 writes one file per addon here on every configtool save, and rewrites
+# profile (DefaultIM, comment lines) on every input-method switch. Both are
+# runtime state. The input-method group a fresh clone should start with lives
+# in system/etc/xdg/fcitx5/profile, which fcitx5 reads until it has written
+# its own copy.
 fcitx5/.config/fcitx5/conf/
+fcitx5/.config/fcitx5/profile

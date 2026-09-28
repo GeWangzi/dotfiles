@@ -157,6 +157,10 @@ say ""
 say "modprobe (NVIDIA runtime D3; pairs with the udev rule above, takes effect at boot):"
 install_file modprobe.d/nvidia-pm.conf
 
+say ""
+say "fcitx5 (default input-method group; read only until ~/.config/fcitx5/profile exists):"
+install_file xdg/fcitx5/profile
+
 # --- grub kernel command line ------------------------------------------------
 #
 # /etc/default/grub is not copied wholesale: a fresh install's copy carries

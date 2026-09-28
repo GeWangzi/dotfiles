@@ -137,6 +137,11 @@ started.
 It refuses to run on non-G14 hardware without `--force`. Read `MACHINE.md` before
 overriding that — the NVMe and ASUS pieces are wrong elsewhere.
 
+One of those files is hardware-neutral: `/etc/xdg/fcitx5/profile`, the default
+input-method group (keyboard-us, pinyin, mozc). fcitx5 reads it only until it has
+written `~/.config/fcitx5/profile`, which it does on every input-method switch; that
+is why the user copy is not tracked here.
+
 **The one thing it will not finish for you is GRUB.** It rewrites the two
 `GRUB_CMDLINE` lines in `/etc/default/grub` and then stops, printing the command to
 run rather than running it. Before you run that command, check the `rootfstype`:

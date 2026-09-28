@@ -1,0 +1,27 @@
+# System-wide default input-method group for fcitx5. Read only when
+# ~/.config/fcitx5/profile does not exist, so a fresh clone starts with
+# keyboard-us, pinyin and mozc without touching the config tool.
+#
+# The user copy is deliberately not tracked in the dotfiles: fcitx5 rewrites it
+# (DefaultIM, comment lines) on every input-method switch. Once fcitx5 has
+# written ~/.config/fcitx5/profile, this file is never consulted again.
+
+[Groups/0]
+Name=Default
+Default Layout=us
+DefaultIM=keyboard-us
+
+[Groups/0/Items/0]
+Name=keyboard-us
+Layout=
+
+[Groups/0/Items/1]
+Name=pinyin
+Layout=
+
+[Groups/0/Items/2]
+Name=mozc
+Layout=
+
+[GroupOrder]
+0=Default
