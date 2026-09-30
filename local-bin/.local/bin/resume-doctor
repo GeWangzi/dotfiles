@@ -1,0 +1,138 @@
+#!/usr/bin/env bash
+# resume-doctor -- diagnose and recover a black panel after a lid-open resume.
+#
+# Symptom: lid opened, the kernel resumed, Hyprland and the shell are alive,
+# the lock still takes keystrokes, but eDP-1 stays black. Seen seven times
+# between 2026-09-16 and 2026-09-25, roughly one lid-open in five, after both a
+# 9 s and a 7 h suspend. hypridle's after_sleep_cmd (dpms on, then
+# `qs ipc call lock relock`) is meant to prevent it and does not always.
+#
+# Run this from a TTY: Ctrl+Alt+F2, log in, type `resume-doctor`. It saves
+# what a reboot would destroy (Hyprland's log lives in tmpfs), then tries the
+# two suspects one at a time and asks you to check tty1 after each. Whichever
+# step relights the panel names the cause:
+#
+#   step 1  dpms off, on -> the output was left powered off after resume
+#   step 2  relock       -> the lock surface never mapped on the resumed output
+#
+# Each step runs only once you have switched back to tty1. While this TTY is
+# in front Hyprland's session is inactive and every output commit is refused
+# ("drm: Session inactive"), which is how the 2026-09-30 run reported "neither
+# step helped" without having tried anything. Step 1 is off then on because
+# Hyprland can report dpmsStatus=1 while the output is disabled, and an on
+# alone then changes nothing.
+#
+# Everything lands in ~/resume-fail-<date>-<time>/, result.txt last.
+
+set -u
+
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    sig=$(ls -t "$XDG_RUNTIME_DIR/hypr" 2>/dev/null | head -1)
+    if [[ -z "$sig" ]]; then
+        echo "No running Hyprland instance found under $XDG_RUNTIME_DIR/hypr" >&2
+        exit 1
+    fi
+    export HYPRLAND_INSTANCE_SIGNATURE="$sig"
+fi
+
+# `qs ipc` finds the shell by Wayland display, which a TTY login does not set.
+if [[ -z "${WAYLAND_DISPLAY:-}" ]]; then
+    sock=$(ls "$XDG_RUNTIME_DIR" 2>/dev/null | grep -m1 '^wayland-[0-9]*$')
+    [[ -n "$sock" ]] && export WAYLAND_DISPLAY="$sock"
+fi
+
+here=$(basename "$(tty 2>/dev/null)")
+
+out="$HOME/resume-fail-$(date +%Y%m%d-%H%M%S)"
+mkdir -p "$out"
+result="$out/result.txt"
+
+log() { printf '%s\n' "$*" | tee -a "$result"; }
+
+snapshot() {
+    # $1 is a label for the files.
+    hyprctl monitors > "$out/monitors-$1.txt" 2>&1
+    {
+        printf 'brightness=%s bl_power=%s\n' \
+            "$(cat /sys/class/backlight/amdgpu_bl1/brightness 2>/dev/null)" \
+            "$(cat /sys/class/backlight/amdgpu_bl1/bl_power 2>/dev/null)"
+    } > "$out/backlight-$1.txt"
+    # The steps add the log lines that say whether a commit went through.
+    [[ "$1" != before ]] && cp "$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprland.log" "$out/hyprland-$1.log" 2>/dev/null
+    log "$1: dpmsStatus=$(grep -m1 dpmsStatus "$out/monitors-$1.txt" | awk '{print $2}') $(cat "$out/backlight-$1.txt")"
+}
+
+# Run "$@" once another VT is in front, a second later so Hyprland has taken
+# the session back.
+when_away() {
+    (
+        until [[ "$(cat /sys/class/tty/tty0/active 2>/dev/null)" != "$here" ]]; do sleep 0.2; done
+        sleep 1
+        "$@" >> "$result" 2>&1
+    ) &
+    waiter=$!
+}
+
+dpms_cycle() {
+    hyprctl dispatch 'hl.dsp.dpms({action="off"})'
+    sleep 1
+    hyprctl dispatch 'hl.dsp.dpms({action="on"})'
+}
+
+relock() {
+    qs ipc call lock relock
+    echo "relock rc=$?"
+}
+
+# Ask whether tty1 came back. Returns 0 for yes.
+fixed() {
+    local ans
+    printf 'Ctrl+Alt+F1, wait five seconds, then come back here. Panel back? [y/N] '
+    read -r ans
+    # Never switched away: do not let this step fire during the next one.
+    kill "$waiter" 2>/dev/null
+    [[ "$ans" == [yY]* ]]
+}
+
+log "resume-doctor $(date -Is)"
+log "instance $HYPRLAND_INSTANCE_SIGNATURE"
+
+# --- capture before touching anything ---------------------------------------
+
+cp "$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprland.log" "$out/hyprland.log" 2>/dev/null \
+    && log "hyprland.log saved" || log "hyprland.log NOT found"
+pgrep -x qs       >/dev/null && log "qs running"       || log "qs NOT running"
+pgrep -x hypridle >/dev/null && log "hypridle running" || log "hypridle NOT running"
+snapshot before
+
+# --- step 1: power the output on --------------------------------------------
+
+log "step1: hyprctl dispatch dpms off, then on"
+when_away dpms_cycle
+if fixed; then
+    snapshot after-dpms
+    log "step1=y  cause: output left powered off after resume"
+    echo "Saved to $out"
+    exit 0
+fi
+snapshot after-dpms
+log "step1=n"
+
+# --- step 2: fresh lock surface ---------------------------------------------
+
+log "step2: qs ipc call lock relock (WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-unset})"
+when_away relock
+if fixed; then
+    snapshot after-relock
+    log "step2=y  cause: lock surface never mapped on the resumed output"
+    echo "Saved to $out"
+    exit 0
+fi
+snapshot after-relock
+log "step2=n"
+
+log "neither step helped; reboot from here and send $out"
+echo "Saved to $out"
+exit 1
