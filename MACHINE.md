@@ -483,6 +483,16 @@ the freshly restored panel off (Hyprland log: "Restoring crtc 95" followed by
 form, `hl.dsp.dpms({action="on"})`. The idle listener's off/on pair had only
 worked because two toggles happen to cancel out.
 
+A second black panel survived that fix, about one lid-open in five, and was
+traced on 2026-09-30. It needs the panel to be idle-blanked before the lid
+closes. `nvidia-sleep.sh` switches to VT 63 before suspend and back in
+`nvidia-resume.service`, so Hyprland's session is inactive across the suspend.
+`after_sleep_cmd` starts at the same moment as that service; when its dpms on
+arrived before the switch back, the commit was refused (`drm: Session inactive`,
+twice: the attempt and Hyprland's one retry), Hyprland still reported
+`dpmsStatus: 1`, and the VT restore re-applied the disabled output. The hook now
+waits until logind reports the session active before turning the panel on.
+
 Manual fallback, for when the shell is not running and hyprlock holds the lock:
 Ctrl+Alt+F2, log in, run `fixlock`, Ctrl+Alt+F1.
 
