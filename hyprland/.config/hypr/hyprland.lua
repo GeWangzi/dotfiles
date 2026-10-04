@@ -581,11 +581,15 @@ hl.window_rule({
 --     float = true,
 -- })
 
--- hl.window_rule({
---     name  = "suppress-maximize-events",
---     match = { class = ".*" },
---     suppress_event = "maximize",
--- })
+-- Ignore a client's own request to maximize. kitty 0.49 saves its last window
+-- state in ~/.cache/kitty/main.json and asks for it again at startup, so one
+-- maximized terminal made every later one open maximized on top of the tiles.
+-- A tiled window's size is the layout's decision; SUPER+F still works.
+hl.window_rule({
+    name  = "suppress-maximize-events",
+    match = { class = ".*" },
+    suppress_event = "maximize",
+})
 
 -- hl.window_rule({
 --     name  = "fix-xwayland-drags",
