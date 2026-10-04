@@ -98,7 +98,12 @@ hl.on("hyprland.start", function()
     -- Quickshell surface (Bar.qml, handoff turn 13b) and the wallpaper is
     -- the battle field (Wallpaper.qml, turn 16a), which owns the background
     -- layer itself. Their configs stay in the repo but nothing starts them.
-    hl.exec_cmd("hypridle")
+    -- hypridle moved to its shipped user unit 2026-10-02 (enabled under
+    -- graphical-session.target, started by the target below). Started here
+    -- its stdout went to /dev/null, so when the resume hooks in
+    -- hypridle.conf failed to relight the panel or relock there was no
+    -- record of whether they ran at all. The unit logs to the journal:
+    -- `journalctl --user -u hypridle`.
 
     -- Keyboard backlight dark at login. Nothing in userspace was choosing its
     -- level before this line: the Fn keys are handled in-kernel by
@@ -298,6 +303,17 @@ hl.config({
         -- to type into; without this, killing hyprlock cannot hand the lock to a
         -- fresh instance and the only way out is a reboot.
         allow_session_lock_restore = true,
+    },
+
+    -- Both default to true, which leaves hyprland.log with nothing but
+    -- aquamarine's libinput/drm chatter: no session-lock, keyboard-focus or
+    -- dispatcher lines, and no timestamps on any of it. Three resume
+    -- failures (2026-09-30, 2026-10-02) could not be traced for that reason.
+    -- The log lives in tmpfs under $XDG_RUNTIME_DIR/hypr and goes with the
+    -- instance, so the extra volume costs nothing on disk.
+    debug = {
+        disable_logs = false,
+        disable_time = false,
     },
 })
 

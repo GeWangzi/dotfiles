@@ -22,7 +22,10 @@
 # Hyprland can report dpmsStatus=1 while the output is disabled, and an on
 # alone then changes nothing.
 #
-# Everything lands in ~/resume-fail-<date>-<time>/, result.txt last.
+# Everything lands in ~/resume-fail-<date>-<time>/, result.txt last. The
+# journal of the last fifteen minutes goes there too: hypridle runs as a user
+# unit, so its resume hooks (hypridle.conf after_sleep_cmd) report there, and
+# that is where a run that never fired or fired too early shows up.
 
 set -u
 
@@ -103,6 +106,8 @@ log "instance $HYPRLAND_INSTANCE_SIGNATURE"
 
 cp "$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/hyprland.log" "$out/hyprland.log" 2>/dev/null \
     && log "hyprland.log saved" || log "hyprland.log NOT found"
+journalctl -b --since -15min -o short-precise --no-pager > "$out/journal.txt" 2>&1 \
+    && log "journal saved" || log "journal NOT saved"
 pgrep -x qs       >/dev/null && log "qs running"       || log "qs NOT running"
 pgrep -x hypridle >/dev/null && log "hypridle running" || log "hypridle NOT running"
 snapshot before
