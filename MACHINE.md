@@ -58,34 +58,32 @@ that is the line to change, not a driver problem.
 
 **Audio** — Realtek ALC285 on ALSA card 2 (`04:00.6`, AMD Ryzen HD Audio). Card 0 is
 NVIDIA HDMI audio, card 1 is AMD HDMI/DP audio; neither carries the speakers or the
-internal mic array. The mic gain staging is tuned by ear and is not portable — see
-`INSTALL.md` step 8 and the warning in it about `wpctl set-volume`.
+internal mic array. The mic gain is pinned by the `alsa-card-profile` path override
+(`INSTALL.md` step 8).
 
-The WirePlumber soft-mixer drop-in that protects that tuning is confirmed working as
-of 2026-08-17 — `wpctl inspect` on the capture node reports
-`api.alsa.soft-mixer = "true"` for `alsa_input.pci-0000_04_00.6.analog-stereo`, so
-WirePlumber is doing volume in software and is not driving the hardware controls.
+That override replaced a WirePlumber drop-in that set `api.alsa.soft-mixer` on the
+capture node. It never worked: soft-mixer is a *device* property (`pipewire-props(7)`,
+"ALSA PROPERTIES > Device properties"), read by ACP when the card is created. A
+node rule only copies the key onto the node, so `wpctl inspect` showed
+`api.alsa.soft-mixer = "true"` while the hardware controls were still merged into the
+input volume. Whenever anything set the source to 100%, for example a WebRTC call's
+AGC or WirePlumber restoring the route, both analog stages went to maximum (Boost 3,
+Capture 63, 60 dB). `alsactl store` at shutdown then saved those values into
+`/var/lib/alsa/asound.state`, so the next boots started maxed as well. That looked like
+two failures, but it was one. Found 2026-10-14.
 
-That matters for diagnosis, because the gain can still be wrong for a different
-reason. On a fresh boot on 2026-08-17 the values read `Internal Mic Boost 0` and
-`Capture 63`, not the tuned `1` and `50`, even though `alsa-restore.service` had
-completed successfully. With soft-mixer confirmed on, nothing was clobbering the
-controls live — the bad values are stored in `/var/lib/alsa/asound.state` itself,
-written there by the `ExecStop=alsactl store` that `alsa-restore` runs at shutdown,
-at some point when the values were already wrong.
+Device-level soft-mixer would have stopped it too, but it covers the whole card. ACP
+would also leave the playback controls untouched, and `Headphone` sits at -65 dB until
+ACP drives it. The path override changes only the mic route.
 
-So there are two distinct failures with the same symptom, and they are told apart by
-whether soft-mixer is on:
+The check is whether the mic route is still using hardware volume:
 
 ```bash
-wpctl inspect <capture-node-id> | grep soft-mixer   # "true" -> stored state is stale
-amixer -c 2 sget 'Internal Mic Boost'               # what is actually loaded
+pactl list sources | grep -A14 'Name: alsa_input.pci-0000_04_00.6' | grep 'Base Volume'
+#   0.00 dB   -> software volume, gain pinned
+#   -60.00 dB -> hardware volume, the gain is merged into the slider again
+amixer -c 2 sget 'Internal Mic Boost'      # 1 [10.00dB]
 ```
-
-If soft-mixer is on and the values are wrong, the fix is to set them once and run
-`sudo alsactl store` — they will stick, because nothing is fighting them. Building a
-service to re-apply after WirePlumber starts is the fix for the *other* failure and
-would be treating the wrong cause here.
 
 **Wifi** — MediaTek MT7921 (`02:00.0`, `mt7921e`), interface **`wlp2s0`**, driven
 through NetworkManager on its stock **wpa_supplicant** backend.
@@ -613,7 +611,7 @@ Tied to this laptop — most of `system/`, plus one line of `.zprofile`:
 | the grub NVMe parameter | the WD SN350 controller specifically |
 | `systemd/system/panel-od-off.service` | an ASUS `asus-nb-wmi` sysfs path |
 | `systemd/system/battery-charge-limit.service` | the ASUS `asus_wmi` charge-threshold node |
-| `wireplumber` soft-mixer drop-in | the ALC285 node name |
+| `alsa-card-profile` mic path override | the ALC285's `Capture` and `Internal Mic Boost` controls and their tuned values |
 | `.zprofile` `AQ_DRM_DEVICES` | the AMD iGPU's PCI address, `/dev/dri/by-path/pci-0000:04:00.0-card`; resolves to nothing and is skipped on other hardware |
 | `rootfstype=ext4` in the grub cmdline | this machine's root filesystem |
 

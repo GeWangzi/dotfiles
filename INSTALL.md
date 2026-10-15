@@ -77,8 +77,8 @@ under `$HOME`, so `stow -t ~ kitty` links `kitty/.config/kitty/*` into
 
 ```bash
 cd ~/dotfiles
-stow -t ~ chrome claude code fcitx5 fontconfig fonts git hyprland hyprlock \
-          kitty local-bin quickshell skins spotify wireplumber zshrc
+stow -t ~ alsa-card-profile chrome claude code fcitx5 fontconfig fonts git hyprland \
+          hyprlock kitty local-bin quickshell skins spotify zshrc
 chsh -s /usr/bin/zsh
 fc-cache -f
 skinctl generate
@@ -215,40 +215,26 @@ Without it the `geoip-cn` and `geosite-cn` rule sets are re-downloaded at every
 start, and a failed download silently routes China-bound traffic through the proxy
 instead of direct. See `MACHINE.md`.
 
-## 8. Tune the microphone
+## 8. Check the microphone
 
-Gain staging is per-codec and cannot be carried as a file. On the ALC285, these are
-the values that sounded right, found by ear and confirmed by other people on a voice
-call:
+Gain staging is per-codec. On the ALC285 the values that sounded right, found by ear
+and confirmed by other people on a voice call, are `Internal Mic Boost` 1 (10 dB; the
+default 3 is 30 dB) and `Capture` 50 (20.25 dB; the default 63 is the maximum). The
+`alsa-card-profile` stow package from step 4 pins them: it overrides the stock ACP
+path for the internal mic, so PipeWire sets both controls to those values every time
+the route is applied and does input volume in software. No app, and no `wpctl
+set-volume`, can drive the hardware gain up.
 
 ```bash
 sudo pacman -S alsa-utils
-alsamixer          # F4 switches to the capture view
-#   Internal Mic Boost: 1   (10 dB — the default is 3, which is 30 dB)
-#   Capture:            50  (20.25 dB — the default is 63, the maximum)
-sudo alsactl store
+amixer -c 2 sget 'Internal Mic Boost'     # 1 [10.00dB]
+amixer -c 2 sget Capture                  # 50 [20.25dB]
+sudo alsactl store                        # so the boot-time restore agrees
 ```
 
-`alsactl store` writes `/var/lib/alsa/asound.state`, which `alsa-restore.service`
-replays at boot. **Retuning later means running `sudo alsactl store` again** or the
-change is lost at the next reboot.
-
-The `wireplumber` stow package from step 4 installs the drop-in that stops
-WirePlumber driving the hardware `Capture` control to implement volume changes.
-Without it, both analog stages snap back to maximum on any route re-apply — plugging
-in headphones, connecting a Bluetooth headset, or an app changing input volume — not
-just at boot.
-
-**Never tune this mic with `wpctl set-volume`.** It applies software gain and drives
-the hardware `Capture` control straight back to 63.
-
-Known gap: `alsa-restore` runs early at boot, before WirePlumber starts, so nothing
-re-applies if WirePlumber clobbers the values during its own startup. If the mic
-sounds bad after a reboot, check it:
-
-```bash
-amixer -c 2 sget 'Internal Mic Boost'      # 3 [30.00dB] means exactly this happened
-```
+To retune, edit the two `volume =` numbers in
+`alsa-card-profile/.config/alsa-card-profile/mixer/paths/analog-input-internal-mic.conf`
+and run `systemctl --user restart wireplumber pipewire pipewire-pulse`.
 
 ## 9. Reboot and check
 
